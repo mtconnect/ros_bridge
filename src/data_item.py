@@ -127,7 +127,7 @@ class Condition(DataItem):
     def sweep(self):
         DataItem.sweep(self)
         for code in self._active.keys():
-            if self._active[code].marked():
+            if not self._active[code].marked():
                 del self._active[code]
 
 
@@ -140,7 +140,7 @@ class Condition(DataItem):
                 return ["|" + self._name + "|" + str(cond) for cond in active]
             else:
                 cleared = [cond for code, cond in self._active.items() if not cond.marked()]
-                return  ["|" + self._name + "|normal|" + cond.code for cond in cleared] + \
+                return  ["|" + self._name + "|normal|" + cond.code() + "|||" for cond in cleared] + \
                     ["|" + self._name + "|" + str(cond) for cond in active if cond.changed()]
         else:
             return ["|" + self._name + "|UNAVAILABLE||||"]
