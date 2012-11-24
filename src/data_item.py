@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import itertools
 
 class DataItem:
     """A Representation of an MTConnect Data Item"""
