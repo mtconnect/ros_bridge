@@ -1,5 +1,5 @@
 
-from data_item import Event, Condition
+from data_item import Event, Condition, SimpleCondition, ThreeDSample
 from nose.tools import ok_, eq_
 
 def init_test():
@@ -32,6 +32,13 @@ def change_test():
     eq_(event.changed(), False)
     eq_(event.value(), "blat")
 
+def three_d_sample_test():
+    sample = ThreeDSample('foo')
+    sample.set_value((1.0, 2.0, 3.0))
+
+    values = sample.values()
+    eq_(values[0], '|foo|1.0 2.0 3.0')
+
 
 def condition_is_unavailable_at_start_test():
     cond = Condition("foo")
@@ -39,7 +46,7 @@ def condition_is_unavailable_at_start_test():
     eq_(len(values), 1)
     eq_(values[0], '|foo|UNAVAILABLE||||')
 
-def should_have_one_fault_when_a_fault_is_added_test():
+def condition_should_have_one_fault_when_a_fault_is_added_test():
     cond = Condition("foo")
     cond.begin()
     cond.add('fault', 'something failed', '123')
@@ -49,7 +56,7 @@ def should_have_one_fault_when_a_fault_is_added_test():
     eq_(len(values), 1)
     eq_(values[0], '|foo|fault|123|||something failed')
 
-def should_be_normal_when_a_fault_is_added_and_then_not_added_again_test():
+def condition_should_be_normal_when_a_fault_is_added_and_then_not_added_again_test():
     cond = Condition("foo")
     cond.begin()
     cond.add('fault', 'something failed', '123')
@@ -61,7 +68,7 @@ def should_be_normal_when_a_fault_is_added_and_then_not_added_again_test():
     eq_(len(values), 1)
     eq_(values[0], '|foo|normal||||')
 
-def should_have_two_faults_when_two_are_added_test():
+def condition_should_have_two_faults_when_two_are_added_test():
     cond = Condition("foo")
     cond.begin()
     cond.add('fault', 'something failed', '123')
@@ -73,7 +80,7 @@ def should_have_two_faults_when_two_are_added_test():
     eq_(lines[0], '|foo|fault|123|||something failed')
     eq_(lines[1], '|foo|fault|124|||something else failed')
 
-def should_have_one_changed_normal_when_one_fault_is_cleared_test():
+def condition_should_have_one_changed_normal_when_one_fault_is_cleared_test():
     cond = Condition("foo")
     cond.begin()
     cond.add('fault', 'something failed', '123')
@@ -95,7 +102,7 @@ def cond_with_two_faults():
     cond.sweep()
     return cond
 
-def should_have_one_normal_and_one_fault_when_a_fault_is_cleared_test():
+def condition_should_have_one_normal_and_one_fault_when_a_fault_is_cleared_test():
     cond = cond_with_two_faults()
     cond.begin()
     cond.add('fault', 'something failed', '123')
@@ -105,7 +112,7 @@ def should_have_one_normal_and_one_fault_when_a_fault_is_cleared_test():
     eq_(len(lines), 1)
     eq_(lines[0], '|foo|fault|123|||something failed')
 
-def should_have_no_faults_when_the_same_fault_is_readded_test():
+def condition_should_have_no_faults_when_the_same_fault_is_readded_test():
     cond = cond_with_two_faults()
     cond.begin()
     cond.add('fault', 'something failed', '123')
@@ -125,7 +132,7 @@ def should_have_no_faults_when_the_same_fault_is_readded_test():
     eq_(len(lines), 1)
     eq_(lines[0], '|foo|fault|123|||something failed')
 
-def should_go_back_to_normal_when_no_faults_are_added_test():
+def condition_should_go_back_to_normal_when_no_faults_are_added_test():
     condition = cond_with_two_faults()
     condition.begin()
     condition.add('fault', 'something failed', '123')
@@ -140,3 +147,27 @@ def should_go_back_to_normal_when_no_faults_are_added_test():
 
     lines = condition.values()
     eq_(lines[0], '|foo|normal||||')
+
+def simple_condition_with_fault_test():
+    condition = SimpleCondition('foo')
+    condition.begin()
+    condition.add('fault', 'something failed', '123')
+    condition.complete()
+    ok_(condition.changed())
+    values = condition.values()
+
+    eq_(len(values), 1)
+    eq_(values[0], '|foo|fault|123|||something failed')
+
+    condition.sweep()
+
+    condition.begin()
+    condition.complete()
+    ok_(not condition.changed())
+
+    lines = condition.values()
+    eq_(len(lines), 0)
+
+    lines = condition.values(True)
+    eq_(len(lines), 1)
+    eq_(values[0], '|foo|fault|123|||something failed')

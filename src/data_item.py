@@ -50,13 +50,20 @@ class DataItem:
 
 class Event(DataItem):
     """An Event"""
-    def __init__(self, name):
-        DataItem.__init__(self, name)
+    pass
 
 class Sample(DataItem):
     """A Sample"""
-    def __init__(self, name):
-        DataItem.__init__(self, name)
+    pass
+
+class ThreeDSample(DataItem):
+    def values(self, all = False):
+        if self._value:
+            v = ' '.join([str(i) for i in self._value])
+        else:
+            v = "UNAVAILABLE"
+        return ["|" + self._name + "|" + str(v)]
+
 
 class ConditionActivation:
     def __init__(self, level, text, code, qualifier, severity):
@@ -73,6 +80,9 @@ class ConditionActivation:
 
     def clear(self):
         self._marked = False
+        self._changed = False
+
+    def clear_changed(self):
         self._changed = False
 
     def marked(self):
@@ -145,3 +155,12 @@ class Condition(DataItem):
             return ["|" + self._name + "|UNAVAILABLE||||"]
 
 
+class SimpleCondition(Condition):
+    def begin(self):
+        for code, cond in self._active.items():
+            cond.clear_changed()
+
+    def remove(self, code):
+        if code in self._active:
+            cond = self._active[code]
+            cond.clear()
