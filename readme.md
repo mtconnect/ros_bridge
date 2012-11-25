@@ -22,7 +22,6 @@ heartbeats and the following MTConnect data item types:
             checked each time the adapter polls. This is usually how most PLCs operate
             and there is no specific message to say when an alarm becomes active or
             clears. If there is an alarm messaging mechanism, use the SimpleCondition.
-
             Conditions rely on a native code to distinguish themselves. Other systems
             can be used, but this is the current assumption of the agent for its
             condition management.
