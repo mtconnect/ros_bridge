@@ -74,3 +74,42 @@ The qualifier represents extra information like HIGH or LOW and the severity
 is a native severity if available.
 
 There are more examples in the simple_adapter.py.
+
+ROS Example
+------
+There is an example for the ROS turtlesim tutorial that subscribes to the ROS
+poses and then sends them to the MTConnect agent as PATH_POSITION data items. 
+To run the demo, install the turtlesim and then run the adapter: (this assumes
+the python_adapter is cloned under ~/)
+
+Install the turtle sim -- see ros wiki...
+
+  roscore&
+  rosrun turtlesim turtlesim_node
+
+There is an example for the ROS turtlesim tutorial that subscribes to the ROS
+poses and then sends them to the MTConnect agent as PATH_POSITION data items. 
+To run the demo, install the turtlesim and then run the adapter: (this assumes
+the python_adapter is cloned under ~/)
+
+    cd ~/python_adapter/examples
+    python ros_adapter.py
+    
+Next, install the MTConnect agent in another directory:
+
+    cd ~
+    git clone http://github.com/mtconnect/cppagent.git
+    mkdir agent_build
+    cd agent_build
+    cmake ../cppagent
+    make
+    
+Run the agent:
+
+    ~/agent_build/agent/agent debug
+    
+Now your done, test the agent:
+
+    curl http://localhost:5000/current
+    
+You should see an MTConnect streams document with Availabity AVAILABLE and a PathPosition for the Path.
