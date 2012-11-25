@@ -27,6 +27,7 @@ class Adapter(ThreadingMixIn, TCPServer):
         self.server_activate()
         self._server_thread = threading.Thread(target = self.serve_forever)
         self._server_thread.setDaemon(True)
+        print "Server started, waiting for connections on " + str(self.server_address)
         self._server_thread.start()
 
     def stop(self):
@@ -35,11 +36,17 @@ class Adapter(ThreadingMixIn, TCPServer):
             client.shutdown(socket.SHUT_RDWR)
         self._server_thread.join(5.0)
 
+    def wait_until_stopped(self):
+        self._server_thread.join()
+
     def finish_request(self, request, client_address):
         print "Connected to " + str(client_address)
         self._lock.acquire()
         self._clients[client_address] = request
         self._lock.release()
+
+        # Turn nageling off
+        request.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
 
         self.send_initial(client_address)
         self.heartbeat(request)
@@ -67,6 +74,7 @@ class Adapter(ThreadingMixIn, TCPServer):
 
 
     def remove_client(self, client_address):
+        print "Removing " + str(client_address)
         self._lock.acquire()
         try:
             if client_address in self._clients:
@@ -130,7 +138,6 @@ class Adapter(ThreadingMixIn, TCPServer):
                 self._lock.release()
             if socket:
                 socket.send(line)
-                socket.flush()
         except Exception, ex:
             print "Exception occurred in send_to_client, removing client" + str(ex)
             self.remove_client(client)
@@ -142,10 +149,18 @@ class Adapter(ThreadingMixIn, TCPServer):
           self.send_to_client(client, line)
 
     def gather(self, function):
-      self.begin()
+        self.begin()
 
-      function()
+        function()
 
-      self.complete()
-      self.send_changed(self._clients.keys())
-      self.sweep()
+        self.complete()
+        self.send_changed(self._clients.keys())
+        self.sweep()
+
+    def begin_gather(self):
+        self.begin()
+
+    def complete_gather(self):
+        self.complete()
+        self.send_changed(self._clients.keys())
+        self.sweep()
