@@ -84,8 +84,8 @@ the python_adapter is cloned under ~/)
 
 Install the turtle sim -- see ros wiki...
 
-  roscore&
-  rosrun turtlesim turtlesim_node
+    roscore&
+    rosrun turtlesim turtlesim_node
 
 There is an example for the ROS turtlesim tutorial that subscribes to the ROS
 poses and then sends them to the MTConnect agent as PATH_POSITION data items. 
@@ -106,6 +106,7 @@ Next, install the MTConnect agent in another directory:
     
 Run the agent:
 
+    cd ~/python_adapter/examples
     ~/agent_build/agent/agent debug
     
 Now your done, test the agent:
