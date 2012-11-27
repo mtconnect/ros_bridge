@@ -61,10 +61,11 @@ class Adapter(ThreadingMixIn, TCPServer):
                 if self._ping_pat.match(line):
                     if not client.gettimeout():
                         client.settimeout(self._heartbeat_interval / 500.0)
-
-                    self._lock.acquire()
-                    client.send("* PONG " + str(self._heartbeat_interval) + "\n")
-                    self._lock.release()
+                    try:
+                        self._lock.acquire()
+                        client.send("* PONG " + str(self._heartbeat_interval) + "\n")
+                    finally:
+                        self._lock.release()
                 else:
                     break
         except:
@@ -75,16 +76,16 @@ class Adapter(ThreadingMixIn, TCPServer):
 
     def remove_client(self, client_address):
         print "Removing " + str(client_address)
-        self._lock.acquire()
         try:
+            self._lock.acquire()
             if client_address in self._clients:
                 socket = self._clients[client_address]
                 del self._clients[client_address]
                 socket.shutdown(socket.SHUT_RDWR)
         except:
             print "Exception closing socket for " + str(client_address)
-
-        self._lock.release()
+        finally:
+            self._lock.release()
 
     def begin(self):
         for di in self._data_items:
