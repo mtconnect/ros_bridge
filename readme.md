@@ -115,6 +115,20 @@ Now your done, test the agent:
     
 You should see an MTConnect streams document with Availabity AVAILABLE and a PathPosition for the Path.
 
+Simulator
+------
+
+The simulator directory contains a ruby script to simulate the functionality of a 
+cnc with minimal information only required for the Robot control. The simulator
+will process the steps required by the CNC assuming there is a robot that can accept
+material related requests. The states will be similar to the states in the 
+Bar Feeder project but adapted for to mimic a CNC cell. This technique can be 
+used to simulate other MTConnect related devices as well.
+
+The simulator acts as both an agent and an adapter monitoring an external device and
+taking actions based on the state and commands. A commandline is also provided to 
+allow for actions to be sent that are not initiated by an external device.
+
 License
 ------
 Licensed under the Apache License, Version 2.0 (the "License");
