@@ -1,0 +1,4 @@
+# A sample Gemfile
+source "https://rubygems.org"
+
+gem "statemachine", '~> 2.0.1'
