@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectDevices xmlns:m="urn:mtconnect.org:MTConnectDevices:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:mtconnect.org:MTConnectDevices:1.1" xsi:schemaLocation="urn:mtconnect.org:MTConnectDevices:1.2 http://www.mtconnect.org/schemas/MTConnectDevices_1.2.xsd">
+  <Header creationTime="2010-03-04T18:44:40+00:00" sender="localhost" instanceId="1267728234" bufferSize="131072" version="1.2"/>
+  <Devices>
+    <Device id="turtle" name="Turtle" sampleRate="10" uuid="turtlesim">
+      <Description manufacturer="ROS-Industrial">
+	Turtle Simulation from ROS
+      </Description>
+      <DataItems>
+        <DataItem category="EVENT" id="avail" type="AVAILABILITY"/>
+      </DataItems>
+      <Components>
+        <Controller id="controller" name="controller">
+          <Components>
+            <Path id="path" name="path">
+              <DataItems>
+                <DataItem category="SAMPLE" id="pose" name="pose" type="PATH_POSITION" subType="ACTUAL" units="MILLIMETER_3D"/>
+              </DataItems>
+            </Path>
+          </Components>
+        </Controller>
+      </Components>
+    </Device>
+  </Devices>
+</MTConnectDevices>

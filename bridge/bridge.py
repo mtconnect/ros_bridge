@@ -20,6 +20,8 @@ sys.path.append(os.path.realpath(path) + '/../src')
 from httplib import HTTPConnection
 from xml.etree import ElementTree
 from long_pull import LongPull
+from bridge_adapter import BridgeAdapter
+
 import threading
 import time
 
@@ -71,6 +73,9 @@ response = conn.getresponse()
 
 def callback(chunk):
     process_xml(chunk)
+
+adapter = BridgeAdapter()
+adapter.start()
 
 # Streams data from the agent...
 lp = LongPull(response)
