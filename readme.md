@@ -151,4 +151,43 @@ External Licenses
 
 We have included the scanner.py module Copyright (c) 2011, Mark Watkinson.
 Additional licensing and copyright information are in the file: src/scanner.py.
+
+Running CNC Simulator
+------
+
+The CNC simulator requires ruby 1.9.x and the statemachine gem. Install
+ruby and the type
+
+    gem install statemachine
+
+Once you have installed the ruby gem you can use a pre-compiled agent with
+the agent.cfg file and the BothDevices.xml to represent a CNC and a robot.
+There is a robot response file which just goes through a series of pre-canned
+actions and will drive some states on the simulator.
+
+To run the CNC simulator, cd to the simulator directory and start the agent
+(assuming it is in the same simulator directory):
+
+    ./agent debug
+
+Next start the CNC simulator:
+
+    ruby cnc_simulator.rb
+
+You will need to type the following commands to enable the cnc, the first puts
+it in automatic mode and the second enables the link:
+
+    auto
+    enable
+
+Next you will need to start the robot sim:
+
+    ruby robot.rb
+
+Within five seconds give the following command to the CNC:
+
+    run
+
+This process will be made simplier as the CNC becomes more complete. This is the
+first step to a fully functioning sim.
  
