@@ -129,29 +129,6 @@ The simulator acts as both an agent and an adapter monitoring an external device
 taking actions based on the state and commands. A commandline is also provided to 
 allow for actions to be sent that are not initiated by an external device.
 
-License
-------
-Copyright 2012, System Insights, Inc.
-All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-External Licenses
--------
-
-We have included the scanner.py module Copyright (c) 2011, Mark Watkinson.
-Additional licensing and copyright information are in the file: src/scanner.py.
-
 Running CNC Simulator
 ------
 
@@ -190,4 +167,26 @@ Within five seconds give the following command to the CNC:
 
 This process will be made simplier as the CNC becomes more complete. This is the
 first step to a fully functioning sim.
- 
+
+ License
+ ------
+ Copyright 2012, System Insights, Inc.
+ All rights reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+ External Licenses
+ -------
+
+ We have included the scanner.py module Copyright (c) 2011, Mark Watkinson.
+ Additional licensing and copyright information are in the file: src/scanner.py.
