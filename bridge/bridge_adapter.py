@@ -27,11 +27,6 @@ import turtlesim.msg
 
 class BridgeAdapter:
     def __init__(self):
-        def handle_turtle_pose(msg, turtlename):
-                self._adapter.begin_gather()
-                self._pose.set_value((msg.x, msg.y, 0.0))
-                self._adapter.complete_gather()
-
         self._adapter = Adapter(('0.0.0.0', 7878))
         self._pose = ThreeDSample('pose')
         self._adapter.add_data_item(self._pose)
@@ -42,6 +37,11 @@ class BridgeAdapter:
 
 
     def start(self):
+        def handle_turtle_pose(msg, turtlename):
+                self._adapter.begin_gather()
+                self._pose.set_value((msg.x, msg.y, 0.0))
+                self._adapter.complete_gather()
+
         self._adapter.start()
 
         rospy.Subscriber('/turtle1/pose',

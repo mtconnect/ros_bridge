@@ -19,7 +19,7 @@ require 'cnc'
 Cnc.cnc.tracer = STDOUT
 context = Cnc.cnc.context
 
-streamer = MTConnect::Streamer.new('http://localhost:5000/BarFeeder')
+streamer = MTConnect::Streamer.new('http://localhost:5000/Robot')
 thread = streamer.start do |name, value|
   begin
     context.event(name, value)

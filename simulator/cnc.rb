@@ -25,36 +25,52 @@ require 'mtc_context'
 module Cnc
   class CncContext < MTConnect::Context  
     include MTConnect
-    attr_accessor :controller_mode
+    attr_accessor :controller_mode, :material_load, :material_unload, :controller_mode
   
     def initialize(port = 7879)
       super(port)
       
       @adapter.data_items << (@availability_di = DataItem.new('avail'))
-      @adapter.data_items << (@load_material_di = DataItem.new('load_mat'))
-      @adapter.data_items << (@change_material_di = DataItem.new('change_mat'))
+
+      @adapter.data_items << (@material_load_di = DataItem.new('material_load'))
+      @adapter.data_items << (@material_unload_di = DataItem.new('material_unload'))
+
+      @adapter.data_items << (@open_chuck_di = DataItem.new('open_chuck'))
+      @adapter.data_items << (@close_chuck_di = DataItem.new('close_chuck'))
+
+      @adapter.data_items << (@open_door_di = DataItem.new('open_door'))
+      @adapter.data_items << (@close_door_di = DataItem.new('close_door'))
+
+
       @adapter.data_items << (@chuck_state_di = DataItem.new('chuck_state'))
-      @adapter.data_items << (@link_di = DataItem.new('bf_link'))
-      @adapter.data_items << (@top_cut_di = DataItem.new('top_cut'))
-      @adapter.data_items << (@system_di = Condition.new('system'))
+
+      @adapter.data_items << (@link_di = DataItem.new('robo_link'))
       @adapter.data_items << (@exec_di = DataItem.new('exec'))
       @adapter.data_items << (@mode_di = DataItem.new('mode'))
+      @adapter.data_items << (@door_state_di = DataItem.new('door_state'))
+
+      @adapter.data_items << (@system_di = SimpleCondition.new('system'))
+
+      @interfaces = [@open_door_di, @open_chuck_di, @close_door_di, @close_chuck_di,
+                     @material_load_di, @material_unload_di]
 
       # Initialize data items
       @availability_di.value = "AVAILABLE"
-      @load_material_di.value = 'NOT_READY'
-      @change_material_di.value = 'NOT_READY'
-      @top_cut_di.value = 'NOT_READY'
       @chuck_state_di.value = 'UNLATCHED'
       @link_di.value = 'DISABLED'
       @exec_di.value = 'READY'
       @mode_di.value = 'MANUAL'
-      
-      @change_ready = false
+      @door_state_di.value = "UNLATCHED"
+
+      @interfaces.each { |i| i.value = 'NOT_READY' }
+
+      @door_ready = false
       @load_ready = false
+      @unload_ready = false
+      @chuck_ready = false
+      @controller_mode = false
       
       @system_di.normal
-      
       @adapter.start    
     end
   
@@ -64,17 +80,23 @@ module Cnc
     
     def cnc_not_ready
       @adapter.gather do
-        @exec_di.value = 'READY'
-        @top_cut_di.value = 'NOT_READY'
-        @load_material_di.value = 'NOT_READY'
-        @change_material_di.value = 'NOT_READY'        
+        @interfaces.each { |i| i.value = 'NOT_READY' }
         @chuck_state_di.value = 'UNLATCHED'
+        @door_state_di.value = 'UNLATCHED'
+      end
+    end
+
+    def cnc_ready
+      @adapter.gather do
+        @interfaces.each { |i| i.value = 'READY' }
+        @chuck_state_di.value = 'OPEN'
+        @door_state_di.value = 'OPEN'
       end
     end
     
     def activate
       if @faults.empty? and @mode_di.value == 'AUTOMATIC' and 
-        @link_di.value == 'ENABLED'
+          @link_di.value == 'ENABLED' and @controller_mode == 'AUTOMATIC'
         puts "Becomming operational"
         @statemachine.make_operational
       else
@@ -107,38 +129,40 @@ module Cnc
       end
     end
 
-    def cnc_ready
+    def running
       @adapter.gather do
         @exec_di.value = 'READY'
-        @top_cut_di.value = 'READY'
-        @load_material_di.value = 'READY'
-        @change_material_di.value = 'READY'        
-        @chuck_state_di.value = 'OPEN'
+        @material_load_di.value = 'READY'
+        @material_unload_di.value = 'READY'
       end
+      @statemachine.material_load
     end
-    
-    def cycle_start
+
+    def cycling
       @adapter.gather do
         @exec_di.value = 'ACTIVE'
-        @change_material_di.value = 'READY'
-        @load_material_di.value = 'READY'
+        @material_load_di.value = 'READY'
       end
-      
-      if @load_ready
-        @statemachine.load_material
-      elsif @change_ready
-        @statemachine.change_material
-      else
-        @statemachine.disabled
+      Thread.new do
+        puts "------ Cutting a part ------"
+        sleep 5
+        puts "------ Finished Cutting a part ------"
+        @statemachine.cycle_complete
       end
     end
-    
-    def change_not_ready
-      @change_ready = false
+
+    def cycle_complete
+      @adapter.gather do
+        @exec_di.value = 'READY'
+      end
+    end
+
+    def cycle_not_ready
+      @cycle_ready = false
     end
     
-    def change_ready
-      @change_ready = true
+    def cycle_ready
+      @cycle_ready = true
     end
     
     def load_not_ready
@@ -148,49 +172,67 @@ module Cnc
     def load_ready
       @load_ready = true
     end
-    
-    def change_material_ready
-      @adapter.gather do
-        @change_material_di.value = 'READY'
-      end
+
+    def unload_not_ready
+      @unload_ready = false
     end
-    
-    def change_material
+
+    def unload_ready
+      @unload_ready = true
+    end
+
+    def material_load
       @adapter.gather do
-        @change_material_di.value = 'ACTIVE'
+        @material_load_di.value = 'ACTIVE'
       end
     end
 
-    def load_material
+    def material_load_ready
       @adapter.gather do
-        @load_material_di.value = 'ACTIVE'
+        @material_load_di.value = 'READY'
       end
     end
 
-    def load_material_ready
+    def material_unload
       @adapter.gather do
-        @load_material_di.value = 'READY'
+        @material_load_di.value = 'ACTIVE'
       end
     end
-    
-    def begin_top_cut
-      @adapter.gather do 
-        @top_cut_di.value = 'ACTIVE'
-        add_conditions
-      end
-      Thread.new do
-        sleep 1
-        @statemachine.top_cut_completed
+
+    def material_unload_ready
+      @adapter.gather do
+        @material_load_di.value = 'READY'
       end
     end
-    
-    def top_cut_completed
-      @adapter.gather do 
-        @top_cut_di.value = 'COMPLETE'
-        add_conditions
-      end
+
+
+    [:open_chuck, :close_chuck, :open_door, :close_door].each do  |interface|
+      class_eval <<-EOT
+        def #{interface}_begin
+          @adapter.gather do
+            @#{interface}_di.value = 'ACTIVE'
+          end
+          Thread.new do
+            sleep 1
+            @statemachine.#{interface}_complete
+          end
+        end
+
+        def #{interface}_completed
+          puts "Completed"
+          @adapter.gather do
+            @#{interface}_di.value = 'COMPLETE'
+          end
+        end
+
+        def #{interface}_done
+          @adapter.gather do
+            @#{interface}_di.value = "READY"
+          end
+        end
+      EOT
     end
-    
+
     def one_cycle
       # Make sure spindle is not latched
       @adapter.gather do
@@ -214,17 +256,20 @@ module Cnc
     startstate :disabled
   
     superstate :base do  
-      event :load_material_not_ready, :activated, :load_not_ready
+      event :material_load_not_ready, :activated, :material_load_ready
       event :load_material_ready, :activated, :load_ready
-      event :change_material_not_ready, :activated, :change_not_ready
-      event :change_material_ready, :activated, :change_ready
       event :fault, :fault, :reset_history
-      event :automatic, :activated, :automatic_mode
+
+      # From the robot
+      event :controller_mode_automatic, :activated
+
+      # command lines
+      event :auto, :activated, :automatic_mode
       event :maunal, :activated, :manual_mode
       event :disable, :activated, :disable
       event :enable, :activated, :enable
       event :normal, :activated
-      
+
       superstate :disabled do
         default :not_ready
         default_history :not_ready
@@ -240,9 +285,6 @@ module Cnc
           on_entry :cnc_not_ready
           event :normal, :activated
         end
-      
-        state :bar_feeder_empty do
-        end
       end
   
       state :activated do
@@ -254,40 +296,42 @@ module Cnc
       superstate :operational do
         startstate :ready
         default_history :ready
+        event :controller_mode_manual, :activated, :reset_history
+
         
         state :ready do
           default :ready
           on_entry :cnc_ready
-          event :cycle_start, :cycle_start
+          event :run, :running
         end
         
+        state :running do
+          on_entry :running
+          event :material_load, :material_load
+        end
+
         state :cycle_start do
-          on_entry :cycle_start
-          event :load_material, :load_material
-          event :change_material, :change_material
+          on_entry :cycling
+          event :cycle_complete, :material_unload, :cycle_complete
         end
-        
-        state :change_material do
-          on_entry :change_material
-          event :change_material_active, :change_material
-          event :change_material_complete, :ready
+
+        superstate :handling do
+          state :material_load do
+            on_entry :material_load
+            event :material_load_active, :material_load
+            event :material_load_complete, :cycle_start
+            event :material_load_not_ready, :material_load, :load_not_ready
+          end
+
+          state :material_unload do
+            on_entry :material_unload
+            event :material_unload_active, :material_unload
+            event :material_unload_complete, :running
+            event :material_unload_not_ready, :material_unload, :unload_not_ready
+          end
         end
-        
-        state :load_material do
-          on_entry :load_material
-          event :load_material_active, :load_material
-          event :load_material_complete, :one_cycle
-          event :load_material_not_ready, :load_material, :load_not_ready
-        end
-        
-        state :one_cycle do
-          on_entry :one_cycle
-          event :load_material_not_ready, :one_cycle, :load_not_ready
-          event :normal, :one_cycle
-          event :cycle_completed, :cycle_start
-        end
-                
-        [:top_cut].each do |interface|
+
+        [:open_chuck, :close_chuck, :open_door, :close_door].each do |interface|
           active = "#{interface}_active".to_sym
           fail = "#{interface}_fail".to_sym
           failed = "#{interface}_failed".to_sym
@@ -295,17 +339,18 @@ module Cnc
           completed = "#{interface}_completed".to_sym
           ready = "#{interface}_ready".to_sym
           cnc_fail = "cnc_#{interface}_fail".to_sym
-          
-          trans :ready, active, interface
-            
-          # Active state of interface  
+          done = "#{interface}_done".to_sym
+
+          trans :handling, active, interface
+
+          # Active state of interface
           state interface do
-            on_entry "begin_#{interface}".to_sym
+            on_entry "#{interface}_begin".to_sym
             event ready, fail
-            event completed, complete
-            event fail, cnc_fail            
+            event complete, complete
+            event fail, cnc_fail
           end
-    
+
           # Handle invalid CNC state change in which we will respond with a fail
           # This requires CNC ack the fail with a FAIL. When we get the fail, we
           # transition to a ready
@@ -314,26 +359,24 @@ module Cnc
             default fail
             event fail, :activated, :reset_history
           end
-    
+
           # Handle CNC failing current operation. We should
           # only get here when we are operational and active.
-          state cnc_fail do 
+          state cnc_fail do
             on_entry failed
             default cnc_fail
             event ready, :ready
           end
-          
+
           event fail, cnc_fail
-    
+
           # These will auto transition to complete unless they fail.
           state complete do
             on_entry completed
             default complete
-            event ready, :ready
+            event ready, :handling_H, done
           end
         end
-        
-        trans :top_cut_complete, :top_cut_ready, :load_material      
       end
     end
     
@@ -367,5 +410,10 @@ if $0 == __FILE__
       end
     end
   end
+  dir = File.dirname(__FILE__) + '/graph'
+  Dir.mkdir dir unless File.exist?(dir)
   Cnc.cnc.to_dot(:output => 'graph')
+  Dir.chdir('graph') do
+    system('dot -Tpng -o main.png main.dot')
+  end
 end

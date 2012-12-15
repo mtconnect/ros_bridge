@@ -18,6 +18,7 @@ require 'logger'
 require 'data_item'
 
 $logger = Logger.new(STDOUT)
+$logger.level= Logger::DEBUG
 
 module MTConnect
   class Adapter
