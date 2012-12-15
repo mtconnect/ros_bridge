@@ -69,6 +69,8 @@ module Cnc
       @unload_ready = false
       @chuck_ready = false
       @controller_mode = false
+      @material_load = false
+      @material_unload = false
       
       @system_di.normal
       @adapter.start    
@@ -96,7 +98,8 @@ module Cnc
     
     def activate
       if @faults.empty? and @mode_di.value == 'AUTOMATIC' and 
-          @link_di.value == 'ENABLED' and @controller_mode == 'AUTOMATIC'
+          @link_di.value == 'ENABLED' and @controller_mode == 'AUTOMATIC' and
+          @material_load == 'READY'
         puts "Becomming operational"
         @statemachine.make_operational
       else
@@ -130,12 +133,14 @@ module Cnc
     end
 
     def running
+      puts "****** Beginning New Part ******"
+
       @adapter.gather do
         @exec_di.value = 'READY'
         @material_load_di.value = 'READY'
         @material_unload_di.value = 'READY'
       end
-      @statemachine.material_load
+      @statemachine.handling
     end
 
     def cycling
@@ -259,9 +264,11 @@ module Cnc
       event :material_load_not_ready, :activated, :material_load_ready
       event :load_material_ready, :activated, :load_ready
       event :fault, :fault, :reset_history
+      event :availability_unavailable, :activated
 
       # From the robot
       event :controller_mode_automatic, :activated
+      event :material_load_ready, :activated
 
       # command lines
       event :auto, :activated, :automatic_mode
@@ -307,7 +314,7 @@ module Cnc
         
         state :running do
           on_entry :running
-          event :material_load, :material_load
+          event :handling, :handling
         end
 
         state :cycle_start do
@@ -316,18 +323,20 @@ module Cnc
         end
 
         superstate :handling do
+          default_history :material_load
+
           state :material_load do
             on_entry :material_load
             event :material_load_active, :material_load
             event :material_load_complete, :cycle_start
-            event :material_load_not_ready, :material_load, :load_not_ready
+            event :material_load_not_ready, :activated, :reset_history
           end
 
           state :material_unload do
             on_entry :material_unload
             event :material_unload_active, :material_unload
             event :material_unload_complete, :running
-            event :material_unload_not_ready, :material_unload, :unload_not_ready
+            event :material_unload_not_ready, :activated, :reset_history
           end
         end
 
@@ -415,5 +424,8 @@ if $0 == __FILE__
   Cnc.cnc.to_dot(:output => 'graph')
   Dir.chdir('graph') do
     system('dot -Tpng -o main.png main.dot')
+    Dir['*.dot'].each do |f|
+      system("dot -Tsvg -o #{File.basename(f, '.dot')}.svg #{f}")
+    end
   end
 end
