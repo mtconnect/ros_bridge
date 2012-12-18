@@ -57,9 +57,9 @@ module Cnc
       # Initialize data items
       @availability_di.value = "AVAILABLE"
       @chuck_state_di.value = 'UNLATCHED'
-      @link_di.value = 'DISABLED'
+      @link_di.value = 'ENABLED'
       @exec_di.value = 'READY'
-      @mode_di.value = 'MANUAL'
+      @mode_di.value = 'AUTOMATIC'
       @door_state_di.value = "UNLATCHED"
 
       @interfaces.each { |i| i.value = 'NOT_READY' }
@@ -94,6 +94,7 @@ module Cnc
         @chuck_state_di.value = 'OPEN'
         @door_state_di.value = 'OPEN'
       end
+      @statemachine.run
     end
     
     def activate
@@ -200,22 +201,24 @@ module Cnc
 
     def material_unload
       @adapter.gather do
-        @material_load_di.value = 'ACTIVE'
+        @material_unload_di.value = 'ACTIVE'
       end
     end
 
     def material_unload_ready
       @adapter.gather do
-        @material_load_di.value = 'READY'
+        @material_unload_di.value = 'READY'
       end
     end
 
 
-    [:open_chuck, :close_chuck, :open_door, :close_door].each do  |interface|
+    [[:open_chuck, '@chuck_state_di', 'OPEN'], [:close_chuck, '@chuck_state_di', 'CLOSED'],
+     [:open_door, '@door_state_di', 'OPEN'], [:close_door, '@door_state_di', 'CLOSED']].each do  |interface, state, dest|
       class_eval <<-EOT
         def #{interface}_begin
           @adapter.gather do
             @#{interface}_di.value = 'ACTIVE'
+            #{state}.value = 'UNLATCHED'
           end
           Thread.new do
             sleep 1
@@ -227,6 +230,7 @@ module Cnc
           puts "Completed"
           @adapter.gather do
             @#{interface}_di.value = 'COMPLETE'
+            #{state}.value = '#{dest}'
           end
         end
 
