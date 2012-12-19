@@ -56,11 +56,11 @@ module Cnc
 
       # Initialize data items
       @availability_di.value = "AVAILABLE"
-      @chuck_state_di.value = 'UNLATCHED'
+      @chuck_state_di.value = 'OPEN'
       @link_di.value = 'ENABLED'
       @exec_di.value = 'READY'
       @mode_di.value = 'AUTOMATIC'
-      @door_state_di.value = "UNLATCHED"
+      @door_state_di.value = "OPEN"
 
       @interfaces.each { |i| i.value = 'NOT_READY' }
 
@@ -83,17 +83,10 @@ module Cnc
     def cnc_not_ready
       @adapter.gather do
         @interfaces.each { |i| i.value = 'NOT_READY' }
-        @chuck_state_di.value = 'UNLATCHED'
-        @door_state_di.value = 'UNLATCHED'
       end
     end
 
     def cnc_ready
-      @adapter.gather do
-        @interfaces.each { |i| i.value = 'READY' }
-        @chuck_state_di.value = 'OPEN'
-        @door_state_di.value = 'OPEN'
-      end
       @statemachine.run
     end
     
@@ -138,8 +131,9 @@ module Cnc
 
       @adapter.gather do
         @exec_di.value = 'READY'
-        @material_load_di.value = 'READY'
-        @material_unload_di.value = 'READY'
+        @adapter.gather do
+          @interfaces.each { |i| i.value = 'READY' }
+        end
       end
       @statemachine.handling
     end
@@ -211,7 +205,6 @@ module Cnc
       end
     end
 
-
     [[:open_chuck, '@chuck_state_di', 'OPEN'], [:close_chuck, '@chuck_state_di', 'CLOSED'],
      [:open_door, '@door_state_di', 'OPEN'], [:close_door, '@door_state_di', 'CLOSED']].each do  |interface, state, dest|
       class_eval <<-EOT
@@ -237,6 +230,16 @@ module Cnc
         def #{interface}_done
           @adapter.gather do
             @#{interface}_di.value = "READY"
+          end
+        end
+
+        def #{interface}_failed
+          @adapter.gather do
+            @#{interface}_di.value = 'FAIL'
+          end
+          Thread.new do
+            sleep 1
+            #{interface}_done
           end
         end
       EOT
@@ -351,7 +354,7 @@ module Cnc
           complete = "#{interface}_complete".to_sym
           completed = "#{interface}_completed".to_sym
           ready = "#{interface}_ready".to_sym
-          cnc_fail = "cnc_#{interface}_fail".to_sym
+          robot_fail = "robot_#{interface}_fail".to_sym
           done = "#{interface}_done".to_sym
 
           trans :handling, active, interface
@@ -361,7 +364,7 @@ module Cnc
             on_entry "#{interface}_begin".to_sym
             event ready, fail
             event complete, complete
-            event fail, cnc_fail
+            event fail, robot_fail
           end
 
           # Handle invalid CNC state change in which we will respond with a fail
@@ -375,13 +378,13 @@ module Cnc
 
           # Handle CNC failing current operation. We should
           # only get here when we are operational and active.
-          state cnc_fail do
+          state robot_fail do
             on_entry failed
-            default cnc_fail
+            default robot_fail
             event ready, :ready
           end
 
-          event fail, cnc_fail
+          event fail, robot_fail
 
           # These will auto transition to complete unless they fail.
           state complete do
