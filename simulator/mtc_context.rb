@@ -85,12 +85,12 @@ module MTConnect
 
         # Convert camel case to lower _ separated words: FizzBangFlop fizz_bang_flop
         element = name.split(/([A-Z][a-z]+)/).delete_if(&:empty?).map(&:downcase).join('_')
-        mth = "#{element}=".to_sym
+        mth = "robot_#{element}=".to_sym
         puts "    Trying method: #{mth} #{value}"
         self.send(mth, value) if self.respond_to? mth
     
         # Only send valid events to the statemachine.
-        action = "#{element}_#{value.downcase}".to_sym
+        action = "robot_#{element}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
       end

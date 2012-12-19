@@ -68,6 +68,11 @@
         		<DataItem type="EXECUTION" category="EVENT" id="exec2" name="exec"/>
           </DataItems>
         </Controller>
+        <Stock name="stock" id="stock">
+          <DataItems>
+            <DataItem category="EVENT" id="material" name="material" type="MATERIAL" />
+          </DataItems>
+        </Stock>
         <Interfaces name="interfaces" id="if2">
           <Components>
             <MaterialLoader name="material" id="ml2">
