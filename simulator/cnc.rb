@@ -85,7 +85,15 @@ module Cnc
     end
 
     def cnc_ready
-      @statemachine.run
+      puts "****** Beginning New Part ******"
+
+      @adapter.gather do
+        @exec.value = 'READY'
+        @adapter.gather do
+          @interfaces.each { |i| i.value = 'READY' }
+        end
+      end
+      @statemachine.handling
     end
     
     def activate
@@ -125,18 +133,6 @@ module Cnc
       @adapter.gather do
         @link.value = 'DISABLED'
       end
-    end
-
-    def running
-      puts "****** Beginning New Part ******"
-
-      @adapter.gather do
-        @exec.value = 'READY'
-        @adapter.gather do
-          @interfaces.each { |i| i.value = 'READY' }
-        end
-      end
-      @statemachine.handling
     end
 
     def cycling
@@ -302,14 +298,9 @@ module Cnc
         state :ready do
           default :ready
           on_entry :cnc_ready
-          event :run, :running
-        end
-        
-        state :running do
-          on_entry :running
           event :handling, :handling
         end
-
+        
         state :cycle_start do
           on_entry :cycling
           event :cycle_complete, :material_unload, :cycle_complete
@@ -328,7 +319,7 @@ module Cnc
           state :material_unload do
             on_entry :material_unload
             event :robot_material_unload_active, :material_unload
-            event :robot_material_unload_complete, :running
+            event :robot_material_unload_complete, :ready
             event :robot_material_unload_not_ready, :activated, :reset_history
           end
 
