@@ -1,0 +1,14 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b mtconnect_msgs 
+
+<!-- 
+Package contains message definitions for the MTconnect stack/meta-package.  MTconnect is a machine tool (i.e. cnc) communications standard.
+-->
+
+-->
+
+
+*/

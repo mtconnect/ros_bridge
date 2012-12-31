@@ -1,0 +1,15 @@
+<package>
+  <description brief="mtconnect_msgs">
+
+     mtconnect_msgs
+
+  </description>
+  <author>Shaun M. Edwards</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_msgs</url>
+  <depend package="industrial_msgs"/>
+
+</package>
+
+
