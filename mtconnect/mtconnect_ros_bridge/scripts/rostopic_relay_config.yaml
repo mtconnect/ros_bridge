@@ -1,0 +1,13 @@
+#OpenDoor:
+#    {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}
+#CloseDoor:
+#    {'ACTIVE':'TRUE','COMPLETE':'ENABLED','READY':'CLOSED'}
+DoorState:
+    {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN'}
+#OpenChuck:
+#    {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}
+#CloseChuck:
+#    {'ACTIVE':'TRUE','COMPLETE':'ENABLED','READY':'CLOSED'}
+ChuckState:
+    {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN'}
+
