@@ -17,36 +17,33 @@
 import sys, os
 
 path, file = os.path.split(__file__)
-sys.path.append(os.path.realpath(path) + '/../mtconnect_src')
+sys.path.append(os.path.realpath(path) + '/src')
    
 from httplib import HTTPConnection
 from xml.etree import ElementTree
 from long_pull import LongPull
-import threading
+import thread
 import time
 import re
 import operator
-import yaml
 
+import read_config_file
 import roslib
-roslib.load_manifest('mtconnect_ros_bridge')
 roslib.load_manifest('mtconnect_msgs')
-roslib.load_manifest('rospy_tutorials')
 import rospy
-import std_msgs.msg
 import mtconnect_msgs.msg
 
 class MTConnectParser():
     def __init__(self):
         rospy.init_node('rostopic_relay')
         self.pub = rospy.Publisher('industrial_msgs/CncStatus', mtconnect_msgs.msg.CncStatus)
-        self.callNum = None
+        self.sim_time = rospy.get_time()
+        print self.sim_time
         self.stateDict = {}
+        self.msg_statusDict = None
         
         # Setup MTConnect to ROS Conversion
-        fn = 'rostopic_relay_config.yaml'
-        with open(fn) as f:
-            self.dataMap = yaml.load(f)
+        self.dataMap = read_config_file.obtain_dataMap()
         #print('dataMap --> %s' % self.dataMap.keys())
         
         # Establish localhost connection and read in XML
@@ -68,13 +65,17 @@ class MTConnectParser():
 
         conn.request("GET", "/sample?interval=1000&count=1000&from=" + seq)
         response = conn.getresponse()
-        
+
+        # Create class lock
+        self.lock = thread.allocate_lock()
+
+        # Create publishing thread
+        rospy.Timer(rospy.Duration(0.1), self.ros_publisher)
+
         # Streams data from the agent...
         lp = LongPull(response)
         lp.long_pull(self.callback) # Runs until user interrupts
 
-        # Create class lock
-        self.lock = thread.allocate_lock()
         
     def setup_states(self, xml):
         """Function that creates a dictionary of XML Tag:XML State pairs.
@@ -138,25 +139,26 @@ class MTConnectParser():
         nextSeq, elements = self.xml_components(xml)
         
         # Create event status dictionary
-        msg_statusDict = self.setup_statusDict()
+        local_statusDict = self.setup_statusDict()
 
         # Loop through XML elements, update the stateDict with the new state and
         # update the event status
         for e in elements:
             tag_val, tag_bool = self.regex_match(e.tag)
             if tag_bool: # Update msg state if event state has changed
-                print ('Publishing message number %s:\t%s --> %s --> %s' % (nextSeq, e.tag, e.text, tag_val))
-                
+                print ('Updating ROS message --> %s:\t%s --> %s --> %s at %4.2f' % (nextSeq, e.tag, 
+                                                                                 e.text, tag_val, rospy.get_time() - self.sim_time))
+                #self.sim_time = rospy.get_time()
                 if tag_val in self.events:
                     # Loop through msg status dictionary and update states
-                    for key, value in msg_statusDict.items():
+                    for key, value in local_statusDict.items():
                         if value[1] == tag_val:
-                            msg_statusDict[key][0] = self.dataMap[tag_val][e.text]
+                            local_statusDict[key][0] = self.dataMap[tag_val][e.text]
                 
                 self.stateDict[e.tag] = e.text # Update dictionary with new state
-        return nextSeq, msg_statusDict
+        return nextSeq, local_statusDict
 
-    def topic_publisher(self, msg_statusDict):
+    def topic_publisher(self):
         """ Publishes the MTConnect message.  This function is a generic publisher.
         Attribute fetches are obtained via the attrgetter function in the operator
         module.  In order to assign a value to a relative attribute, a code object
@@ -164,41 +166,60 @@ class MTConnectParser():
         """
         msg = mtconnect_msgs.msg.CncStatus()
         msg.header.stamp = rospy.Time.now()
-        for key, value in msg_statusDict.items():
+        
+        for key, value in self.msg_statusDict.items():
             if value[0]: # Will be 'None' if the event did not change
                 # Create callable object of the form 'door_state.OPEN'
                 stateCall = operator.attrgetter(key + '.' + value[0])
                 msg_value = stateCall(msg) # Obtain the attribute value
-                
+
                 # Create a code object and execute to assign val, i.e. msg.door_state.val = msg_value
-                attrAssign_co = compile('msg.'+key+'.val = msg_value', '', 'exec')
+                attrAssign_co = compile('msg.' + key + '.val = msg_value', '', 'exec')
                 exec(attrAssign_co)
-                print('%s set from dataMap' % key.upper())
+                #print('%s set from dataMap' % key.upper()) # DEBUG
             else:
                 # If no change to the event, used stored value in stateDict.
                 # Convert to ROS format via dataMap.
-                print('%s set from stateDict' % key.upper())
+                #print('%s set from stateDict' % key.upper()) # DEBUG
                 state_str = '{urn:mtconnect.org:MTConnectStreams:1.2}' + value[1]
-                msg_statusDict[key][0] = self.dataMap[value[1]][self.stateDict[state_str]]
+                self.msg_statusDict[key][0] = self.dataMap[value[1]][self.stateDict[state_str]]
 
                 # Obtain the state value via callable object: 'door_state.CLOSED'
-                valueCall = operator.attrgetter(key + '.' + msg_statusDict[key][0])
+                valueCall = operator.attrgetter(key + '.' + self.msg_statusDict[key][0])
                 state_value = valueCall(msg)
 
                 # Create a code object and execute to assign the attribute to the state value
-                valAssign_co = compile('msg.'+key+'.val = state_value', '', 'exec')
+                valAssign_co = compile('msg.' + key + '.val = state_value', '', 'exec')
                 exec(valAssign_co)
-            self.pub.publish(msg)
+
+        self.pub.publish(msg)
         return
 
     def callback(self, chunk):
-        print 'In callback'
-        _, msg_statusDict = self.process_xml(chunk)
-        self.topic_publisher(msg_statusDict)
-        time.sleep(0.10)
-        print 'Done with callback'
+        #print '*******************In PROCESS_XML callback***************'
+        self.lock.acquire()
+        try:
+            _, self.msg_statusDict = self.process_xml(chunk)
+        except Exception as e:
+            rospy.logerr("Rostopic relay process XML callback failed: %s, releasing lock", e)        
+        finally:
+            self.lock.release()
+        #print '*******************Done with PROCESS_XML callback***************'
         return
         
+    def ros_publisher(self, event):
+        #print '-------------------In ROS_PUBLISHER callback---------------'
+        self.lock.acquire()
+        try:
+            if self.msg_statusDict != None:
+                #print('self.msg_statusDict --> %s' % self.msg_statusDict) # DEBUG
+                self.topic_publisher()
+        except Exception as e:
+            rospy.logerr("Rostopic relay publisher callback failed: %s, releasing lock", e)        
+        finally:
+            self.lock.release()
+        #print '-------------------Done with ROS_PUBLISHER callback---------------'
+        return
 
 if __name__ == '__main__':
     try:
@@ -206,4 +227,3 @@ if __name__ == '__main__':
         mtc_parse = MTConnectParser()
     except rospy.ROSInterruptException:
         sys.exit(0)
-
