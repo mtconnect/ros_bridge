@@ -22,6 +22,8 @@ class RobotTopicSubscriber():
         self.topic_type = []
         self.member_types = []
         self.member_names = []
+        
+        # Create the data sets for the topic types, member names, and member types
         self.setup_topic_data()
         
         # Create class lock
@@ -40,7 +42,7 @@ class RobotTopicSubscriber():
         via the getattr(import_module) function.  Date is stored in the
         following class attributes:
             self.topic_type   --> used for module import and msg parameters
-            self.member_types --> member type, not used in msg parameters
+            self.member_types --> member type, not used in msg parameters, future use
             self.member_names --> used for ROS subscriber msg parameters
         
         If the topic is not being published, then the user has the option 
@@ -101,6 +103,10 @@ class RobotTopicSubscriber():
     
     
     def topic_callback(self, data, cb_data):
+        """Callback function that captures the attribute values and converts the
+        data into an XML file.  XML file will be sent to the MTConnect agent.
+        This portion is a work in progress.
+        """
         self.lock.acquire()
         try:
             (topic_name, type_name, member_set, mtc_data) = cb_data
@@ -128,6 +134,10 @@ class RobotTopicSubscriber():
         return
 
     def topic_listener(self):
+        """Main ROS subscriber function.  A new thread is created for each callback.
+        self.topic_name_list and self.mtc_dataitems determined from the configuration file.
+        The remaining callback data derived from the setup_topic_data function.
+        """
         subscribers = []
         for each_topic, each_package, member_set, mtc_values in zip(self.topic_name_list, 
                                                                    self.topic_type, self.member_names, self.mtc_dataitems):
@@ -145,88 +155,3 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
-
-
-"""
-#--------------------------------------------------
-# Read configuration file and extract topics and types
-dataMap = read_config_file.obtain_dataMap()
-
-#--------------------------------------------------
-# Import topic type and MTConnect message members
-topic_name_list, mtc_dataitems = dataMap.keys(), dataMap.values()
-#print 'MTConnect DataItems -->', mtc_dataitems
-topic_type = []
-member_types = []
-member_names = []
-
-for val in topic_name_list:
-    published_topics = dict(rospy.get_published_topics())
-    if val in published_topics.keys():
-        topic_type_string = published_topics[val]
-        #print('topic_type_string --> %s' % topic_type_string) 
-    else:
-        print('WARNING: %s is not published and will not be included in the subscription' % val)
-        topic_type_string = None
-        resume = False
-        while resume == False:
-            ans = raw_input('Continue (C) or Quit (Q) --> ')
-            if ans.lower() == 'q':
-                sys.exit(0)
-            elif ans.lower() == 'c':
-                resume = True
-                pass
-
-    #topic_type_string = reflection.get_topic_type(val)
-
-    if topic_type_string:
-        type_string = topic_type_string.split('/')[1]
-    
-        namespace_string, mb_types, mb_names = reflection.get_topic_variables(topic_type_string)
-        member_types.append(mb_types)
-        member_names.append(mb_names)
-    
-        # Import module, module name stored in relative terms
-        topic_type.append(getattr(import_module(namespace_string), type_string)) # Python >= 2.7
-    else:
-        pass
-
-#--------------------------------------------------
-# Define the message callback function
-def callback(data, cb_data):
-
-    (topic_name, type_name, member_set, mtc_data) = cb_data
-
-    # Repackage members into a dictionary
-    dout = {val:val for val in member_set}
-
-    # Create output string
-    rospy.loginfo('Message on %s for %s' % (topic_name, rospy.get_name()))
-    msg_data = []
-    for s in member_set:
-        # Published data for the topic
-        attr_value = operator.attrgetter(dout[s])(data)
-        rospy.loginfo('%s: --> %s' % (s, attr_value))
-        msg_data.append(attr_value)
-    xml_data = [(topic_name, type_name, member_set, msg_data)]
-    #print xml_data
-    topic_xml = generate_xml.data_to_xml(xml_data)
-    #mtc_xml = convert_xml_mtconnect.convert_xml(topic_xml, mtc_data)
-    #xml_post.do_request(mtc_xml)
-
-#--------------------------------------------------
-# Define the listener/subscriber function
-def listener():
-    #rospy.init_node('rostopic_subscriber')
-    subscribers = []
-    for each_topic, each_package, member_set, mtc_values in zip(topic_name_list, topic_type, member_names, mtc_dataitems):
-        rospy.init_node('rostopic_subscriber --> ' + each_topic)
-        subscribers.append(rospy.Subscriber(each_topic, each_package, callback, (each_topic, each_package.__name__, member_set, mtc_values)))
-
-#--------------------------------------------------
-# Main program
-if __name__ == '__main__':
-    listener()
-    rospy.spin()
-
-"""
