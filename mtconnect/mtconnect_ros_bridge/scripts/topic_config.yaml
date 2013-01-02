@@ -1,0 +1,25 @@
+# Topic Configuration Data File
+#
+# For use with the ROS subscriber: robot_bridge_opt.py
+#
+# User enters a ROS topic and the topic attributes of interest:
+#
+# /turtle1/command_velocity:
+#     ('linear')
+#
+# The ROS subscriber will convert this data into the following dictionary:
+# {/turtle1/command_velocity : ('linear')}
+#----------------------------------------------------------- 
+# Enter the ROS topics below:
+
+/industrial_msgs/CncStatus:
+    ('door_state')
+#/joint_states:
+/turtle1/command_velocity:
+    ('linear')
+/turtle1/pose:
+    ('y', 'theta')
+#/turtle1/color_sensor:
+#    ('r')
+#/SIA20D_Mesh_manipulator_kinematics/sync_planning_scene/status:
+#
