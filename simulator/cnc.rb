@@ -71,7 +71,7 @@ module Cnc
       @system.normal
 
       @open_chuck_interface = OpenChuck.new(self)
-      @close_chuck_interface = CloseChuck.new(self)
+      @close_chuck_interface = CloseChuck.new(self, @open_chuck_interface)
 
       @adapter.start    
     end

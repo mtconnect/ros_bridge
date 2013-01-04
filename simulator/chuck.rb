@@ -19,15 +19,17 @@ require 'response'
 
 module Cnc
   class OpenChuck < Response
-    def initialize(cnc)
-      super(cnc.adapter, cnc.open_chuck, cnc.chuck_state, 'OPEN')
+    def initialize(cnc, rel = nil)
+      super(cnc.adapter, cnc.open_chuck, cnc.chuck_state, 'OPEN', rel)
       create_statemachine
     end
+
+
   end
 
   class CloseChuck < Response
-    def initialize(cnc)
-      super(cnc.adapter, cnc.close_chuck, cnc.chuck_state, 'CLOSE')
+    def initialize(cnc, rel = nil)
+      super(cnc.adapter, cnc.close_chuck, cnc.chuck_state, 'CLOSED', rel)
       create_statemachine
     end
   end

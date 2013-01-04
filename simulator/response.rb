@@ -15,10 +15,18 @@
 module Cnc
   class Response
     attr_accessor :statemachine
+    attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 
-    def initialize(adapter, interface, state, dest_state)
+    def initialize(adapter, interface, state, dest_state, rel)
       @adapter, @interface, @state, @dest_state = adapter, interface, state, dest_state
+      @related = nil
+      self.related = rel if rel
+    end
+
+    def related=(rel)
+      @related = rel
+      rel.related = self unless rel.related
     end
 
     def not_ready
@@ -34,13 +42,24 @@ module Cnc
     end
 
     def active
-      @adapter.gather do
-        @interface.value = 'ACTIVE'
-        @state.value = 'UNLATCHED'
-      end
-      Thread.new do
-        sleep 1
+      puts "#{self.class} Active - #{@related.class} #{@related.interface.value}"
+      if @state.value == @dest_state
+        @adapter.gather do
+          @interface.value = 'ACTIVE'
+        end
         @statemachine.complete
+      elsif @related and (@related.interface.value == 'ACTIVE' or
+        @related.interface.value == 'COMPLETE')
+        @statemachine.fail
+      else
+        @adapter.gather do
+          @interface.value = 'ACTIVE'
+          @state.value = 'UNLATCHED'
+        end
+        Thread.new do
+          sleep 1
+          @statemachine.complete
+        end
       end
     end
 
@@ -59,7 +78,7 @@ module Cnc
       end
       Thread.new do
         sleep 1
-        interface_done
+        @statemachine.not_ready
       end
     end
 
@@ -89,8 +108,7 @@ module Cnc
           # Active state of interface
           state :active do
             on_entry :active
-            event :ready, :fail
-            event :unavailable, :fail
+            default :fail
             event :complete, :complete
           end
 
@@ -101,6 +119,7 @@ module Cnc
             on_entry :fail
             default :fail
             event :fail, :not_ready
+            event :not_ready, :not_ready
           end
 
           # These will auto transition to complete unless they fail.
