@@ -65,16 +65,20 @@ module MTConnect
       case name 
       when "Fault"
         @faults[value] = true
-        @statemachine.fault
+        action = "robot_#{name.downcase}".to_sym
+        puts "    Trying action: #{action}"
+        @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
     
       when 'Warning', 'Normal'
         @faults.keys.each { |k| @faults.delete(k) if k =~ /^#{value}/ }
-        @statemachine.normal if @faults.empty?
+        action = "robot_#{name.downcase}".to_sym
+        puts "    Trying action: #{action}"
+        @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
 
       when 'Unavailable'
-        action = "#{value.downcase}#{name.downcase}".to_sym
+        action = "robot_#{value.downcase}#{name.downcase}".to_sym
         @statemachine.send(action) if @statemachine.respond_to? action
 
       when 'DISCONNECTED'

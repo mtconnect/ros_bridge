@@ -84,7 +84,7 @@ module Cnc
 
     def create_statemachine
       myself = self
-      @sm = Statemachine.build do
+      sm = Statemachine.build do
         startstate :base
 
         superstate :base do
@@ -101,6 +101,7 @@ module Cnc
             on_entry :ready
             event :active, :active
             event :unavailable, :not_ready
+            event :not_ready, :not_ready
             event :fail, :fail
             default :ready
           end
@@ -133,7 +134,8 @@ module Cnc
         end
         context myself
       end
-      @sm.tracer = STDOUT
+      sm.tracer = STDOUT
+      sm.name = self.class.name
     end
   end
 end

@@ -118,6 +118,10 @@ module MTConnect
       end
     end
 
+    def normal?
+      @active.empty?
+    end
+
     def begin
       @active.each { |a| a.clear }
     end
@@ -138,7 +142,7 @@ module MTConnect
     def values(all = false)
       if @value
         active, cleared = @active.partition { |a| a.marked? }
-        if active.length == 0
+        if active.empty?
           ["|#@name|normal||||"]
         elsif all
           active.map do |a|
@@ -165,6 +169,12 @@ module MTConnect
     def remove(code)
       cond = @active[code]
       cond.clear if cond
+    end
+
+    def normal
+      super
+      @active.clear
+      @changed = true
     end
   end
 end
