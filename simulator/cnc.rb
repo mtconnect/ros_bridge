@@ -16,17 +16,17 @@ $: << '.'
 
 require 'rubygems'
 require 'adapter'
-require 'streamer'
 require 'statemachine'
-require 'readline'
 require 'statemachine/generate/dot_graph'
 require 'mtc_context'
+require 'chuck'
 
 module Cnc
   class CncContext < MTConnect::Context  
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door
+    attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door
   
     def initialize(port = 7879)
       super(port)
@@ -68,19 +68,38 @@ module Cnc
 
       @material.value = 'ROUND 440C THING'
 
-      @interfaces.each { |i| i.value = 'NOT_READY' }
-
       @system.normal
+
+      @open_chuck_interface = OpenChuck.new(self)
+      @close_chuck_interface = CloseChuck.new(self)
+
       @adapter.start    
     end
   
     def stop
       @adapter.stop
     end
+
+    def event(name, value)
+      puts "CNC Received #{name} #{value}"
+      case name
+      when "OpenChuck"
+        action = value.downcase.to_sym
+        @open_chuck_interface.statemachine.send(action)
+
+      when "CloseChuck"
+        action = value.downcase.to_sym
+        @close_chuck_interface.statemachine.send(action)
+
+      else
+        super(name, value)
+      end
+    end
     
     def cnc_not_ready
       @adapter.gather do
-        @interfaces.each { |i| i.value = 'NOT_READY' }
+        @open_chuck_interface.statemachine.not_ready
+        @close_chuck_interface.statemachine.not_ready
       end
     end
 
@@ -89,21 +108,19 @@ module Cnc
 
       @adapter.gather do
         @exec.value = 'READY'
-        @adapter.gather do
-          @interfaces.each { |i| i.value = 'READY' }
-        end
       end
+      @open_chuck_interface.statemachine.ready
+      @close_chuck_interface.statemachine.ready
       @statemachine.handling
     end
-    
+
     def activate
       if @faults.empty? and @mode.value == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
           @robot_material_load == 'READY' and @robot_material_unload == 'READY'
         puts "Becomming operational"
-        @adapter.gather do
-          @interfaces.each { |i| i.value = 'READY' }
-        end
+        @open_chuck_interface.statemachine.ready
+        @close_chuck_interface.statemachine.ready
         @statemachine.make_operational
       else
         puts "Still not ready"
@@ -178,46 +195,6 @@ module Cnc
       end
     end
 
-    [[:open_chuck, '@chuck_state', 'OPEN'], [:close_chuck, '@chuck_state', 'CLOSED'],
-     [:open_door, '@door_state', 'OPEN'], [:close_door, '@door_state', 'CLOSED']].each do  |interface, state, dest|
-      class_eval <<-EOT
-        def #{interface}_begin
-          @adapter.gather do
-            @#{interface}.value = 'ACTIVE'
-            #{state}.value = 'UNLATCHED'
-          end
-          Thread.new do
-            sleep 1
-            @statemachine.#{interface}_complete
-          end
-        end
-
-        def #{interface}_completed
-          puts "Completed"
-          @adapter.gather do
-            @#{interface}.value = 'COMPLETE'
-            #{state}.value = '#{dest}'
-          end
-        end
-
-        def #{interface}_done
-          @adapter.gather do
-            @#{interface}.value = "READY"
-          end
-        end
-
-        def #{interface}_failed
-          @adapter.gather do
-            @#{interface}.value = 'FAIL'
-          end
-          Thread.new do
-            sleep 1
-            #{interface}_done
-          end
-        end
-      EOT
-    end
-
     def one_cycle
       # Make sure spindle is not latched
       @adapter.gather do
@@ -256,7 +233,6 @@ module Cnc
       event :robot_material_load_not_ready, :activated
       event :robot_material_unload_not_ready, :activated
       event :robot_material_unload_ready, :activated
-
 
       # command lines
       event :auto, :activated, :automatic_mode
@@ -328,58 +304,6 @@ module Cnc
             default :material_unload_failed
             event :robot_material_unload_fail, :activated, :reset_history
             event :robot_material_unload_ready, :activated, :reset_history
-          end
-        end
-
-        [:open_chuck, :close_chuck, :open_door, :close_door].each do |interface|
-          # Robot Events...
-          active = "robot_#{interface}_active".to_sym
-          fail = "robot_#{interface}_fail".to_sym
-          ready = "robot_#{interface}_ready".to_sym
-          robot_fail = "robot_#{interface}_fail".to_sym
-
-          # CNC Events
-          complete = "#{interface}_complete".to_sym
-
-          # Intermediary states
-          failed = "#{interface}_failed".to_sym
-          completed = "#{interface}_completed".to_sym
-          done = "#{interface}_done".to_sym
-
-          trans :handling, active, interface
-
-          # Active state of interface
-          state interface do
-            on_entry "#{interface}_begin".to_sym
-            event ready, fail
-            event complete, complete
-            event fail, robot_fail
-          end
-
-          # Handle invalid CNC state change in which we will respond with a fail
-          # This requires CNC ack the fail with a FAIL. When we get the fail, we
-          # transition to a ready
-          state fail do
-            on_entry failed
-            default fail
-            event fail, :activated, :reset_history
-          end
-
-          # Handle CNC failing current operation. We should
-          # only get here when we are operational and active.
-          state robot_fail do
-            on_entry failed
-            default robot_fail
-            event ready, :ready
-          end
-
-          event fail, robot_fail
-
-          # These will auto transition to complete unless they fail.
-          state complete do
-            on_entry completed
-            default complete
-            event ready, :handling_H, done
           end
         end
       end

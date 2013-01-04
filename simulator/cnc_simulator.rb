@@ -15,6 +15,8 @@
 $: << '.'
 
 require 'cnc'
+require 'streamer'
+require 'readline'
 
 Cnc.cnc.tracer = STDOUT
 context = Cnc.cnc.context

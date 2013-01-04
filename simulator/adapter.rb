@@ -184,12 +184,12 @@ module MTConnect
 
     def send_to_client(client, text)
       @mutex.synchronize do
-        $logger.debug('send_to_client') { "Sending #{text} to #{client.peeraddr.inspect}" }
+        $logger.debug('send_to_client') { "Sending #{text} to #{client.inspect}" }
         client.write text
         client.flush
       end
     rescue
-      $logger.error('send_to_client') { "Error occurred #{$!}, removing client #{client.peeraddr.inspect}\n#{$!.backtrace.join("\n")}" }
+      $logger.error('send_to_client') { "Error occurred #{$!}, removing client #{client.inspect}\n#{$!.backtrace.join("\n")}" }
       remove_client(client)
     end
 

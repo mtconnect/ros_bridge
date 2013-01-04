@@ -16,10 +16,39 @@
 require 'adapter'
 require 'statemachine'
 
+module ThreadSafeStateMachine
+  def statemachine=(statemachine)
+    @statemachine = statemachine
+    class << @statemachine
+      @@event_mutex = Mutex.new
+      @@thread = nil
+
+      alias _process_event process_event
+
+      # Make event processing thread safe
+      def process_event(event, *args)
+        if @@thread != Thread.current
+          # puts "**** Waiting for lock ****"
+          @@event_mutex.lock
+          thread = @@thread = Thread.current
+        end
+        _process_event(event, *args)
+      ensure
+        if thread
+          # puts "**** Releasing lock ****"
+          @@thread = nil
+          @@event_mutex.unlock
+        end
+      end
+    end
+  end
+end
+
 module MTConnect
   class Context
     attr_reader :statemachine
-  
+    include ThreadSafeStateMachine
+
     def initialize(port)
       @adapter = Adapter.new(port)
     
@@ -31,31 +60,6 @@ module MTConnect
       @adapter.stop
     end
     
-    def statemachine=(statemachine)
-      @statemachine = statemachine
-      class << @statemachine
-        @@event_mutex = Mutex.new
-        @@thread = nil
-
-        alias _process_event process_event
-
-        def process_event(event, *args)
-          if @@thread != Thread.current
-            # puts "**** Waiting for lock ****"
-            @@event_mutex.lock
-            thread = @@thread = Thread.current
-          end
-          _process_event(event, *args)
-        ensure
-          if thread
-            # puts "**** Releasing lock ****"
-            @@thread = nil
-            @@event_mutex.unlock
-          end        
-        end
-      end
-    end
-  
     def event(name, value)
       puts "Received #{name} #{value}"
       case name 
