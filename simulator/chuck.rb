@@ -23,8 +23,6 @@ module Cnc
       super(cnc.adapter, cnc.open_chuck, cnc.chuck_state, 'OPEN', rel)
       create_statemachine
     end
-
-
   end
 
   class CloseChuck < Response

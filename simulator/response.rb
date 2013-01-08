@@ -42,7 +42,7 @@ module Cnc
     end
 
     def active
-      puts "#{self.class} Active - #{@related.class} #{@related.interface.value}"
+      puts "#{self.class} Active - #{@related.class} #{@related and @related.interface.value}"
       if @state.value == @dest_state
         @adapter.gather do
           @interface.value = 'ACTIVE'

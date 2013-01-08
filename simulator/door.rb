@@ -23,8 +23,6 @@ module Cnc
       super(cnc.adapter, cnc.open_door, cnc.door_state, 'OPEN', rel)
       create_statemachine
     end
-
-
   end
 
   class CloseDoor < Response

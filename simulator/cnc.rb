@@ -259,8 +259,8 @@ module Cnc
       event :robot_controller_mode_automatic, :activated
       event :robot_material_load_ready, :activated
       event :robot_material_load_not_ready, :activated
-      event :robot_material_unload_not_ready, :activated
       event :robot_material_unload_ready, :activated
+      event :robot_material_unload_not_ready, :activated
       event :robot_normal, :activated
 
       # command lines
