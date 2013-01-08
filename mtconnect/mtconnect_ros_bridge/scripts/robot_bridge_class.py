@@ -1,16 +1,40 @@
 #!/usr/bin/env python
 
-import roslib; roslib.load_manifest('mtconnect_ros_bridge')
-import rospy
+"""
+   Copyright 2013 Southwest Research Institute
+ 
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+   """
+
 import sys
+import os
+
+path, file = os.path.split(__file__)
+sys.path.append(os.path.realpath(path) + '/src')
+
 import operator
 import thread
-from importlib import import_module
+
+import roslib; roslib.load_manifest('mtconnect_ros_bridge')
+import rospy
 
 import read_config_file
-import reflection
-import generate_xml
-import xml_post
+from importlib import import_module
+from data_item import Event, SimpleCondition, Sample, ThreeDSample
+from mtconnect_adapter import Adapter
+
+#import generate_xml
+#import xml_post
 
 class RobotTopicSubscriber():
     def __init__(self):
@@ -22,6 +46,15 @@ class RobotTopicSubscriber():
         self.topic_type = []
         self.member_types = []
         self.member_names = []
+        
+        # Setup MTConnect Adapter
+        #self.adapter = Adapter(('0.0.0.0', 7878))
+        #self.event = Event('close_chuck')
+        #self.adapter.add_data_item(self.event)
+        #self.avail = Event('avail')
+        #self.adapter.add_data_item(self.avail)
+        #self.avail.set_value('AVAILABLE')
+        #self.adapter.start()
         
         # Create the data sets for the topic types, member names, and member types
         self.setup_topic_data()
@@ -118,15 +151,17 @@ class RobotTopicSubscriber():
             rospy.loginfo('Message on %s for %s' % (topic_name, rospy.get_name()))
             msg_data = []
             for s in member_set:
-                # Published data for the topic
-                attr_value = operator.attrgetter(dout[s])(data)
-                rospy.loginfo('%s: --> %s' % (s, attr_value))
-                msg_data.append(attr_value)
+                if 'header' not in s:
+                    # Acquire published data for the topic
+                    attr_value = operator.attrgetter(dout[s])(data)
+                    rospy.loginfo('%s: --> %s' % (s, attr_value))
+                    msg_data.append(attr_value)
             xml_data = [(topic_name, type_name, member_set, msg_data)]
-            #print xml_data
-            topic_xml = generate_xml.data_to_xml(xml_data)
-            #mtc_xml = convert_xml_mtconnect.convert_xml(topic_xml, mtc_data)
-            #xml_post.do_request(mtc_xml)
+
+            # Push data to MTConnect adapter
+            #self.adapter.begin_gather()
+            #self.event.set_value(msg_data)
+            #self.adapter.complete_gather()
         except Exception as e:
             rospy.logerr('Topic callback failed: %s, releasing lock', e)
         finally:
