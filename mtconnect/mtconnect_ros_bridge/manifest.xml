@@ -10,9 +10,8 @@
   <url>http://ros.org/wiki/mtconnect_ros_bridge</url>
   <depend package="std_msgs"/>
   <depend package="rospy"/>
-  <depend package="roscpp"/>
-  <depend package="turtlesim"/>
-  <depend package="SIA20D_Mesh_arm_navigation"/>
+  <depend package="mtconnect_msgs"/>
+  
 
 </package>
 

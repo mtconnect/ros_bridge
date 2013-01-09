@@ -9,6 +9,8 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/mtconnect_msgs</url>
   <depend package="industrial_msgs"/>
+  <depend package="actionlib"/>
+  <depend package="actionlib_msgs"/>
 
 </package>
 

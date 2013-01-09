@@ -10,3 +10,16 @@ industrial_msgs/TriState door_state
 
 # Chuck State: Opened/Closed
 industrial_msgs/TriState chuck_state
+
+# Open Door: Active/Complete/Ready
+industrial_msgs/TriState open_door
+
+# Close Door: Active/Complete/Ready
+industrial_msgs/TriState close_door
+
+# Open Chuck: Active/Complete/Ready
+industrial_msgs/TriState open_chuck
+
+# Close Chuck: Active/Complete/Ready
+industrial_msgs/TriState close_chuck
+
