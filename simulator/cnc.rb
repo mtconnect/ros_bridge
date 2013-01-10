@@ -76,6 +76,10 @@ module Cnc
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
 
+      create_statemachine
+    end
+
+    def start
       @adapter.start
     end
   
@@ -83,7 +87,7 @@ module Cnc
       @adapter.stop
     end
 
-    def event(name, value)
+    def event(name, value, code, text)
       puts "CNC Received #{name} #{value}"
       case name
       when "OpenChuck"
@@ -103,7 +107,7 @@ module Cnc
         @close_door_interface.statemachine.send(action)
 
       else
-        super(name, value)
+        super(name, value, code, text)
       end
     end
     
@@ -245,118 +249,118 @@ module Cnc
     end
   
     def add_conditions
-    end  
-  end
-
-  @cnc = Statemachine.build do
-    startstate :disabled
-  
-    superstate :base do  
-      event :robot_fault, :fault, :reset_history
-
-      # From the robot
-      event :robot_availability_unavailable, :activated
-      event :robot_controller_mode_automatic, :activated
-      event :robot_material_load_ready, :activated
-      event :robot_material_load_not_ready, :activated
-      event :robot_material_unload_ready, :activated
-      event :robot_material_unload_not_ready, :activated
-      event :robot_normal, :activated
-
-      # command lines
-      event :auto, :activated, :automatic_mode
-      event :maunal, :activated, :manual_mode
-      event :disable, :activated, :disable
-      event :enable, :activated, :enable
-      event :reset_cnc, :activated, :reset_cnc
-
-      superstate :disabled do
-        default :not_ready
-        default_history :not_ready
-        on_entry :cnc_not_ready
-    
-        # Ways to transition out of not ready state...
-        state :not_ready do
-          on_entry :cnc_not_ready
-          default :not_ready          
-        end
-  
-        state :fault do
-          on_entry :cnc_not_ready
-          default :fault
-        end
-      end
-  
-      state :activated do
-        on_entry :activate
-        event :make_operational, :operational_H
-        event :still_not_ready, :disabled_H
-      end
-    
-      superstate :operational do
-        startstate :ready
-        default_history :ready
-        event :robot_controller_mode_manual, :activated, :reset_history
-        event :robot_controller_mode_manual_data_input, :activated, :reset_history
-
-        state :ready do
-          default :ready
-          on_entry :cnc_ready
-          event :handling, :handling
-        end
-        
-        state :cycle_start do
-          on_entry :cycling
-          event :cycle_complete, :material_unload, :cycle_complete
-        end
-
-        superstate :handling do
-          default_history :material_load
-          event :robot_material_load_ready, :activated
-
-          state :material_load do
-            on_entry :material_load
-            event :robot_material_load_active, :material_load
-            event :robot_material_load_complete, :cycle_start
-            event :robot_material_load_fail, :material_load_failed
-            event :robot_material_load_not_ready, :activated, :reset_history
-            event :robot_material_unload_ready, :material_load
-            default :material_load
-          end
-
-          state :material_load_failed do
-            on_entry :load_failed
-            default :material_load_failed
-            event :robot_material_load_fail, :activated, :reset_history
-            event :robot_material_load_ready, :activated, :reset_history
-          end
-
-          state :material_unload do
-            on_entry :material_unload
-            event :robot_material_unload_active, :material_unload
-            event :robot_material_unload_complete, :ready
-            event :robot_material_unload_not_ready, :activated, :reset_history
-            event :robot_material_unload_fail, :material_unload_failed
-            event :robot_material_load_ready, :material_unload
-            default :material_unload
-          end
-
-          state :material_unload_failed do
-            on_entry :unload_failed
-            default :material_unload_failed
-            event :robot_material_unload_fail, :activated, :reset_history
-            event :robot_material_unload_ready, :activated, :reset_history
-          end
-        end
-      end
     end
-    
-    context CncContext.new    
-  end
-  @cnc.name = 'CNC'
 
-  def self.cnc
-    @cnc
+    def create_statemachine
+      ctx = self
+      sm = Statemachine.build do
+        startstate :disabled
+
+        superstate :base do
+          event :robot_fault, :fault, :reset_history
+
+          # From the robot
+          event :robot_availability_unavailable, :activated
+          event :robot_controller_mode_automatic, :activated
+          event :robot_material_load_ready, :activated
+          event :robot_material_load_not_ready, :activated
+          event :robot_material_unload_ready, :activated
+          event :robot_material_unload_not_ready, :activated
+          event :robot_normal, :activated
+
+          # command lines
+          event :auto, :activated, :automatic_mode
+          event :manual, :activated, :manual_mode
+          event :disable, :activated, :disable
+          event :enable, :activated, :enable
+          event :reset_cnc, :activated, :reset_cnc
+
+          superstate :disabled do
+            default :not_ready
+            default_history :not_ready
+            on_entry :cnc_not_ready
+
+            # Ways to transition out of not ready state...
+            state :not_ready do
+              on_entry :cnc_not_ready
+              default :not_ready
+            end
+
+            state :fault do
+              on_entry :cnc_not_ready
+              default :fault
+            end
+          end
+
+          state :activated do
+            on_entry :activate
+            event :make_operational, :operational_H
+            event :still_not_ready, :disabled_H
+          end
+
+          superstate :operational do
+            startstate :ready
+            default_history :ready
+            event :robot_controller_mode_manual, :activated, :reset_history
+            event :robot_controller_mode_manual_data_input, :activated, :reset_history
+
+            state :ready do
+              default :ready
+              on_entry :cnc_ready
+              event :handling, :handling
+            end
+
+            state :cycle_start do
+              on_entry :cycling
+              event :cycle_complete, :material_unload, :cycle_complete
+            end
+
+            superstate :handling do
+              default_history :material_load
+              event :robot_material_load_ready, :activated
+
+              state :material_load do
+                on_entry :material_load
+                event :robot_material_load_active, :material_load
+                event :robot_material_load_complete, :cycle_start
+                event :robot_material_load_fail, :material_load_failed
+                event :robot_material_load_not_ready, :activated, :reset_history
+                event :robot_material_unload_ready, :material_load
+                default :material_load
+              end
+
+              state :material_load_failed do
+                on_entry :load_failed
+                default :material_load_failed
+                event :robot_material_load_fail, :activated, :reset_history
+                event :robot_material_load_ready, :activated, :reset_history
+              end
+
+              state :material_unload do
+                on_entry :material_unload
+                event :robot_material_unload_active, :material_unload
+                event :robot_material_unload_complete, :ready
+                event :robot_material_unload_not_ready, :activated, :reset_history
+                event :robot_material_unload_fail, :material_unload_failed
+                event :robot_material_load_ready, :material_unload
+                default :material_unload
+              end
+
+              state :material_unload_failed do
+                on_entry :unload_failed
+                default :material_unload_failed
+                event :robot_material_unload_fail, :activated, :reset_history
+                event :robot_material_unload_ready, :activated, :reset_history
+              end
+            end
+          end
+        end
+
+        context ctx
+      end
+      sm.tracer = STDOUT
+      sm.name = 'CNC'
+    end
   end
 end
 

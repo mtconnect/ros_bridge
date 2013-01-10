@@ -18,13 +18,14 @@ require 'cnc'
 require 'streamer'
 require 'readline'
 
-Cnc.cnc.tracer = STDOUT
-context = Cnc.cnc.context
+context = Cnc::CncContext.new
+context.statemachine.tracer = STDOUT
+context.start
 
 streamer = MTConnect::Streamer.new('http://localhost:5000/Robot')
-thread = streamer.start do |name, value|
+thread = streamer.start do |name, value, code = nil, text = nil|
   begin
-    context.event(name, value)
+    context.event(name, value, code, text)
   rescue
     puts "Error occurred in handling event: #{$!}"
     puts $!.backtrace.join("\n")
@@ -44,8 +45,8 @@ while true
     
     # send the line as an event...
     event = line.strip.to_sym
-    if Cnc.cnc.respond_to? event
-      Cnc.cnc.send(event)
+    if context.statemachine.respond_to? event
+      context.statemachine.send(event)
     else
       puts "CNC does does not recognize #{event} in state #{Cnc.cnc.state}"
     end

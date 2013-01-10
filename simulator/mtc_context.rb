@@ -60,25 +60,25 @@ module MTConnect
       @adapter.stop
     end
     
-    def event(name, value)
+    def event(name, value, code, text)
       puts "Received #{name} #{value}"
-      case name 
+      case value
       when "Fault"
         @faults[value] = true
-        action = "robot_#{name.downcase}".to_sym
+        action = "robot_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
     
       when 'Warning', 'Normal'
         @faults.keys.each { |k| @faults.delete(k) if k =~ /^#{value}/ }
-        action = "robot_#{name.downcase}".to_sym
+        action = "robot_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
 
       when 'Unavailable'
-        action = "robot_#{value.downcase}#{name.downcase}".to_sym
+        action = "robot_#{name.downcase}_#{value.downcase}".to_sym
         @statemachine.send(action) if @statemachine.respond_to? action
 
       when 'DISCONNECTED'

@@ -17,6 +17,9 @@ $: << File.dirname(__FILE__) + '/..'
 require 'door'
 require 'data_item'
 
+# We will only test open door since the code is exactly the same for all responses. close door
+# open chuck, and close chuck will be tested if they differ in the future from the generic response.
+
 describe "Response" do
   context "OpenDoor" do
     before(:each) do
@@ -34,20 +37,20 @@ describe "Response" do
     end
 
     context "operating correctly" do
-      specify "should be NOT_READY when it starts" do
+      it "should be NOT_READY when it starts" do
         @door.statemachine.state.should == :not_ready
         @open_door.value.should == 'NOT_READY'
         @door_state.value == 'CLOSED'
       end
 
-      specify "should become ready when request is ready" do
+      it "should become ready when request is ready" do
         @door.statemachine.state.should == :not_ready
         @door.statemachine.ready
         @door.statemachine.state.should == :ready
         @open_door.value.should == 'READY'
       end
 
-      specify 'should transition to active when request becomes active' do
+      it 'should transition to active when request becomes active' do
         @door.statemachine.ready
         @door.statemachine.active
         @door_state.value.should == 'UNLATCHED'
@@ -55,7 +58,7 @@ describe "Response" do
         @open_door.value.should == 'ACTIVE'
       end
 
-      specify 'should transition from active to complete after one second' do
+      it 'should transition from active to complete after one second' do
         @door.statemachine.ready
         @door_state.value.should == 'CLOSED'
         @door.statemachine.active
@@ -67,7 +70,7 @@ describe "Response" do
         @door_state.value.should == 'OPEN'
       end
 
-      specify 'should transition from complete to ready when request becomes ready' do
+      it 'should transition from complete to ready when request becomes ready' do
         @door.statemachine.ready
         @door_state.value = 'OPEN'
         @door.statemachine.active
@@ -79,7 +82,7 @@ describe "Response" do
         @door_state.value.should == 'OPEN'
       end
 
-      specify 'should transition to NOT_READY when request becomes not ready' do
+      it 'should transition to NOT_READY when request becomes not ready' do
         @door.statemachine.ready
         @door.statemachine.not_ready
         @open_door.value.should == 'NOT_READY'
@@ -87,7 +90,7 @@ describe "Response" do
     end
 
     context 'operating incorrectly' do
-      specify 'should fail if not ready and receives an active from request' do
+      it 'should fail if not ready and receives an active from request' do
         @door.statemachine.state.should == :not_ready
         @open_door.value.should == 'NOT_READY'
         @door.statemachine.active
@@ -102,19 +105,19 @@ describe "Response" do
           @door.statemachine.state.should == :active
         end
 
-        specify 'should fail if active and request fails' do
+        it 'should fail if active and request fails' do
           @door.statemachine.fail
           @door.statemachine.state.should == :fail
           @open_door.value.should == 'FAIL'
         end
 
-        specify 'should fail if active and request becomes unavailable' do
+        it 'should fail if active and request becomes unavailable' do
           @door.statemachine.unavailable
           @door.statemachine.state.should == :fail
           @open_door.value.should == 'FAIL'
         end
 
-        specify 'should fail if active and request fails' do
+        it 'should fail if active and request fails' do
           @door.statemachine.not_ready
           @door.statemachine.state.should == :fail
           @open_door.value.should == 'FAIL'
@@ -131,7 +134,7 @@ describe "Response" do
         @door.related = @related
       end
 
-      specify 'transition should succeed if related is not active' do
+      it 'should succeed if related is not active' do
         @interface.stub(:value).and_return('READY')
         @door.statemachine.ready
         @door.statemachine.active
@@ -140,7 +143,7 @@ describe "Response" do
         @open_door.value.should == 'COMPLETE'
       end
 
-      specify 'transition should fail if related is active' do
+      it 'should fail if related is active' do
         @interface.stub(:value).and_return('ACTIVE')
         @door.statemachine.ready
         @door.statemachine.active

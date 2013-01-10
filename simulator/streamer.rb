@@ -38,7 +38,7 @@ module MTConnect
         events << [e.attributes['sequence'].to_i, [e.name, e.text.to_s]]
       end
       document.each_element('//Condition/*') do |e|
-        events << [e.attributes['sequence'].to_i, [e.name, "#{e.attributes['type']}_#{e.attributes['nativeCode']}"]]
+        events << [e.attributes['sequence'].to_i, [e.attributes['type'], e.name, e.attributes['nativeCode'], e.text.to_s]]
       end
       events.sort.each { |e| block.call(*e[1]) }
       
