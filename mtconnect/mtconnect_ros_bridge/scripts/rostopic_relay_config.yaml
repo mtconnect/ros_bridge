@@ -13,15 +13,15 @@
 #----------------------------------------------------------- 
 # Enter the MTConnect XML Tag and the conversion below:
 
-#OpenDoor:
-#    {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}
-#CloseDoor:
-#    {'ACTIVE':'TRUE','COMPLETE':'ENABLED','READY':'CLOSED'}
+OpenDoor:
+    {'ACTIVE':'UNKNOWN','COMPLETE':'LOW','READY':'OPEN'}
+CloseDoor:
+    {'ACTIVE':'UNKNOWN','COMPLETE':'HIGH','READY':'CLOSED'}
 DoorState:
     {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN'}
-#OpenChuck:
-#    {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}
-#CloseChuck:
-#    {'ACTIVE':'TRUE','COMPLETE':'ENABLED','READY':'CLOSED'}
+OpenChuck:
+    {'ACTIVE':'UNKNOWN','COMPLETE':'LOW','READY':'OPEN'}
+CloseChuck:
+    {'ACTIVE':'UNKNOWN','COMPLETE':'HIGH','READY':'CLOSED'}
 ChuckState:
     {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN'}
