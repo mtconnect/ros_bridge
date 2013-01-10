@@ -1,0 +1,27 @@
+# MTConnect to ROS Conversion Data File
+#
+# For use with the ROS publisher: rostopic_relay_class.py
+#
+# User enters a MTConnect CNC State Tag and the conversion between
+# the XML tag and topic attributes:
+#
+# XmlTag:
+#     {xml_state1:ROS_Attribute1, xml_state2:ROS_Attribute2, ...}
+#
+# The ROS publisher will convert this data into the following dictionary:
+# {OpenDoor: {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}}
+#----------------------------------------------------------- 
+# Enter the MTConnect XML Tag and the conversion below:
+
+#OpenDoor:
+#    {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}
+#CloseDoor:
+#    {'ACTIVE':'TRUE','COMPLETE':'ENABLED','READY':'CLOSED'}
+DoorState:
+    {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN'}
+#OpenChuck:
+#    {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}
+#CloseChuck:
+#    {'ACTIVE':'TRUE','COMPLETE':'ENABLED','READY':'CLOSED'}
+ChuckState:
+    {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN'}
