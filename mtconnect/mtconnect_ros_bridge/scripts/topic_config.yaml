@@ -1,6 +1,6 @@
 # Topic Configuration Data File
 #
-# For use with the ROS subscriber: robot_bridge_opt.py
+# For use with the ROS subscriber: robot_bridge_class.py
 #
 # User enters a ROS topic and the topic attributes of interest:
 #
@@ -13,13 +13,13 @@
 # Enter the ROS topics below:
 
 /industrial_msgs/CncStatus:
-    ('door_state')
+    ('door_state', 'chuck_state', 'open_door', 'close_door', 'open_chuck', 'close_chuck')
 #/joint_states:
-/turtle1/command_velocity:
-    ('linear')
-/turtle1/pose:
-    ('y', 'theta')
-#/turtle1/color_sensor:
-#    ('r')
 #/SIA20D_Mesh_manipulator_kinematics/sync_planning_scene/status:
 #
+#/turtle1/command_velocity:
+#    ('linear')
+#/turtle1/pose:
+#    ('y', 'theta')
+#/turtle1/color_sensor:
+#    ('r')

@@ -33,9 +33,6 @@ from importlib import import_module
 from data_item import Event, SimpleCondition, Sample, ThreeDSample
 from mtconnect_adapter import Adapter
 
-#import generate_xml
-#import xml_post
-
 class RobotTopicSubscriber():
     def __init__(self):
         # Read configuration file and extract topics and types
@@ -48,13 +45,14 @@ class RobotTopicSubscriber():
         self.member_names = []
         
         # Setup MTConnect Adapter
-        #self.adapter = Adapter(('0.0.0.0', 7878))
-        #self.event = Event('close_chuck')
-        #self.adapter.add_data_item(self.event)
-        #self.avail = Event('avail')
-        #self.adapter.add_data_item(self.avail)
-        #self.avail.set_value('AVAILABLE')
-        #self.adapter.start()
+        rospy.loginfo('Create instance of Adapter')
+        self.adapter = Adapter(('0.0.0.0', 7878))
+        self.event = Event('close_chuck')
+        self.adapter.add_data_item(self.event)
+        self.avail = Event('avail')
+        self.adapter.add_data_item(self.avail)
+        self.avail.set_value('AVAILABLE')
+        self.adapter.start()
         
         # Create the data sets for the topic types, member names, and member types
         self.setup_topic_data()
@@ -98,9 +96,7 @@ class RobotTopicSubscriber():
                     elif ans.lower() == 'c':
                         resume = True
                         pass
-        
-            #topic_type_string = reflection.get_topic_type(val) #Old use of the reflection.py file
-        
+
             if topic_type_string:
                 type_string = topic_type_string.split('/')[1]
             
@@ -136,9 +132,13 @@ class RobotTopicSubscriber():
     
     
     def topic_callback(self, data, cb_data):
-        """Callback function that captures the attribute values and converts the
-        data into an XML file.  XML file will be sent to the MTConnect agent.
-        This portion is a work in progress.
+        """Callback function that captures the attribute values for the topic.
+        If the topic is a Robot REQUEST (i.e. REQUEST:OpenChuck), then an action client
+        is executed.  The action client will then send the MTConnect tag via the 
+        MTConnect adapter.  If the topic is a Robot RESPONSE (i.e. RESPONSE:MaterialLoad),
+        only the updated XML tag is sent to the MTConnect adapter. Future work will include
+        robot status messages that do not require a REQUEST or RESPONSE.
+        This function is a work in progress.
         """
         self.lock.acquire()
         try:
@@ -156,12 +156,11 @@ class RobotTopicSubscriber():
                     attr_value = operator.attrgetter(dout[s])(data)
                     rospy.loginfo('%s: --> %s' % (s, attr_value))
                     msg_data.append(attr_value)
-            xml_data = [(topic_name, type_name, member_set, msg_data)]
 
             # Push data to MTConnect adapter
-            #self.adapter.begin_gather()
-            #self.event.set_value(msg_data)
-            #self.adapter.complete_gather()
+            self.adapter.begin_gather()
+            self.event.set_value(msg_data)
+            self.adapter.complete_gather()
         except Exception as e:
             rospy.logerr('Topic callback failed: %s, releasing lock', e)
         finally:

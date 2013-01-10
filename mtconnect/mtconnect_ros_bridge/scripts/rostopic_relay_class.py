@@ -45,35 +45,51 @@ class MTConnectParser():
         self.msg_statusDict = None
         self.client = {'material_load': [('MaterialLoadAction', mtconnect_msgs.msg.MaterialLoadAction), None],
                        'material_unload': [('MaterialUnloadAction', mtconnect_msgs.msg.MaterialLoadAction), None],
-                       'open_door': [('DoorAcknowledgeAction', mtconnect_msgs.msg.DoorAcknowledgeAction), None],
-                       'close_door': [('DoorAcknowledgeAction', mtconnect_msgs.msg.DoorAcknowledgeAction), None],
-                       'open_chuck': [('ChuckAcknowledgeAction', mtconnect_msgs.msg.ChuckAcknowledgeAction), None],
-                       'close_chuck': [('ChuckAcknowledgeAction', mtconnect_msgs.msg.ChuckAcknowledgeAction), None]}
+                       'open_door': [('DoorRequestAction', mtconnect_msgs.msg.DoorAcknowledgeAction), None],
+                       'close_door': [('DoorRequestAction', mtconnect_msgs.msg.DoorAcknowledgeAction), None],
+                       'open_chuck': [('ChuckRequestAction', mtconnect_msgs.msg.ChuckAcknowledgeAction), None],
+                       'close_chuck': [('ChuckRequestAction', mtconnect_msgs.msg.ChuckAcknowledgeAction), None]}
         
         # Setup MTConnect to ROS Conversion
         self.dataMap = read_config_file.obtain_dataMap()
         #print('dataMap --> %s' % self.dataMap.keys())
         
-        # Establish localhost connection and read in XML
+        # Establish localhost connection and read in current Robot XML
+        conn = HTTPConnection('localhost', 5001)
+        conn.request("GET", "/current")
+        response = conn.getresponse()
+        if response.status != 200:
+            print "Request failed: %s - %d" % (response.reason, response.status)
+            sys.exit(0)
+        robot_body = response.read()
+        
+        # With the CNC localhost connection, read in current CNC XML
         conn = HTTPConnection('localhost', 5000)
         conn.request("GET", "/current")
         response = conn.getresponse()
         if response.status != 200:
             print "Request failed: %s - %d" % (response.reason, response.status)
             sys.exit(0)
-        body = response.read()
+        cnc_body = response.read()
         
         # Use XML to establish CNC state dictionary
-        self.stateDict, self.events = self.setup_states(body)
+        self.stateDict, self.events = self.setup_states(cnc_body)
+        
+        # Use config file to create a list of events to monitor for changes
         if not set(self.dataMap.keys()).issubset(set(self.events)):
             print 'ERROR: TOPIC CONFIG FILE HAS INCORRECT EVENTS'
             sys.exit(0)
         self.regexes = [re.compile(p) for p in self.events if p in self.dataMap.keys()]
-        seq, _ = self.process_xml(body)
+        
+        # Parse the XML and determine the current sequence
+        seq, _ = self.xml_components(cnc_body)
+        #seq, _ = self.process_xml(cnc_body)
 
         conn.request("GET", "/sample?interval=1000&count=1000&from=" + seq)
         response = conn.getresponse()
-
+        for key, val in self.stateDict.items():
+            print('CNC KEY --> %s\tVAL --> %s' % (key, val))
+        
         # Create class lock
         self.lock = thread.allocate_lock()
 
@@ -82,7 +98,7 @@ class MTConnectParser():
 
         # Streams data from the agent...
         lp = LongPull(response)
-        lp.long_pull(self.callback) # Runs until user interrupts
+        lp.long_pull(self.xml_callback) # Runs until user interrupts
 
         
     def setup_states(self, xml):
@@ -91,12 +107,14 @@ class MTConnectParser():
         A list of CNC Events is used by self.regexes in the regex_match function.
         """
         nextSeq, elements = self.xml_components(xml)
+        #print('ELEMENTS --> %s' % elements)
         stateDict = {e.tag:e.text for e in elements}
         cnc_events = []
         for key in stateDict.keys():
-            value = re.findall(r'(?<=\})\w+',key)
+            value = re.findall(r'(?<=\})\w+', key)
             if value:
                 cnc_events.append(value[0])
+        print('CNC_EVENTS --> %s' % cnc_events)
         return stateDict, cnc_events
 
     def xml_components(self, xml):
@@ -208,48 +226,7 @@ class MTConnectParser():
         self.pub.publish(msg)
         return
 
-    def action_client_exec(self):
-        # Initializes a rospy node so that the SimpleActionClient can publish and subscribe over ROS.
-        rospy.init_node('ActionClient')
-        
-        # Creates the SimpleActionClient, passing the type of the action i.e. MaterialLoadAction to the constructor.
-        for key, value in self.msg_statusDict.items():
-            if value[0]: # Will be 'None' if the event did not change
-                self.client[key][1] = actionlib.SimpleActionClient(self.client[key][0][0][:-6] + 'Client', self.client[key][0][1])
-        
-                # Waits until the action server has started up and started listening for goals.
-                self.client[key][1].wait_for_server()
-    
-        # Creates a MaterialLoad goal to send to the action server.
-        #goal = mtconnect_msgs.msg.MaterialLoadGoal()
-        #goal.material_length = 5.5
-        #goal.material_diameter = 32.7
-        #goal.material_message = 'MaterialLoad'
-        #goal.material_request = 'LOADING'
-        
-        # Creates a ChuckAcknowledge goal to send to the action server.
-        co_goal_str = 'goal = mtconnect_msgs.msg.' + self.client[key][0][0][:-6] + 'Goal()'
-        co_goal_exec = compile(co_goal_str, '', 'exec')
-        exec(co_goal_exec)
-        
-        for member in goal.__slots__:
-            co_goal_mem_str = 'goal.' + member + '= OPEN'
-            
-        
-        # Sends the goal to the action server.
-        rospy.loginfo('Sending the goal')
-        client.send_goal(goal)
-        
-        # Waits for the server to finish performing the action.
-        rospy.loginfo('Waiting for result')
-        client.wait_for_result()
-        
-        # Prints out the result of the executing action
-        rospy.loginfo(('Returning the result --> %s' % client.get_result()))
-        return client.get_result()
-        return
-
-    def callback(self, chunk):
+    def xml_callback(self, chunk):
         #print '*******************In PROCESS_XML callback***************'
         self.lock.acquire()
         try:
@@ -273,21 +250,6 @@ class MTConnectParser():
         finally:
             self.lock.release()
         #print '-------------------Done with ROS_PUBLISHER callback---------------'
-        return
-
-    def action_client_cb(self):
-        #print '-------------------In ACTION_CLIENT callback---------------'
-        self.lock.acquire()
-        try:
-            if self.msg_statusDict != None:
-                #print('self.msg_statusDict --> %s' % self.msg_statusDict) # DEBUG
-                result = self.action_client_exec()
-                rospy.loginfo('Action Result --> %s' % result)
-        except Exception as e:
-            rospy.logerr("Action client callback failed: %s, releasing lock", e)        
-        finally:
-            self.lock.release()
-        #print '-------------------Done with ACTION CLIENT callback---------------'
         return
 
 if __name__ == '__main__':

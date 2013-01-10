@@ -27,7 +27,7 @@ import mtconnect_msgs.msg
 
 def material_load_client():
     # Creates the SimpleActionClient, passing the type of the action
-    # (material_loadAction) to the constructor.
+    # (MaterialLoadAction) to the constructor.
     #client = actionlib.SimpleActionClient('MaterialLoadClient', mtconnect_msgs.msg.MaterialLoadAction)
     client = actionlib.SimpleActionClient('ChuckAcknowledgeClient', mtconnect_msgs.msg.ChuckAcknowledgeAction)
     
@@ -62,6 +62,17 @@ def material_load_client():
 
 if __name__ == '__main__':
     try:
+        # Setup MTConnect Adapter
+        #self.adapter = Adapter(('0.0.0.0', 7878))
+        #self.event = Event('close_chuck')
+        #self.adapter.add_data_item(self.event)
+        #self.avail = Event('avail')
+        #self.adapter.add_data_item(self.avail)
+        #self.avail.set_value('AVAILABLE')
+        #self.adapter.start()
+        
+        
+        
         # Initializes a rospy node so that the SimpleActionClient can
         # publish and subscribe over ROS.
         rospy.init_node('ActionClient')
