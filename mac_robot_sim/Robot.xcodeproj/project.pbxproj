@@ -1,0 +1,388 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BEC320D4169F8D3E00AEB024 /* adapter.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEC320D0169F8D3E00AEB024 /* adapter.rb */; };
+		BEC320D5169F8D3E00AEB024 /* data_item.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEC320D1169F8D3E00AEB024 /* data_item.rb */; };
+		BEC320D6169F8D3E00AEB024 /* long_pull.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEC320D2169F8D3E00AEB024 /* long_pull.rb */; };
+		BEC320D7169F8D3E00AEB024 /* streamer.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEC320D3169F8D3E00AEB024 /* streamer.rb */; };
+		BEE41419167FFA9800D12A2E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BEE41418167FFA9800D12A2E /* Cocoa.framework */; };
+		BEE4141B167FFA9800D12A2E /* MacRuby.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BEE4141A167FFA9800D12A2E /* MacRuby.framework */; };
+		BEE41424167FFA9800D12A2E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BEE41422167FFA9800D12A2E /* InfoPlist.strings */; };
+		BEE41426167FFA9800D12A2E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = BEE41425167FFA9800D12A2E /* main.m */; };
+		BEE4142B167FFA9800D12A2E /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = BEE41429167FFA9800D12A2E /* MainMenu.xib */; };
+		BEE4142E167FFA9800D12A2E /* rb_main.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEE4142D167FFA9800D12A2E /* rb_main.rb */; };
+		BEE41430167FFA9800D12A2E /* AppDelegate.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEE4142F167FFA9800D12A2E /* AppDelegate.rb */; };
+		BEE414421681366C00D12A2E /* robot.rb in Resources */ = {isa = PBXBuildFile; fileRef = BEE414411681366C00D12A2E /* robot.rb */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BEE4141D167FFA9800D12A2E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BEE4140B167FFA9800D12A2E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BEE41413167FFA9800D12A2E;
+			remoteInfo = Robot;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		BEC320D0169F8D3E00AEB024 /* adapter.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = adapter.rb; sourceTree = "<group>"; };
+		BEC320D1169F8D3E00AEB024 /* data_item.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = data_item.rb; sourceTree = "<group>"; };
+		BEC320D2169F8D3E00AEB024 /* long_pull.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = long_pull.rb; sourceTree = "<group>"; };
+		BEC320D3169F8D3E00AEB024 /* streamer.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = streamer.rb; sourceTree = "<group>"; };
+		BEE41414167FFA9800D12A2E /* Robot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Robot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEE41418167FFA9800D12A2E /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		BEE4141A167FFA9800D12A2E /* MacRuby.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MacRuby.framework; path = Library/Frameworks/MacRuby.framework; sourceTree = DEVELOPER_DIR; };
+		BEE41421167FFA9800D12A2E /* Robot-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Robot-Info.plist"; sourceTree = "<group>"; };
+		BEE41423167FFA9800D12A2E /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		BEE41425167FFA9800D12A2E /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		BEE41427167FFA9800D12A2E /* Robot-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Robot-Prefix.pch"; sourceTree = "<group>"; };
+		BEE4142A167FFA9800D12A2E /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		BEE4142D167FFA9800D12A2E /* rb_main.rb */ = {isa = PBXFileReference; lastKnownFileType = text.script.ruby; path = rb_main.rb; sourceTree = "<group>"; };
+		BEE4142F167FFA9800D12A2E /* AppDelegate.rb */ = {isa = PBXFileReference; lastKnownFileType = text.script.ruby; path = AppDelegate.rb; sourceTree = "<group>"; };
+		BEE414411681366C00D12A2E /* robot.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = robot.rb; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BEE41411167FFA9800D12A2E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BEE41419167FFA9800D12A2E /* Cocoa.framework in Frameworks */,
+				BEE4141B167FFA9800D12A2E /* MacRuby.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BEE41409167FFA9800D12A2E = {
+			isa = PBXGroup;
+			children = (
+				BEE4141F167FFA9800D12A2E /* Robot */,
+				BEE41417167FFA9800D12A2E /* Frameworks */,
+				BEE41415167FFA9800D12A2E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BEE41415167FFA9800D12A2E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BEE41414167FFA9800D12A2E /* Robot.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BEE41417167FFA9800D12A2E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BEE41418167FFA9800D12A2E /* Cocoa.framework */,
+				BEE4141A167FFA9800D12A2E /* MacRuby.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		BEE4141F167FFA9800D12A2E /* Robot */ = {
+			isa = PBXGroup;
+			children = (
+				BEE414411681366C00D12A2E /* robot.rb */,
+				BEC320D0169F8D3E00AEB024 /* adapter.rb */,
+				BEC320D1169F8D3E00AEB024 /* data_item.rb */,
+				BEC320D2169F8D3E00AEB024 /* long_pull.rb */,
+				BEC320D3169F8D3E00AEB024 /* streamer.rb */,
+				BEE4142F167FFA9800D12A2E /* AppDelegate.rb */,
+				BEE41428167FFA9800D12A2E /* Resources */,
+				BEE4142C167FFA9800D12A2E /* Other Sources */,
+				BEE41420167FFA9800D12A2E /* Supporting Files */,
+			);
+			path = Robot;
+			sourceTree = "<group>";
+		};
+		BEE41420167FFA9800D12A2E /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				BEE41421167FFA9800D12A2E /* Robot-Info.plist */,
+				BEE41422167FFA9800D12A2E /* InfoPlist.strings */,
+				BEE41425167FFA9800D12A2E /* main.m */,
+				BEE41427167FFA9800D12A2E /* Robot-Prefix.pch */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		BEE41428167FFA9800D12A2E /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BEE41429167FFA9800D12A2E /* MainMenu.xib */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		BEE4142C167FFA9800D12A2E /* Other Sources */ = {
+			isa = PBXGroup;
+			children = (
+				BEE4142D167FFA9800D12A2E /* rb_main.rb */,
+			);
+			name = "Other Sources";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXLegacyTarget section */
+		BEE4141C167FFA9800D12A2E /* Deployment */ = {
+			isa = PBXLegacyTarget;
+			buildArgumentsString = "--compile --embed";
+			buildConfigurationList = BEE41436167FFA9800D12A2E /* Build configuration list for PBXLegacyTarget "Deployment" */;
+			buildPhases = (
+			);
+			buildToolPath = /usr/local/bin/macruby_deploy;
+			dependencies = (
+				BEE4141E167FFA9800D12A2E /* PBXTargetDependency */,
+			);
+			name = Deployment;
+			passBuildSettingsInEnvironment = 1;
+			productName = Deployment;
+		};
+/* End PBXLegacyTarget section */
+
+/* Begin PBXNativeTarget section */
+		BEE41413167FFA9800D12A2E /* Robot */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEE41433167FFA9800D12A2E /* Build configuration list for PBXNativeTarget "Robot" */;
+			buildPhases = (
+				BEE41410167FFA9800D12A2E /* Sources */,
+				BEE41411167FFA9800D12A2E /* Frameworks */,
+				BEE41412167FFA9800D12A2E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Robot;
+			productName = Robot;
+			productReference = BEE41414167FFA9800D12A2E /* Robot.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BEE4140B167FFA9800D12A2E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0450;
+				ORGANIZATIONNAME = "William Sobel";
+			};
+			buildConfigurationList = BEE4140E167FFA9800D12A2E /* Build configuration list for PBXProject "Robot" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = BEE41409167FFA9800D12A2E;
+			productRefGroup = BEE41415167FFA9800D12A2E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BEE41413167FFA9800D12A2E /* Robot */,
+				BEE4141C167FFA9800D12A2E /* Deployment */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BEE41412167FFA9800D12A2E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BEE41424167FFA9800D12A2E /* InfoPlist.strings in Resources */,
+				BEE4142B167FFA9800D12A2E /* MainMenu.xib in Resources */,
+				BEE4142E167FFA9800D12A2E /* rb_main.rb in Resources */,
+				BEE41430167FFA9800D12A2E /* AppDelegate.rb in Resources */,
+				BEE414421681366C00D12A2E /* robot.rb in Resources */,
+				BEC320D4169F8D3E00AEB024 /* adapter.rb in Resources */,
+				BEC320D5169F8D3E00AEB024 /* data_item.rb in Resources */,
+				BEC320D6169F8D3E00AEB024 /* long_pull.rb in Resources */,
+				BEC320D7169F8D3E00AEB024 /* streamer.rb in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BEE41410167FFA9800D12A2E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BEE41426167FFA9800D12A2E /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BEE4141E167FFA9800D12A2E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BEE41413167FFA9800D12A2E /* Robot */;
+			targetProxy = BEE4141D167FFA9800D12A2E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		BEE41422167FFA9800D12A2E /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				BEE41423167FFA9800D12A2E /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		BEE41429167FFA9800D12A2E /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				BEE4142A167FFA9800D12A2E /* en */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		BEE41431167FFA9800D12A2E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		BEE41432167FFA9800D12A2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		BEE41434167FFA9800D12A2E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SYSTEM_APPS_DIR)/Xcode.app/Contents/Developer/Library/Frameworks\"",
+					/Library/Frameworks,
+				);
+				GCC_ENABLE_OBJC_GC = required;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Robot/Robot-Prefix.pch";
+				INFOPLIST_FILE = "Robot/Robot-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		BEE41435167FFA9800D12A2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SYSTEM_APPS_DIR)/Xcode.app/Contents/Developer/Library/Frameworks\"",
+					/Library/Frameworks,
+				);
+				GCC_ENABLE_OBJC_GC = required;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Robot/Robot-Prefix.pch";
+				INFOPLIST_FILE = "Robot/Robot-Info.plist";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+		BEE41437167FFA9800D12A2E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		BEE41438167FFA9800D12A2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BEE4140E167FFA9800D12A2E /* Build configuration list for PBXProject "Robot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEE41431167FFA9800D12A2E /* Debug */,
+				BEE41432167FFA9800D12A2E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BEE41433167FFA9800D12A2E /* Build configuration list for PBXNativeTarget "Robot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEE41434167FFA9800D12A2E /* Debug */,
+				BEE41435167FFA9800D12A2E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BEE41436167FFA9800D12A2E /* Build configuration list for PBXLegacyTarget "Deployment" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEE41437167FFA9800D12A2E /* Debug */,
+				BEE41438167FFA9800D12A2E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BEE4140B167FFA9800D12A2E /* Project object */;
+}

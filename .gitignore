@@ -1,3 +1,5 @@
 .idea
 *.pyc
 *.iml
+.DS_Store
+simulator/graph
