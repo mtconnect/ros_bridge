@@ -113,10 +113,10 @@ module Cnc
     
     def cnc_not_ready
       @adapter.gather do
-        @open_chuck_interface.statemachine.not_ready
-        @close_chuck_interface.statemachine.not_ready
-        @open_door_interface.statemachine.not_ready
-        @close_door_interface.statemachine.not_ready
+        @open_chuck_interface.deactivate
+        @close_chuck_interface.deactivate
+        @open_door_interface.deactivate
+        @close_door_interface.deactivate
         @interfaces.each { |i| i.value = 'NOT_READY' }
       end
     end
@@ -128,10 +128,10 @@ module Cnc
         @exec.value = 'READY'
         @interfaces.each { |i| i.value = 'READY' }
       end
-      @open_chuck_interface.statemachine.ready
-      @close_chuck_interface.statemachine.ready
-      @open_door_interface.statemachine.ready
-      @close_door_interface.statemachine.ready
+      @open_chuck_interface.activate
+      @close_chuck_interface.activate
+      @open_door_interface.activate
+      @close_door_interface.activate
       @statemachine.handling
     end
 
@@ -144,6 +144,12 @@ module Cnc
         @statemachine.make_operational
       else
         puts "Still not ready"
+        puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
+        puts "  Mode is not AUTOMATIC: #{@mode.vlaue}" unless @mode.value == 'AUTOMATIC'
+        puts "  Robot Material Load is not READY: #{@robot_material_load}" unless @robot_material_load == 'READY'
+        puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
+        puts "  Robot material unload is not READY: #{@robot_material_unload}" unless @robot_material_unload == 'READY'
+        puts "  System condition is not normal" unless @system.normal?
         @statemachine.still_not_ready
       end
     end
@@ -183,7 +189,7 @@ module Cnc
     def cycling
       # Check preconditions for a cycle start. Chuck has to be closed and
       # door must be shut.
-      unless @door_state.value == 'CLOSED' and @chuck_state.value == 'CLOSED'
+      if @door_state.value != 'CLOSED' or @chuck_state.value != 'CLOSED'
         @adapter.gather do
           @system.add('FAULT', 'Door or Chuck in invalid state', 'CYCLE')
         end
@@ -257,7 +263,10 @@ module Cnc
         startstate :disabled
 
         superstate :base do
-          event :robot_fault, :fault, :reset_history
+          # Condition handling
+          event :robot_system_fault, :fault, :reset_history
+          event :robot_system_normal, :activated
+          event :robot_system_warning, :activated
 
           # From the robot
           event :robot_availability_unavailable, :activated
@@ -266,7 +275,6 @@ module Cnc
           event :robot_material_load_not_ready, :activated
           event :robot_material_unload_ready, :activated
           event :robot_material_unload_not_ready, :activated
-          event :robot_normal, :activated
 
           # command lines
           event :auto, :activated, :automatic_mode
@@ -313,6 +321,7 @@ module Cnc
             state :cycle_start do
               on_entry :cycling
               event :cycle_complete, :material_unload, :cycle_complete
+              event :fault, :fault
             end
 
             superstate :handling do

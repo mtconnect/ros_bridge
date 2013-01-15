@@ -1709,7 +1709,7 @@
 											<object class="NSButtonCell" key="NSCell" id="1000676779">
 												<int key="NSCellFlags">67108864</int>
 												<int key="NSCellFlags2">0</int>
-												<string key="NSContents">Ready</string>
+												<string key="NSContents">Link Ready</string>
 												<reference key="NSSupport" ref="117659548"/>
 												<string key="NSCellIdentifier">_NS:9</string>
 												<reference key="NSControlView" ref="11807803"/>
@@ -3043,7 +3043,7 @@
 					<reference key="NSWindow"/>
 					<reference key="NSNextKeyView" ref="250573604"/>
 				</object>
-				<string key="NSScreenRect">{{0, 0}, {1440, 878}}</string>
+				<string key="NSScreenRect">{{0, 0}, {1680, 1028}}</string>
 				<string key="NSMinSize">{732, 609}</string>
 				<string key="NSMaxSize">{732, 609}</string>
 				<bool key="NSWindowIsRestorable">YES</bool>

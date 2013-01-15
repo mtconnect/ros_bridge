@@ -96,6 +96,25 @@ describe "Response" do
         @door.statemachine.active
         @door.statemachine.state.should == :fail
         @open_door.value.should == 'FAIL'
+        sleep 1.5
+        @door.statemachine.state.should == :not_ready
+        @open_door.value.should == 'NOT_READY'
+      end
+
+      it "should not transition to ready if the cnc is disabled" do
+        @door.deactivate
+        @door.statemachine.state.should == :not_ready
+        @open_door.value.should == 'NOT_READY'
+        @door.statemachine.active
+        @door.statemachine.state.should == :fail
+        @open_door.value.should == 'FAIL'
+        sleep 1.5
+        @door.statemachine.state.should == :not_ready
+        @open_door.value.should == 'NOT_READY'
+
+        @door.statemachine.ready
+        @door.statemachine.state.should == :not_ready
+        @open_door.value.should == 'NOT_READY'
       end
 
       context 'when active' do

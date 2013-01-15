@@ -21,7 +21,22 @@ module Cnc
     def initialize(adapter, interface, state, dest_state, rel)
       @adapter, @interface, @state, @dest_state = adapter, interface, state, dest_state
       @related = nil
+      @active = true
       self.related = rel if rel
+    end
+
+    def activate
+      @active = true
+      if  @statemachine.state == :not_ready or @statemachine.state == :fail
+        @statemachine.ready
+      end
+    end
+
+    def deactivate
+      @active = false
+      unless @statemachine.state == :not_ready or @statemachine.state == :fail
+        @statemachine.not_ready
+      end
     end
 
     def related=(rel)
@@ -36,8 +51,12 @@ module Cnc
     end
 
     def ready
-      @adapter.gather do
-        @interface.value = 'READY'
+      if @active
+        @adapter.gather do
+          @interface.value = 'READY'
+        end
+      else
+        @statemachine.not_ready
       end
     end
 
