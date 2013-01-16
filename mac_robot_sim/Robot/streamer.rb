@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 require 'net/http'
-require 'long_pull'
+require 'long_pull.rb'
 require 'socket'
 require 'rexml/document'
 require 'time'
@@ -38,9 +38,8 @@ module MTConnect
         events << [e.attributes['sequence'].to_i, [e.name, e.text.to_s]]
       end
       document.each_element('//Condition/*') do |e|
-        events << [e.attributes['sequence'].to_i, [e.name, "#{e.attributes['type']}_#{e.attributes['nativeCode']}"]]
+        events << [e.attributes['sequence'].to_i, [e.attributes['type'], e.name, e.attributes['nativeCode'], e.text.to_s]]
       end
-      
       events.sort.each { |e| block.call(*e[1]) }
       
       [nxt, instance] 
@@ -54,6 +53,7 @@ module MTConnect
     
     def stop
       @running = false
+      @reader.join if @reader
     end
 
     def start(&block)
@@ -76,19 +76,20 @@ module MTConnect
             nxt = parse(xml, &block)
             break unless @running
           end
-          
         rescue 
+          block.call('DISCONNECTED', nil)
           puts "Error occurred: #{$!}\n retrying..."
           puts $!.backtrace.join("\n")
-          block.call('DISCONNECTED', nil)
           sleep 1
-          
         rescue Exception
           puts "***** Exception: #{$!}"  
           exit 1        
         end while @running
       end
-      @reader
     end
+    @reader = nil
+    
+  rescue Exception
+    puts "***** Exception: #{$!}"    
   end
 end
