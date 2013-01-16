@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<launch>
+	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/joint_definitions.yaml"/>
+	<node pkg="object_manipulation_tools" type="simulated_robot_controller" name="simulated_robot_controller" output="screen"/>
+	<include file="$(find m10iA_arm_navigation)/launch/m10iA_arm_navigation.launch"/>
+
+	<remap from="/joint_trajectory_action" to="/m10iA_manipulator_controller/follow_joint_trajectory"/>
+	<node pkg="object_manipulation_tools" name="joint_trajectory_action_server" type="joint_trajectory_action" output="screen"/>
+	<!--node pkg="rviz" type="rviz" name="mtconnect_visualization"/-->
+</launch>

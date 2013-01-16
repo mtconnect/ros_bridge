@@ -1,0 +1,20 @@
+<package>
+  <description brief="mtconnect_cnc_robot_example">
+
+     mtconnect_cnc_robot_example
+
+  </description>
+  <author>Jnicho</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_cnc_robot_example</url>
+  <depend package="actionlib"/>
+  <depend package="arm_navigation_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="mtconnect_msgs"/>
+  <depend package="mtconnect_ros_bridge"/>
+
+</package>
+
+
