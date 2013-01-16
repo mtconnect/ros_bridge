@@ -60,7 +60,7 @@ module MTConnect
       @adapter.stop
     end
     
-    def event(name, value, code, text)
+    def event(name, value, code = nil, text = nil)
       puts "Received #{name} #{value} #{code} #{text}"
       case value
       when "Fault"
