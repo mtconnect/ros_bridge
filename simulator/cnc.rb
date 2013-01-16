@@ -282,7 +282,7 @@ module Cnc
           event :robot_material_unload_ready, :activated
           event :robot_material_unload_not_ready, :activated
 
-          # command lines
+          # user commands
           event :auto, :activated, :automatic_mode
           event :manual, :activated, :manual_mode
           event :disable, :activated, :disable
@@ -349,8 +349,8 @@ module Cnc
               state :material_load_failed do
                 on_entry :load_failed
                 default :material_load_failed
-                event :robot_material_load_fail, :activated, :reset_history
-                event :robot_material_load_ready, :activated, :reset_history
+                event :robot_material_load_fail, :material_load_failed
+                event :robot_material_load_ready, :material_load
               end
 
               state :material_unload do
@@ -359,15 +359,15 @@ module Cnc
                 event :robot_material_unload_complete, :ready
                 event :robot_material_unload_not_ready, :activated, :reset_history
                 event :robot_material_unload_fail, :material_unload_failed
-                event :robot_material_load_ready, :material_unload
+                event :robot_material_unload_ready, :material_unload
                 default :material_unload
               end
 
               state :material_unload_failed do
                 on_entry :unload_failed
                 default :material_unload_failed
-                event :robot_material_unload_fail, :activated, :reset_history
-                event :robot_material_unload_ready, :activated, :reset_history
+                event :robot_material_unload_fail, :material_unload_failed
+                event :robot_material_unload_ready, :material_unload
               end
             end
           end

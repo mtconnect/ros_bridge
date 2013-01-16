@@ -141,6 +141,7 @@
 			buildPhases = (
 			);
 			buildToolPath = /usr/local/bin/macruby_deploy;
+			buildWorkingDirectory = /Users/will/projects/MTConnect/ROS/ros_bridge/mac_robot_sim;
 			dependencies = (
 				BEE4141E167FFA9800D12A2E /* PBXTargetDependency */,
 			);

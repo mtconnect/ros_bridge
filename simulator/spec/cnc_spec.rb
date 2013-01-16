@@ -203,6 +203,73 @@ describe "Cnc" do
 
         @cnc.statemachine.state.should == :fault
       end
+
+      it "should fail a material load if the robot fails" do
+        @cnc.event('MaterialLoad', 'ACTIVE')
+        @cnc.event('CloseDoor', 'ACTIVE')
+        @cnc.event('CloseChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.chuck_state.value.should == 'CLOSED'
+        @cnc.event('CloseDoor', 'READY')
+        @cnc.event('CloseChuck', 'READY')
+
+        @cnc.event('MaterialLoad', 'FAIL')
+        @cnc.statemachine.state.should == :material_load_failed
+        @cnc.material_load.value.should == 'FAIL'
+
+        @cnc.event('MaterialLoad', 'READY')
+        @cnc.statemachine.state.should == :material_load
+        @cnc.material_load.value.should == 'ACTIVE'
+      end
+
+      it "should fail and become inactive if a material load fails and then goes to not ready" do
+        @cnc.event('MaterialLoad', 'ACTIVE')
+        @cnc.event('CloseDoor', 'ACTIVE')
+        @cnc.event('CloseChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.chuck_state.value.should == 'CLOSED'
+        @cnc.event('CloseDoor', 'READY')
+        @cnc.event('CloseChuck', 'READY')
+
+        @cnc.event('MaterialLoad', 'FAIL')
+        @cnc.statemachine.state.should == :material_load_failed
+        @cnc.material_load.value.should == 'FAIL'
+
+        @cnc.event('MaterialLoad', 'NOT_READY')
+        @cnc.statemachine.state.should == :not_ready
+        @cnc.material_load.value.should == 'NOT_READY'
+      end
+
+      it "should fail a material unload if the robot fails and return to active when ready" do
+        @cnc.event('MaterialLoad', 'ACTIVE')
+        @cnc.event('CloseDoor', 'ACTIVE')
+        @cnc.event('CloseChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.chuck_state.value.should == 'CLOSED'
+        @cnc.event('CloseDoor', 'READY')
+        @cnc.event('CloseChuck', 'READY')
+
+        @cnc.event('MaterialLoad', 'COMPLETE')
+        @cnc.event('MaterialLoad', 'READY')
+
+        @cnc.statemachine.state.should == :cycle_start
+        sleep 1.2
+        @cnc.statemachine.state.should == :material_unload
+
+        @cnc.event('MaterialUnload', 'ACTIVE')
+
+        @cnc.event('MaterialUnload', 'FAIL')
+        @cnc.statemachine.state.should == :material_unload_failed
+        @cnc.material_unload.value.should == 'FAIL'
+
+        @cnc.event('MaterialUnload', 'READY')
+        @cnc.statemachine.state.should == :material_unload
+        @cnc.material_unload.value.should == 'ACTIVE'
+      end
+
     end
   end
 end
