@@ -1,0 +1,25 @@
+cartesian_trajectory:
+  arm_group: manipulator
+  frame_id: base_link
+  link_name: Link6
+  via_points:
+    - position:
+        x: 1.0
+        y: 0.24
+        z: 0.1
+      orientation:
+        axis:
+          x: 0.0
+          y: 0.0
+          z: -1.0
+        angle: 0.01
+    - position:
+        x: 1.0
+        y: -0.24
+        z: 0.1
+      orientation:
+        axis:
+          x: 0.0
+          y: 0.0
+          z: -1.0
+        angle: 0.01

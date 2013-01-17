@@ -16,7 +16,7 @@ typedef boost::shared_ptr<MoveArmClient> MoveArmClientPtr;
 
 // defaults
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
-static const std::string DEFAULT_PATH_PLANNER = "ompl_planning/plan_kinematic_path";
+static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
 static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
 
@@ -41,6 +41,7 @@ public:
 		{
 			std::stringstream ss;
 			ss<<"\n";
+			ss<<"arm_group: "<<arm_group_<<"\n";
 			ss<<"frame_id: "<<frame_id_<<"\n";
 			ss<<"link_name: "<<link_name_<<"\n";
 			ss<<"via points: "<<"transform array with "<<cartesian_points_.size()<<" elements"<<"\n";
@@ -65,7 +66,7 @@ public:
 			XmlRpc::XmlRpcValue cartesian_points_param;
 			ros::NodeHandle nh;
 
-			bool success;
+			bool success = true;
 			if(paramVal.getType() == XmlRpc::XmlRpcValue::TypeStruct)
 			{
 				// fetching frame id and link name
@@ -84,9 +85,10 @@ public:
 					tf::Quaternion q;
 					double val;
 					XmlRpc::XmlRpcValue structElmt, posElmt, rotElmt, axisElmt;
-
 					cartesian_points_.clear();
-					for(std::size_t i = 0; cartesian_points_param.size(); i++)
+
+					ROS_INFO_STREAM(ros::this_node::getName()<<": parsing via points struct array"<<toString());
+					for(std::size_t i = 0; i < cartesian_points_param.size(); i++)
 					{
 						structElmt = cartesian_points_param[i];
 						posElmt = structElmt["position"];
@@ -112,11 +114,13 @@ public:
 				else
 				{
 					ROS_ERROR_STREAM(ros::this_node::getName()<<": Parsing error in cartesian_trajectory parameter");
+					success = false;
 				}
 			}
 			else
 			{
 				ROS_ERROR_STREAM(ros::this_node::getName()<<": Parsing error in cartesian_trajectory parameter");
+				success = false;
 			}
 
 			ROS_INFO_STREAM(ros::this_node::getName()<<": cartesian_trajectory parameter successfully parsed"<<toString());
@@ -127,7 +131,7 @@ public:
 		{
 			XmlRpc::XmlRpcValue val;
 			ros::NodeHandle nh;
-			bool success = nh.getParam("cartesian_trajectory",val) && parseParam(val);
+			bool success = nh.getParam(nameSpace + "/cartesian_trajectory",val) && parseParam(val);
 			if(!success)
 			{
 				ROS_ERROR_STREAM(ros::this_node::getName()<<": Parsing error in cartesian_trajectory parameter");
@@ -164,13 +168,15 @@ public:
 
 		// creating move arm goal
 		MoveArmGoal goal;
-		goal.motion_plan_request.group_name = cartesian_traj_.arm_group_;
+		goal.motion_plan_request.group_name = cartesian_traj_.arm_group_ + "_cartesian";
 		goal.motion_plan_request.num_planning_attempts = DEFAULT_PATH_PLANNING_ATTEMPTS;
 		goal.planner_service_name = DEFAULT_PATH_PLANNER;
 		goal.motion_plan_request.planner_id = "";
 		goal.motion_plan_request.allowed_planning_time = ros::Duration(DEFAULT_PATH_PLANNING_TIME);
 
 		SimplePoseConstraint pose_constraint;
+		pose_constraint.header.frame_id = cartesian_traj_.frame_id_;
+		pose_constraint.link_name = cartesian_traj_.link_name_;
 		pose_constraint.absolute_position_tolerance.x = 0.02f;
 		pose_constraint.absolute_position_tolerance.y = 0.02f;
 		pose_constraint.absolute_position_tolerance.z = 0.02f;
@@ -186,22 +192,28 @@ public:
 			goal.motion_plan_request.goal_constraints.joint_constraints.clear();
 			goal.motion_plan_request.goal_constraints.visibility_constraints.clear();
 
-
 			std::vector<tf::Transform>::iterator i;
-			geometry_msgs::Pose pose;
 			for(i = cartesian_traj_.cartesian_points_.begin(); i != cartesian_traj_.cartesian_points_.end();i++)
 			{
-				tf::poseTFToMsg(*i,pose);
-				pose_constraint.pose = pose;
+				tf::poseTFToMsg(*i,pose_constraint.pose);
 				arm_navigation_msgs::addGoalConstraintToMoveArmGoal(pose_constraint,goal);
 			}
 
 			// sending goal
-			ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal");
+			ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_traj_.cartesian_points_.size()<<" via points");
 			move_arm_client_ptr_->sendGoal(goal);
 			if(move_arm_client_ptr_->waitForResult(ros::Duration(200.0f)))
 			{
-				ROS_INFO_STREAM(ros::this_node::getName()<<": Goal Achieved");
+				actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
+				if(stateFlag.state_ == stateFlag.SUCCEEDED)
+				{
+					ROS_INFO_STREAM(ros::this_node::getName()<<": Goal Achieved");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Rejected with error flag: "<<(unsigned int)stateFlag.state_);
+				}
+
 			}
 			else
 			{
@@ -209,13 +221,15 @@ public:
 				actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
 				ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Failed with error flag: "<<(unsigned int)stateFlag.state_);
 			}
+
+			ros::Duration(2.0f).sleep();
 		}
 
 	}
 
 	bool fetchParameters(std::string nameSpace = "")
 	{
-		bool success = cartesian_traj_.fetchParameters("");
+		bool success = cartesian_traj_.fetchParameters(nameSpace);
 		return success;
 	}
 
@@ -231,15 +245,16 @@ protected:
 			return false;
 		}
 
-		move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(DEFAULT_MOVE_ARM_ACTION,true));
+		std::string action_name = "move_" + cartesian_traj_.arm_group_;
+		move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(action_name,true));
 		unsigned int attempts = 0;
 		while(attempts++ < 20)
 		{
-			ROS_WARN_STREAM(ros::this_node::getName()<<": waiting for "<<DEFAULT_MOVE_ARM_ACTION<<" server");
-			success = move_arm_client_ptr_->waitForResult(ros::Duration(5.0f));
+			ROS_WARN_STREAM(ros::this_node::getName()<<": waiting for "<<action_name<<" server");
+			success = move_arm_client_ptr_->waitForServer(ros::Duration(5.0f));
 			if(success)
 			{
-				ROS_INFO_STREAM(ros::this_node::getName()<<": Found "<<DEFAULT_MOVE_ARM_ACTION<<" server");
+				ROS_INFO_STREAM(ros::this_node::getName()<<": Found "<<action_name<<" server");
 			}
 		}
 
