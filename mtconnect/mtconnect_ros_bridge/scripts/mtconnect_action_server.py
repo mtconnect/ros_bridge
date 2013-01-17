@@ -26,7 +26,7 @@ import actionlib
 import mtconnect_msgs.msg
 
 
-class MTConnect_Action():
+class GenericActionServer():
     """DOCSTRING
     """
 
@@ -43,6 +43,8 @@ class MTConnect_Action():
         
         # Iterate through actions and create action call-backs and action result class instances
         for key in self.dataMap.keys():
+            
+            self.server_name = key
             
             # Create a dictionary of result class instances
             co_result_class_str = 'self._resultDict[key] = mtconnect_msgs.msg.' + key + 'Result()'
@@ -64,7 +66,6 @@ class MTConnect_Action():
             self._as[key].start()
     
     def execute_cb(self, goal):
-        rospy.loginfo('In Callback')
         key, request = goal.chuck_message, goal.chuck_request
         # Empty function -- assumes action was successful
         rospy.loginfo('In %s Callback -- determining action request result.  Request --> %s' % (key, request))
@@ -88,4 +89,5 @@ if __name__ == '__main__':
     
     # Launch the action server
     server = MTConnect_Action()
+    
     rospy.spin()
