@@ -4,3 +4,5 @@
 .DS_Store
 simulator/graph
 simulator/agent
+simulator/.rakeTasks
+mac_robot_sim/Build
