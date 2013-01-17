@@ -1,0 +1,28 @@
+# MTConnect to ROS Conversion Data File
+#
+# For use with the ROS publisher: bridge_publisher.py
+#
+# User enters a MTConnect CNC State Tag and the conversion between
+# the XML tag and topic attributes:
+#
+# XmlTag:
+#     {xml_state1:ROS_Attribute1, xml_state2:ROS_Attribute2, ...}
+#
+# The ROS publisher will convert this data into the following dictionary:
+# {OpenDoor: {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}}
+#----------------------------------------------------------- 
+# Enter the MTConnect XML Tag and the conversion below:
+industrial_msgs/CncStatus:
+    mtconnect_msgs.msg.CncStatus
+OpenDoor:
+    {'ACTIVE':'DISABLED','COMPLETE':'LOW','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+CloseDoor:
+    {'ACTIVE':'ENABLED','COMPLETE':'HIGH','READY':'CLOSED', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+DoorState:
+    {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN', 'NOT READY':'UNKNOWN', 'UNAVAILABLE':'UNKNOWN'}
+OpenChuck:
+    {'ACTIVE':'DISABLED','COMPLETE':'LOW','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+CloseChuck:
+    {'ACTIVE':'ENABLED','COMPLETE':'HIGH','READY':'CLOSED', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+ChuckState:
+    {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN', 'NOT READY':'UNKNOWN', 'UNAVAILABLE':'UNKNOWN'}

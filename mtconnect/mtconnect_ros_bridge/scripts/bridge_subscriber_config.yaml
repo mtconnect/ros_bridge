@@ -1,0 +1,48 @@
+# Topic Configuration Data File
+#
+# For use with the ROS subscriber: bridge_subscriber.py
+#
+ 
+# -------------------------------------------------------------------------
+# Enter the initial XML tags for the robot adapter via the following format:
+#
+# Robot Initialization Identifier:
+#     {MTConnect XML Tag : {ROS Message Attribute : MTConnect Tag Text}}
+
+RobotStates:
+    {'avail':{'TRUE':'AVAILABLE', 'FALSE':'NOT READY', 'UNKNOWN':'UNAVAILABLE'},
+     'mode':{'AUTO':'AUTOMATIC', 'MANUAL':'MANUAL', 'UNKNOWN':'UNAVAILABLE'},
+     'rexec':{'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}}
+
+# -------------------------------------------------------------------------
+# User enters a ROS topic and the topic attributes of interest:
+#
+# /turtle1/command_velocity:
+#     ('linear')
+#
+# The ROS subscriber will convert this data into the following dictionary:
+# {/turtle1/command_velocity : ('linear')}
+#-----------------------------------------------------------
+
+# ROS topic to initialize the robot
+/industrial_msgs/RobotStates:
+    ('avail', 'mode', 'rexec')
+
+# TBD ROS Topic for robot joint states
+#/joint_states:
+
+# Turtlesim Command Velocity topic - for debug
+#/turtle1/command_velocity:
+#    ('linear')
+
+# Turtlesim Pose topic - for debug
+#/turtle1/pose:
+#    ('y', 'theta')
+
+# Turtlesim Color Sensor topic - for debug
+#/turtle1/color_sensor:
+#    ('r')
+
+# TBD OLD TOPIC -- TO BE REMOVED -- USED FOR DEBUG
+#/industrial_msgs/CncStatus:
+#    ('door_state', 'chuck_state', 'open_door', 'close_door', 'open_chuck', 'close_chuck')
