@@ -16,88 +16,103 @@
    limitations under the License.
    """
 
-import sys, os
-
-path, file = os.path.split(__file__)
-sys.path.append(os.path.realpath(path) + '/src')
-   
+# Import standard Python modules
+import sys
+import os
+import operator
+import thread
+import re
+import time
+from importlib import import_module
 from httplib import HTTPConnection
 from xml.etree import ElementTree
-from long_pull import LongPull
-import thread
-import time
-import re
-import operator
 
+# Import custom Python module to read config file
 import read_config_file
-import roslib
-roslib.load_manifest('mtconnect_msgs')
-import rospy
-import actionlib
-import mtconnect_msgs.msg
 
-class MTConnectParser():
+# Import custom Python modules for MTConnect Adapter interface
+path, file = os.path.split(__file__)
+sys.path.append(os.path.realpath(path) + '/src')
+from long_pull import LongPull
+
+# Import ROS Python modules
+import roslib
+import rospy
+
+class BridgePublisher():
     def __init__(self):
         rospy.init_node('bridge_publisher')
                 
         # Setup MTConnect to ROS Conversion
-        self.dataMap = read_config_file.obtain_dataMap()
-        #rospy.loginfo('dataMap --> %s' % self.dataMap.keys())
+        self.config = read_config_file.obtain_dataMap()
+        #rospy.loginfo('config file --> %s' % self.config.keys())
         
+        # Create the data sets for the topic types, member names, and member types
+        self.setup_topic_data()
+        
+        """
         # Setup ROS publisher and topic hash table keys
-        self.topic_keys = []
-        for key, val in self.dataMap.items():
-            if '/' in key:
-                # key = ROS topic, i.e. industrial_msgs/CncStatus
-                # val = ROS message handle, i.e. mtconnect_msgs.msg.CncStatus
-                co_str = "self.pub = rospy.Publisher('" + key + "'," + val + ")"
-                co_exec = compile(co_str, '', 'exec')
-                exec(co_exec)
-                
-                co_str = 'self.msg = ' + val + '()'
-                co_exec = compile(co_str, '', 'exec')
-                exec(co_exec)
-            else:
-                # Store keys for future use
-                self.topic_keys.append(key)
-        self.sim_time = rospy.get_time()
-        self.stateDict = {}
-        self.msg_statusDict = None
+        for topic, topic_type in self.config.items():
+            # TOPIC --> topic name, such as 'chatter'
+            # TOPIC TYPE --> message namespace and name, such as mtconnect_msgs/CncStatus
+            tokens = topic_type.keys()[0].split('/')
+            namespace = tokens[0]
+            type_name = tokens[1]
+            
+            # Import module and create topic type class, called pub_handle
+            #    i.e. append <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
+            rospy.loginfo('Class Instance --> ' + namespace + '.msg.' + type_name)
+            
+            roslib.load_manifest(namespace)
+            
+            pub_handle = getattr(import_module(namespace + '.msg'), type_name)
+            
+            # Create ROS publisher
+            self.pub = rospy.Publisher(topic, pub_handle)
+            
+            # Instance of topic type message class
+            self.msg = pub_handle()
+            
+            # Capture topic name and type for dataMap reference
+            self.topic_name = topic
+            self.topic_type = topic_type.keys()[0] # Only one type per topic
+            
+            # Store the data items for this topic
+            self.data_items = [data_item for data_item in topic_type[self.topic_type].keys()]
+        """     
+        # Hash table of persistent CNC event states, only updates when state changes
+        self.di_current = {}
         
-        # Establish localhost connection and read in current Robot XML
-        #conn = HTTPConnection('localhost', 5001)
-        #conn.request("GET", "/current")
-        #response = conn.getresponse()
-        #if response.status != 200:
-        #    rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
-        #    sys.exit(0)
-        #robot_body = response.read()
+        # Hash table to store changed CNC event states
+        self.di_changed = None
         
         # With the CNC localhost connection, read in current CNC XML
         conn = HTTPConnection('localhost', 5000)
-        conn.request("GET", "/current")
+        conn.request("GET", "/cnc/current")
         response = conn.getresponse()
         if response.status != 200:
             rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
             sys.exit(0)
         cnc_body = response.read()
         
-        # Use XML to establish CNC state dictionary
-        self.stateDict, self.events = self.setup_states(cnc_body)
-        
-        # Use config file to create a list of events to monitor for changes
-        if not set(self.topic_keys).issubset(set(self.events)):
-            rospy.loginfo('ERROR: TOPIC CONFIG FILE HAS INCORRECT EVENTS')
-            sys.exit(0)
-        self.regexes = [re.compile(p) for p in self.events if p in self.topic_keys]
-        
         # Parse the XML and determine the current sequence
-        seq, _ = self.xml_components(cnc_body)
-
-        conn.request("GET", "/sample?interval=1000&count=1000&from=" + seq)
+        seq, elements = self.xml_components(cnc_body)
+        
+        # Use XML to establish CNC state dictionary
+        self.di_current = {e.attrib['name']:e.text for e in elements if 'name' in e.attrib.keys()}
+        
+        # Confirm that data items in config file are present in XML
+        if not set(self.data_items).issubset(set(self.di_current.keys())):
+            rospy.logerr('ERROR: INCORRECT EVENTS IN TOPIC CONFIG OR XML AGENT FILE')
+            sys.exit()
+        
+        # Start a streaming XML connection
+        conn.request("GET", "/cnc/sample?interval=1000&count=1000&from=" + seq)
         response = conn.getresponse()
-        for key, val in self.stateDict.items():
-            rospy.loginfo('CNC KEY --> %s\tVAL --> %s' % (key, val))
+        #---------------------------DEBUG------------------
+        #for key, val in self.di_current.items():
+        #    rospy.loginfo('CNC KEY --> %s\tVAL --> %s' % (key, val))
+        #---------------------------DEBUG------------------
         
         # Create class lock
         self.lock = thread.allocate_lock()
@@ -108,23 +123,57 @@ class MTConnectParser():
         # Streams data from the agent...
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
-
+    
+    def setup_topic_data(self):
+        """This function captures the topic name, type, and member
+        attributes that are required for the ROS publisher.  This task
+        is completed for each topic specified in the configuration file.
         
-    def setup_states(self, xml):
-        """Function that creates a dictionary of XML Tag:XML State pairs.
-        This dictionary is used to track the status of states during runtime.
-        A list of CNC Events is used by self.regexes in the regex_match function.
+        This function then performs a relative import of the topic
+        via the getattr(import_module) function.  Data is stored in the
+        following class attributes:
+        
+            self.topic_type_list   --> used for module import and msg parameters
+            self.member_types --> member type, not used in msg parameters, future use
+            self.member_names --> used for ROS subscriber msg parameters
         """
-        nextSeq, elements = self.xml_components(xml)
-        #rospy.loginfo('ELEMENTS --> %s' % elements)
-        stateDict = {e.tag:e.text for e in elements}
-        cnc_events = []
-        for key in stateDict.keys():
-            value = re.findall(r'(?<=\})\w+', key)
-            if value:
-                cnc_events.append(value[0])
-        rospy.loginfo('CNC_EVENTS --> %s' % cnc_events)
-        return stateDict, cnc_events
+        rospy.loginfo('TOPIC NAME LIST --> %s' % self.topic_name_list)
+        
+        for topic_name, type_name in zip(self.topic_name_list, self.subscribed_list):
+            # TOPIC --> topic name, such as 'chatter'
+            # TOPIC TYPE --> message namespace and name, such as mtconnect_msgs/CncStatus
+            tokens = type_name.split('/')
+            namespace = tokens[0]
+            type_name = tokens[1]
+            
+            # Load package manifest if unique
+            if tokens[0] not in self.lib_manifests:
+                roslib.load_manifest(tokens[0])
+                self.lib_manifests.append(tokens[0])
+
+            # Import module and create topic type class,
+            #    i.e. append <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
+            rospy.loginfo('Class Instance --> ' + namespace + '.msg.' + type_name)
+            type_handle = getattr(import_module(namespace + '.msg'), type_name)
+
+            #self.topic_type_list.append(type_handle)
+            #self.msg_text.append(type_handle._full_text)
+            #self.member_types.append(type_handle._slot_types)
+            #self.member_names.append(type_handle.__slots__)
+            self.data_items.append([val for val in type_handle.__slots__ if val != 'header'])
+            
+            # Create ROS publisher
+            self.pub.append(rospy.Publisher(topic_name, type_handle))
+            
+            # Instance of topic type message class
+            self.msg.append(type_handle())
+            
+            # Capture topic name and type for dataMap reference
+            self.topic_name = topic_name
+            self.topic_type = topic_type.keys()[0] # Only one type per topic
+            
+            
+        return
 
     def xml_components(self, xml):
         """ Find all elements in the updated xml.
@@ -138,65 +187,33 @@ class MTConnectParser():
         nextSeq = header.attrib['nextSequence']
         elements = root.findall('.//m:Events/*', namespaces=ns)        
         return nextSeq, elements
-
-    def regex_match(self, tag):
-        """Searches through the set of compiled regular expressions for a
-        match.  Returns the match if found (None if not) and a boolean.
-        Events to be matched are stored in self.regexes.  The XML tag is
-        updated by the CNC simulator.  Tags that haven't changed do not
-        appear in the XML/current."""
-        for regex in self.regexes:
-            if regex.search(tag):
-                return regex.pattern, True # Pattern returns only matched text
-        return None, False
-
-    def setup_statusDict(self):
-        """Create a dictionary of key-->event_string : value-->[pos1,pos2]
-        pos1 tracks if the event has changed.
-        pos2 stores the event_string without the underscore: 'DoorState'
-        """
-        statusDict = {}
-        for key in self.topic_keys:
-            textlist = re.findall(r'([A-Z][a-z]*)', key) # re to create list of words
-            textlist = [val.lower() for val in textlist]
-            event_str = textlist[0] + '_' + textlist[1] # create new event_string
-            statusDict[event_str] = [None, key]
-        return statusDict
-
+    
+    def init_di_dict(self):
+        return {item:None for item in self.data_items}
+    
     def process_xml(self, xml):
         """Function determines if an event of interest has changed and updates
-        the state dictionary and msg status dictionary.  Events that will be
-        published are specified by the user in a .yaml file.  Since the MTConnect
-        uses different tags for states, the function converts the tag from
-        MTConnect to ROS.  The function returns the updated msg status dictionary
-        that now includes the ROS attribute value for the ROS msg data structure.
+        the current and changed data item dictionaries.  Events that will be
+        published are specified by the user in a .yaml file.  The function 
+        returns the updated changed data item dictionary that includes the
+        ROS attribute value for the ROS msg data structure.
         """
         nextSeq, elements = self.xml_components(xml)
         
-        # Create event status dictionary
-        if self.msg_statusDict:
-            local_statusDict = self.msg_statusDict
-        else:
-            local_statusDict = self.setup_statusDict()
+        # Create local data item dictionary to track event changes
+        local_di = self.init_di_dict()
 
-        # Loop through XML elements, update the stateDict and statusDict
+        # Loop through XML elements, update the di_changed and di_current
         for e in elements:
-            tag_val, tag_bool = self.regex_match(e.tag)
-            if tag_bool: # Update msg state if event state has changed
-                rospy.loginfo('Updating ROS message --> %s:\t%s --> %s --> %s at %4.2f' % (nextSeq, e.tag, 
-                                                                                 e.text, tag_val, rospy.get_time() - self.sim_time))
-                #rospy.loginfo('self.events --> %s' % self.events)
-                rospy.loginfo('XML tag_val --> %s' % tag_val)
-                rospy.loginfo('statusDict  --> %s' % local_statusDict)
-                if tag_val in self.events:
-                    # Loop through copy of msg status dictionary
-                    for key, value in local_statusDict.items():
-                        if value[1] == tag_val:
-                            # Tag matches statusDict key, overwrite with current event status
-                            local_statusDict[key][0] = self.dataMap[tag_val][e.text]
-                
-                self.stateDict[e.tag] = e.text # Update dictionary with new state
-        return nextSeq, local_statusDict
+            rospy.loginfo('Changing ROS message --> %s --> %s' % (e.tag, e.text))
+            
+            if 'name' in e.attrib.keys():
+                if e.attrib['name'] in self.data_items:
+                    # Change local_di from None to current MTConnect event status
+                    di = e.attrib['name']
+                    local_di[di] = e.text
+                    self.di_current[di] = e.text # Update di_current with new state
+        return nextSeq, local_di
 
     def topic_publisher(self):
         """ Publishes the MTConnect message.  This function is a generic publisher.
@@ -206,33 +223,34 @@ class MTConnectParser():
         """
         self.msg.header.stamp = rospy.Time.now()
         
-        for key, value in self.msg_statusDict.items():
-            if value[0] is not None: # Will be 'None' if the event did not change
-                rospy.loginfo('%s set from dataMap' % key.upper()) # DEBUG
+        for di_name, value in self.di_changed.items():
+            # Convert tag text from MTConnect to ROS
+            if value is not None:
+                # Used changed value in di_changed
+                rospy.loginfo('%s changed, set from di_changed' % di_name) # DEBUG
                 
-                # Create callable object of the form 'door_state.OPEN'
-                stateCall = operator.attrgetter(key + '.' + value[0])
-                msg_value = stateCall(self.msg) # Obtain the attribute value
-
-                # Create a code object and execute to assign val, i.e. self.msg.door_state.val = msg_value
-                attrAssign_co = compile('self.msg.' + key + '.val = msg_value', '', 'exec')
-                exec(attrAssign_co)
+                # Check for conversion key error
+                conv_keys = self.config[self.topic_name][self.topic_type][di_name].keys()
+                if value not in conv_keys:
+                    rospy.logerr("CONVERSION ERROR IN TOPIC CONFIG FILE: XML is '%s' --> CONFIG is %s" % (value, conv_keys))
+                    os._exit(0)
+                
+                # Convert from MTConnect to ROS format from di_changed
+                ros_tag = self.config[self.topic_name][self.topic_type][di_name][self.di_changed[di_name]]
             else:
-                #rospy.loginfo('%s set from stateDict' % key.upper()) # DEBUG
+                # Use stored value in di_current
+                #rospy.loginfo('%s did not change, set from di_current' % di_name) # DEBUG
                 
-                # Use stored value in stateDict if event did not change.
-                state_str = '{urn:mtconnect.org:MTConnectStreams:1.2}' + value[1]
-                
-                # Convert to ROS format via dataMap.
-                self.msg_statusDict[key][0] = self.dataMap[value[1]][self.stateDict[state_str]]
+                # Convert from MTConnect to ROS format via di_current
+                ros_tag = self.config[self.topic_name][self.topic_type][di_name][self.di_current[di_name]]
 
-                # Obtain the state value via callable object: 'door_state.CLOSED'
-                valueCall = operator.attrgetter(key + '.' + self.msg_statusDict[key][0])
-                state_value = valueCall(self.msg)
+            # Obtain the state value via callable object: 'door_state.CLOSED'
+            valueCall = operator.attrgetter(di_name + '.' + ros_tag)
+            state_value = valueCall(self.msg)
 
-                # Create a code object and execute to assign the attribute to the state value
-                valAssign_co = compile('self.msg.' + key + '.val = state_value', '', 'exec')
-                exec(valAssign_co)
+            # Create a code object and execute to assign the attribute to the state value
+            co_str = compile('self.msg.' + di_name + '.val = state_value', '', 'exec')
+            exec(co_str)
 
         self.pub.publish(self.msg)
         return
@@ -241,9 +259,9 @@ class MTConnectParser():
         #rospy.loginfo('*******************In PROCESS_XML callback***************')
         self.lock.acquire()
         try:
-            _, self.msg_statusDict = self.process_xml(chunk)
+            _, self.di_changed = self.process_xml(chunk)
         except Exception as e:
-            rospy.logerr("Rostopic relay process XML callback failed: %s, releasing lock" % e)        
+            rospy.logerr("Rostopic relay process XML callback failed: %s, releasing lock" % e)
         finally:
             self.lock.release()
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
@@ -253,9 +271,12 @@ class MTConnectParser():
         #rospy.loginfo('-------------------In ROS_PUBLISHER callback---------------')
         self.lock.acquire()
         try:
-            if self.msg_statusDict != None:
-                #rospy.loginfo('self.msg_statusDict --> %s' % self.msg_statusDict) # DEBUG
+            if self.di_changed != None:
+                # Publish topic
                 self.topic_publisher()
+                
+                # Reset current data items to None
+                self.di_changed = self.init_di_dict()
         except Exception as e:
             rospy.logerr("Rostopic relay publisher callback failed: %s, releasing lock" % e)        
         finally:
@@ -266,6 +287,6 @@ class MTConnectParser():
 if __name__ == '__main__':
     try:
         rospy.loginfo('Publishing CNC Messages')
-        mtc_parse = MTConnectParser()
+        mtc_parse = BridgePublisher()
     except rospy.ROSInterruptException:
         sys.exit(0)
