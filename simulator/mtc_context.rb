@@ -60,19 +60,25 @@ module MTConnect
       @adapter.stop
     end
     
-    def event(name, value, code, text)
-      puts "Received #{name} #{value}"
+    def event(name, value, code = nil, text = nil)
+      puts "Received #{name} #{value} #{code} #{text}"
       case value
       when "Fault"
-        @faults[value] = true
-        action = "robot_#{value.downcase}".to_sym
+        key = "#{name}:#{code}"
+        @faults[key] = true
+        action = "robot_#{name.downcase}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
     
       when 'Warning', 'Normal'
-        @faults.keys.each { |k| @faults.delete(k) if k =~ /^#{value}/ }
-        action = "robot_#{value.downcase}".to_sym
+        if code.nil? or code.empty?
+          @faults.delete_if { |k, v| k =~ /^#{name}/i }
+        else
+          key = "#{name}:#{code}"
+          @faults.delete(key)
+        end
+        action = "robot_#{name.downcase}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true

@@ -26,8 +26,10 @@ module Cnc
   class CncContext < MTConnect::Context  
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
-                  :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door
-    attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door
+                  :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door, :cycle_time,
+                  :robot_execution
+    attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
+                :material_load, :material_unload, :link, :exec, :material, :system
   
     def initialize(port = 7879)
       super(port)
@@ -76,6 +78,8 @@ module Cnc
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
 
+      @cycle_time = 5
+
       create_statemachine
     end
 
@@ -87,7 +91,7 @@ module Cnc
       @adapter.stop
     end
 
-    def event(name, value, code, text)
+    def event(name, value, code = nil, text = nil)
       puts "CNC Received #{name} #{value}"
       case name
       when "OpenChuck"
@@ -113,10 +117,10 @@ module Cnc
     
     def cnc_not_ready
       @adapter.gather do
-        @open_chuck_interface.statemachine.not_ready
-        @close_chuck_interface.statemachine.not_ready
-        @open_door_interface.statemachine.not_ready
-        @close_door_interface.statemachine.not_ready
+        @open_chuck_interface.deactivate
+        @close_chuck_interface.deactivate
+        @open_door_interface.deactivate
+        @close_door_interface.deactivate
         @interfaces.each { |i| i.value = 'NOT_READY' }
       end
     end
@@ -128,10 +132,10 @@ module Cnc
         @exec.value = 'READY'
         @interfaces.each { |i| i.value = 'READY' }
       end
-      @open_chuck_interface.statemachine.ready
-      @close_chuck_interface.statemachine.ready
-      @open_door_interface.statemachine.ready
-      @close_door_interface.statemachine.ready
+      @open_chuck_interface.activate
+      @close_chuck_interface.activate
+      @open_door_interface.activate
+      @close_door_interface.activate
       @statemachine.handling
     end
 
@@ -139,11 +143,18 @@ module Cnc
       if @faults.empty? and @mode.value == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
           @robot_material_load == 'READY' and @robot_material_unload == 'READY' and
-          @system.normal?
+          @robot_execution == 'ACTIVE' and @system.normal?
         puts "Becomming operational"
         @statemachine.make_operational
       else
         puts "Still not ready"
+        puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
+        puts "  Mode is not AUTOMATIC: #{@mode.vlaue}" unless @mode.value == 'AUTOMATIC'
+        puts "  Robot Material Load is not READY: #{@robot_material_load}" unless @robot_material_load == 'READY'
+        puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
+        puts "  Robot material unload is not READY: #{@robot_material_unload}" unless @robot_material_unload == 'READY'
+        puts "  System condition is not normal" unless @system.normal?
+        puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
         @statemachine.still_not_ready
       end
     end
@@ -183,7 +194,7 @@ module Cnc
     def cycling
       # Check preconditions for a cycle start. Chuck has to be closed and
       # door must be shut.
-      unless @door_state.value == 'CLOSED' and @chuck_state.value == 'CLOSED'
+      if @door_state.value != 'CLOSED' or @chuck_state.value != 'CLOSED'
         @adapter.gather do
           @system.add('FAULT', 'Door or Chuck in invalid state', 'CYCLE')
         end
@@ -195,7 +206,7 @@ module Cnc
         end
         Thread.new do
           puts "------ Cutting a part ------"
-          sleep 5
+          sleep @cycle_time
           puts "------ Finished Cutting a part ------"
           @statemachine.cycle_complete
         end
@@ -208,7 +219,7 @@ module Cnc
       end
     end
 
-    def material_load
+    def material_load_active
       @adapter.gather do
         @material_load.value = 'ACTIVE'
       end
@@ -226,7 +237,7 @@ module Cnc
       end
     end
 
-    def material_unload
+    def material_unload_active
       @adapter.gather do
         @material_unload.value = 'ACTIVE'
       end
@@ -257,18 +268,21 @@ module Cnc
         startstate :disabled
 
         superstate :base do
-          event :robot_fault, :fault, :reset_history
+          # Condition handling
+          event :robot_system_fault, :fault, :reset_history
+          event :robot_system_normal, :activated
+          event :robot_system_warning, :activated
 
           # From the robot
           event :robot_availability_unavailable, :activated
           event :robot_controller_mode_automatic, :activated
+          event :robot_execution_active, :activated
           event :robot_material_load_ready, :activated
           event :robot_material_load_not_ready, :activated
           event :robot_material_unload_ready, :activated
           event :robot_material_unload_not_ready, :activated
-          event :robot_normal, :activated
 
-          # command lines
+          # user commands
           event :auto, :activated, :automatic_mode
           event :manual, :activated, :manual_mode
           event :disable, :activated, :disable
@@ -303,6 +317,8 @@ module Cnc
             default_history :ready
             event :robot_controller_mode_manual, :activated, :reset_history
             event :robot_controller_mode_manual_data_input, :activated, :reset_history
+            event :robot_execution_ready, :activated, :reset_history
+            event :robot_execution_stopped, :activated, :reset_history
 
             state :ready do
               default :ready
@@ -313,6 +329,7 @@ module Cnc
             state :cycle_start do
               on_entry :cycling
               event :cycle_complete, :material_unload, :cycle_complete
+              event :fault, :fault
             end
 
             superstate :handling do
@@ -320,7 +337,7 @@ module Cnc
               event :robot_material_load_ready, :activated
 
               state :material_load do
-                on_entry :material_load
+                on_entry :material_load_active
                 event :robot_material_load_active, :material_load
                 event :robot_material_load_complete, :cycle_start
                 event :robot_material_load_fail, :material_load_failed
@@ -332,25 +349,25 @@ module Cnc
               state :material_load_failed do
                 on_entry :load_failed
                 default :material_load_failed
-                event :robot_material_load_fail, :activated, :reset_history
-                event :robot_material_load_ready, :activated, :reset_history
+                event :robot_material_load_fail, :material_load_failed
+                event :robot_material_load_ready, :material_load
               end
 
               state :material_unload do
-                on_entry :material_unload
+                on_entry :material_unload_active
                 event :robot_material_unload_active, :material_unload
                 event :robot_material_unload_complete, :ready
                 event :robot_material_unload_not_ready, :activated, :reset_history
                 event :robot_material_unload_fail, :material_unload_failed
-                event :robot_material_load_ready, :material_unload
+                event :robot_material_unload_ready, :material_unload
                 default :material_unload
               end
 
               state :material_unload_failed do
                 on_entry :unload_failed
                 default :material_unload_failed
-                event :robot_material_unload_fail, :activated, :reset_history
-                event :robot_material_unload_ready, :activated, :reset_history
+                event :robot_material_unload_fail, :material_unload_failed
+                event :robot_material_unload_ready, :material_unload
               end
             end
           end

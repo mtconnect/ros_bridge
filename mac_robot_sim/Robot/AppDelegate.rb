@@ -24,6 +24,7 @@ class AppDelegate
   attr_accessor :cnc_open_chuck, :cnc_close_chuck, :chuck_meter
   attr_accessor :cnc_open_door, :cnc_close_door, :door_meter
   attr_accessor :cnc_door_state, :cnc_chuck_state, :cnc_link_state
+  attr_accessor :cnc_system_text
   
   def applicationDidFinishLaunching(a_notification)
     # Insert code here to initialize your application
@@ -73,7 +74,6 @@ class AppDelegate
     @robot.gather do
       @robot.controller_mode.value = @controller_mode.stringValue
       @robot.execution.value = @execution.stringValue
-      @robot.fail(@fail.state == NSOnState)
       if @system.state == NSOnState
         @robot.system.add('fault', 'System fault', '1')
       else
@@ -146,10 +146,11 @@ class AppDelegate
     update_adapter(sender)
     
     @streamer = MTConnect::Streamer.new(@agent_url.stringValue)
-    @streamer.start do |name, value|
-      case name
+    @streamer.start do |name, value, code, text|
+      case value
       when 'Unavailable', 'Fault', 'Warning', 'Normal'
-        @cnc_system.setStringValue(name)
+        @cnc_system.setStringValue(value)
+        @cnc_system_text.setStringValue(text.to_s)
       else
         variable = name.split(/([A-Z][a-z]+)/).delete_if(&:empty?).map(&:downcase).join('_')
         puts "#{variable}: #{value}"

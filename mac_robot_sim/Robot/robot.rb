@@ -50,6 +50,7 @@ class Robot
   def start
     @system.normal
     @adapter.start
+    @avail.value = 'AVAILABLE'
     not_ready
   end
   
