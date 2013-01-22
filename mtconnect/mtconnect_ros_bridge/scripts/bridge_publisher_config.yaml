@@ -3,23 +3,32 @@
 # For use with the ROS publisher: bridge_publisher.py
 #
 # The format for the .yaml file:
+# 
+# URL: Port Number
 #
 # ROS Topic Name (arbitrary)
 #     ROS Topic Type Class in relative format: namespace/type
 #         MTConnect Data Item (must match XML tag.attrib['name']
 #             MTConnect Data Item Text to ROS Message CONSTANT conversion
 #
-# User enters a MTConnect CNC State Tag and the conversion between
-# the XML tag and topic attributes:
+# User enters MTConnect Data Item text and the conversion between
+# the data item text and the ROS message CONSTANT:
 #
-# XmlTag:
-#     {xml_state1:ROS_Attribute1, xml_state2:ROS_Attribute2, ...}
+# XML Data Item Name:
+#     {xml_state1:ROS_CONSTANT1, xml_state2:ROS_CONSTANT2, ...}
 #
 # The ROS publisher will convert this data into the following dictionary:
-# {OpenDoor: {'ACTIVE':'FALSE','COMPLETE':'DISABLED','READY':'OPEN'}}
+# {key_port: val_port, key_topic_name: {keyval_topic_type : {keyval_dataitem : {key_di_name : val_ROS_CONSTANT}}}}
+#
+# For example:
+# {'localhost': 5000, 'CncReponseTopic': {'mtconnect_msgs/CncStatus':
+#     {'open_door': {'ACTIVE': 'ENABLED', 'READY': 'OPEN', 'NOT READY': 'OFF',
+#                    'UNAVAILABLE': 'UNKNOWN', 'COMPLETE': 'TRUE'}}}}
 #----------------------------------------------------------- 
-# Enter the MTConnect XML Tag and the conversion below:
-CncReponseTopic:
+
+localhost: 5000
+
+CncResponseTopic:
     mtconnect_msgs/CncStatus:
         open_door:
             {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
