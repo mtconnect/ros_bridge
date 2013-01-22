@@ -4,20 +4,29 @@
  *  Created on: Jan 16, 2013
  */
 #include <ros/ros.h>
+#include <arm_navigation_msgs/GetPlanningScene.h>
+#include <arm_navigation_msgs/SetPlanningSceneDiff.h>
+#include <planning_environment/models/collision_models.h>
+#include <planning_environment/models/model_utils.h>
 #include <actionlib/client/simple_action_client.h>
 #include <arm_navigation_msgs/MoveArmAction.h>
 #include <arm_navigation_msgs/utils.h>
+#include <nav_msgs/Path.h>
 #include <tf/tf.h>
-
+#include <boost/tuple/tuple.hpp>
 
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
 typedef boost::shared_ptr<MoveArmClient> MoveArmClientPtr;
+typedef boost::shared_ptr<planning_environment::CollisionModels> CollisionModelsPtr;
+typedef boost::shared_ptr<planning_models::KinematicState> KinematicStatePtr;
 
 // defaults
+static const std::string DEFAULT_PATH_MSG_TOPIC = "move_arm_path";
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
 static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
-static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
+static const std::string DEFAULT_PLANNING_SCENE_DIFF_SERVICE = "/environment_server/set_planning_scene_diff";
+static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 1;
 static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
 
 class MoveArmActionClient
@@ -54,8 +63,8 @@ public:
 				q = t.getRotation();
 
 				ss<<"\t - pos:[ "<<pos.getX()<<", "<<pos.getY()<<", "<<pos.getZ()<<"]\n";
-				ss<<"\t   axis:[ "<<q.getAxis().getX()<<", "<<q.getAxis().getX()<<", "<<
-						q.getAxis().getX()<<"], angle: "<< q.getAngle()<<"\n";
+				ss<<"\t   axis:[ "<<q.getAxis().getX()<<", "<<q.getAxis().getY()<<", "<<
+						q.getAxis().getZ()<<"], angle: "<< q.getAngle()<<"\n";
 			}
 
 			return ss.str();
@@ -127,6 +136,25 @@ public:
 			return success;
 		}
 
+		void getMarker(nav_msgs::Path &p)
+		{
+			p.header.frame_id = frame_id_;
+			p.header.stamp = ros::Time(0.0f);
+			geometry_msgs::PoseStamped poseSt;
+
+			// initializing pose stamped object
+			poseSt.header.frame_id = frame_id_;
+			poseSt.header.stamp = ros::Time(0.0f);
+
+			std::vector<tf::Transform>::iterator i;
+			for(i = cartesian_points_.begin(); i != cartesian_points_.end(); i++)
+			{
+				tf::poseTFToMsg(*i,poseSt.pose);
+				p.poses.push_back(poseSt);
+			}
+
+		}
+
 		bool fetchParameters(std::string nameSpace= "")
 		{
 			XmlRpc::XmlRpcValue val;
@@ -168,9 +196,11 @@ public:
 
 		// creating move arm goal
 		MoveArmGoal goal;
-		goal.motion_plan_request.group_name = cartesian_traj_.arm_group_ + "_cartesian";
+		//goal.motion_plan_request.group_name = cartesian_traj_.arm_group_ + "_cartesian";
 		goal.motion_plan_request.num_planning_attempts = DEFAULT_PATH_PLANNING_ATTEMPTS;
-		goal.planner_service_name = DEFAULT_PATH_PLANNER;
+		goal.motion_plan_request.group_name = cartesian_traj_.arm_group_;
+		//goal.planner_service_name = DEFAULT_PATH_PLANNER;
+		goal.planner_service_name = "";
 		goal.motion_plan_request.planner_id = "";
 		goal.motion_plan_request.allowed_planning_time = ros::Duration(DEFAULT_PATH_PLANNING_TIME);
 
@@ -184,6 +214,9 @@ public:
 		pose_constraint.absolute_pitch_tolerance = 0.04f;
 		pose_constraint.absolute_yaw_tolerance = 0.04f;
 
+		ros::AsyncSpinner spinner(2);
+		spinner.start();
+
 		while(ros::ok())
 		{
 			// clearing goal
@@ -192,11 +225,18 @@ public:
 			goal.motion_plan_request.goal_constraints.joint_constraints.clear();
 			goal.motion_plan_request.goal_constraints.visibility_constraints.clear();
 
+			// proceeding if latest robot state can be retrieved
+			if(!getArmStartState(cartesian_traj_.arm_group_,goal.motion_plan_request.start_state))
+			{
+				continue;
+			}
+
 			std::vector<tf::Transform>::iterator i;
 			for(i = cartesian_traj_.cartesian_points_.begin(); i != cartesian_traj_.cartesian_points_.end();i++)
 			{
 				tf::poseTFToMsg(*i,pose_constraint.pose);
 				arm_navigation_msgs::addGoalConstraintToMoveArmGoal(pose_constraint,goal);
+				break;
 			}
 
 			// sending goal
@@ -233,7 +273,62 @@ public:
 		return success;
 	}
 
+	void timerCallback(const ros::TimerEvent &evnt)
+	{
+		path_pub_.publish(path_msg_);
+	}
+
 protected:
+
+	bool getArmStartState(std::string group_name, arm_navigation_msgs::RobotState &robot_state)
+	{
+		using namespace arm_navigation_msgs;
+
+		// calling set planning scene service
+		SetPlanningSceneDiff::Request planning_scene_req;
+		SetPlanningSceneDiff::Response planning_scene_res;
+		if(planning_scene_client_.call(planning_scene_req,planning_scene_res))
+		{
+			ROS_INFO_STREAM(ros::this_node::getName()<<": call to set planning scene succeeded");
+		}
+		else
+		{
+			ROS_ERROR_STREAM(ros::this_node::getName()<<": call to set planning scene failed");
+			return false;
+		}
+
+		// updating robot kinematic state from planning scene
+		planning_models::KinematicState *st = collision_models_ptr_->setPlanningScene(planning_scene_res.planning_scene);
+		if(st == NULL)
+		{
+			return false;
+		}
+
+		planning_environment::convertKinematicStateToRobotState(*st,
+															  ros::Time::now(),
+															  collision_models_ptr_->getWorldFrameId(),
+															  robot_state);
+
+		collision_models_ptr_->revertPlanningScene(st);
+
+//		std::vector<std::string> joint_names = collision_models_ptr_->getKinematicModel()->getModelGroup(group_name)->getJointModelNames();
+//		sensor_msgs::JointState joint_state;
+//
+//		// populating joint state message
+//		std::vector<std::string>::iterator i;
+//		for(i = joint_names.begin(); i != joint_names.end(); i++)
+//		{
+//			ROS_INFO_STREAM(ros::this_node::getName()<<": joint name: "<<*i);
+//			joint_state.name.push_back(*i);
+//			joint_state.position.push_back(0.0f);
+//			joint_state.velocity.push_back(0.0f);
+//			joint_state.effort.push_back(0.0f);
+//		}
+//		robot_state.joint_state = joint_state;
+//		robot_state.multi_dof_joint_state.joint_names = joint_names;
+
+		return true;
+	}
 
 	bool setup()
 	{
@@ -245,6 +340,7 @@ protected:
 			return false;
 		}
 
+		// setting up action client
 		std::string action_name = "move_" + cartesian_traj_.arm_group_;
 		move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(action_name,true));
 		unsigned int attempts = 0;
@@ -255,16 +351,46 @@ protected:
 			if(success)
 			{
 				ROS_INFO_STREAM(ros::this_node::getName()<<": Found "<<action_name<<" server");
+				break;
 			}
 		}
+
+		// setting up service clients
+		planning_scene_client_ = nh.serviceClient<arm_navigation_msgs::SetPlanningSceneDiff>(DEFAULT_PLANNING_SCENE_DIFF_SERVICE);
+
+		// setting up ros publishers
+		path_pub_ = nh.advertise<nav_msgs::Path>(DEFAULT_MOVE_ARM_ACTION,1);
+		cartesian_traj_.getMarker(path_msg_);
+
+		// setting up ros timers
+		publish_timer_ = nh.createTimer(ros::Duration(2.0f),&MoveArmActionClient::timerCallback,this);
+
+		// setting up planning environment members
+		collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
 
 		return success;
 	}
 
 protected:
 
-	// ros
+	// ros action clients
 	MoveArmClientPtr move_arm_client_ptr_;
+
+	// ros service clients
+	ros::ServiceClient planning_scene_client_;
+
+	// ros publishers
+	ros::Publisher path_pub_;
+
+	// ros timers
+	ros::Timer publish_timer_;
+
+	// ros messages
+	nav_msgs::Path path_msg_;
+
+	// planning environment
+	CollisionModelsPtr collision_models_ptr_;
+	KinematicStatePtr arm_kinematic_state_ptr_;
 
 	// trajectory
 	CartesianTrajectory cartesian_traj_;
