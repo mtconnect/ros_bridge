@@ -326,7 +326,6 @@ protected:
 		}
 
 		// setting up action client
-		//std::string action_name = "move_" + cartesian_traj_.arm_group_;
 		move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(DEFAULT_MOVE_ARM_ACTION,true));
 		unsigned int attempts = 0;
 		while(attempts++ < 20)
@@ -354,13 +353,22 @@ protected:
 		collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
 
 		// listing joints in group
-		const std::vector<std::string> &joint_names =
-				collision_models_ptr_->getKinematicModel()->getModelGroup(cartesian_traj_.arm_group_)->getJointModelNames();
+		const planning_models::KinematicModel::JointModelGroup *joint_model_group =
+				collision_models_ptr_->getKinematicModel()->getModelGroup(cartesian_traj_.arm_group_);
+		const std::vector<std::string> &joint_names = joint_model_group->getJointModelNames();
+		const std::vector<std::string> &link_names = joint_model_group->getGroupLinkNames();
+
 
 		std::vector<std::string>::const_iterator i;
 		std::stringstream ss;
 		ss<<"\nJoint Names in group '"<<cartesian_traj_.arm_group_<<"'";
 		for(i = joint_names.begin(); i != joint_names.end() ; i++)
+		{
+			ss<<"\n\t"<<*i;
+		}
+
+		ss<<"\nLink Names in group '"<<cartesian_traj_.arm_group_<<"'";
+		for(i = link_names.begin(); i != link_names.end() ; i++)
 		{
 			ss<<"\n\t"<<*i;
 		}
