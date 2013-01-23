@@ -326,16 +326,16 @@ protected:
 		}
 
 		// setting up action client
-		std::string action_name = "move_" + cartesian_traj_.arm_group_;
-		move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(action_name,true));
+		//std::string action_name = "move_" + cartesian_traj_.arm_group_;
+		move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(DEFAULT_MOVE_ARM_ACTION,true));
 		unsigned int attempts = 0;
 		while(attempts++ < 20)
 		{
-			ROS_WARN_STREAM(ros::this_node::getName()<<": waiting for "<<action_name<<" server");
+			ROS_WARN_STREAM(ros::this_node::getName()<<": waiting for "<<DEFAULT_MOVE_ARM_ACTION<<" server");
 			success = move_arm_client_ptr_->waitForServer(ros::Duration(5.0f));
 			if(success)
 			{
-				ROS_INFO_STREAM(ros::this_node::getName()<<": Found "<<action_name<<" server");
+				ROS_INFO_STREAM(ros::this_node::getName()<<": Found "<<DEFAULT_MOVE_ARM_ACTION<<" server");
 				break;
 			}
 		}
@@ -344,7 +344,7 @@ protected:
 		planning_scene_client_ = nh.serviceClient<arm_navigation_msgs::SetPlanningSceneDiff>(DEFAULT_PLANNING_SCENE_DIFF_SERVICE);
 
 		// setting up ros publishers
-		path_pub_ = nh.advertise<nav_msgs::Path>(DEFAULT_MOVE_ARM_ACTION,1);
+		path_pub_ = nh.advertise<nav_msgs::Path>(DEFAULT_PATH_MSG_TOPIC,1);
 		cartesian_traj_.getMarker(path_msg_);
 
 		// setting up ros timers

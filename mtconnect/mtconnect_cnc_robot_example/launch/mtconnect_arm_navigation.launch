@@ -6,7 +6,7 @@
 	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/joint_definitions.yaml"/>
 	<node pkg="object_manipulation_tools" type="simulated_robot_controller" name="simulated_robot_controller" output="screen"/>
 
-	<!--remap from="/arm_ik" to="/M16iB20_manipulator_kinematics/get_ik"/-->
+	<remap from="/move_arm_action" to="/move_manipulator"/>
 	<include file="$(find M16iB20_arm_navigation)/launch/M16iB20_arm_navigation.launch"/>
 
 	<remap from="/joint_trajectory_action" to="/manipulator_controller/follow_joint_trajectory"/>
