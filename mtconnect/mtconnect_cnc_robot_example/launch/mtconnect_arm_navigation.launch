@@ -1,16 +1,21 @@
 <?xml version="1.0" ?>
 <launch>
+	<arg name="use_rviz" default="false"/>
+
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
 	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/joint_definitions.yaml"/>
 	<node pkg="object_manipulation_tools" type="simulated_robot_controller" name="simulated_robot_controller" output="screen"/>
+
+	<!--remap from="/arm_ik" to="/M16iB20_manipulator_kinematics/get_ik"/-->
 	<include file="$(find M16iB20_arm_navigation)/launch/M16iB20_arm_navigation.launch"/>
 
-	<remap from="/joint_trajectory_action" to="/M16iB20_manipulator_controller/follow_joint_trajectory"/>
+	<remap from="/joint_trajectory_action" to="/manipulator_controller/follow_joint_trajectory"/>
 	<node pkg="object_manipulation_tools" name="joint_trajectory_action_server" type="joint_trajectory_action" output="screen"/>
-	<node pkg="rviz" type="rviz" name="mtconnect_visualization"
- 		args="-d $(find mtconnect_cnc_robot_example)/vcg/mtconnect_visualization_conf.vcg"/>
 
 	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/trajectory_definition.yaml"/>
 	<node pkg="mtconnect_cnc_robot_example" type="move_arm_client_node" name="move_arm_client" output="screen"/>
+
+	<node if="$(arg use_rviz)" pkg="rviz" type="rviz" name="mtconnect_visualization"
+		args="-d $(find mtconnect_cnc_robot_example)/vcg/mtconnect_visualization_conf.vcg"/>
 	
 </launch>

@@ -196,11 +196,9 @@ public:
 
 		// creating move arm goal
 		MoveArmGoal goal;
-		//goal.motion_plan_request.group_name = cartesian_traj_.arm_group_ + "_cartesian";
 		goal.motion_plan_request.num_planning_attempts = DEFAULT_PATH_PLANNING_ATTEMPTS;
 		goal.motion_plan_request.group_name = cartesian_traj_.arm_group_;
-		//goal.planner_service_name = DEFAULT_PATH_PLANNER;
-		goal.planner_service_name = "";
+		goal.planner_service_name = DEFAULT_PATH_PLANNER;
 		goal.motion_plan_request.planner_id = "";
 		goal.motion_plan_request.allowed_planning_time = ros::Duration(DEFAULT_PATH_PLANNING_TIME);
 
@@ -219,50 +217,53 @@ public:
 
 		while(ros::ok())
 		{
-			// clearing goal
-			goal.motion_plan_request.goal_constraints.position_constraints.clear();
-			goal.motion_plan_request.goal_constraints.orientation_constraints.clear();
-			goal.motion_plan_request.goal_constraints.joint_constraints.clear();
-			goal.motion_plan_request.goal_constraints.visibility_constraints.clear();
 
 			// proceeding if latest robot state can be retrieved
-			if(!getArmStartState(cartesian_traj_.arm_group_,goal.motion_plan_request.start_state))
-			{
-				continue;
-			}
+//			if(!getArmStartState(cartesian_traj_.arm_group_,goal.motion_plan_request.start_state))
+//			{
+//				continue;
+//			}
 
+			ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_traj_.cartesian_points_.size()<<" via points");
 			std::vector<tf::Transform>::iterator i;
 			for(i = cartesian_traj_.cartesian_points_.begin(); i != cartesian_traj_.cartesian_points_.end();i++)
 			{
+				// clearing goal
+				goal.motion_plan_request.goal_constraints.position_constraints.clear();
+				goal.motion_plan_request.goal_constraints.orientation_constraints.clear();
+				goal.motion_plan_request.goal_constraints.joint_constraints.clear();
+				goal.motion_plan_request.goal_constraints.visibility_constraints.clear();
+
 				tf::poseTFToMsg(*i,pose_constraint.pose);
 				arm_navigation_msgs::addGoalConstraintToMoveArmGoal(pose_constraint,goal);
-				break;
-			}
+				//break;
 
-			// sending goal
-			ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_traj_.cartesian_points_.size()<<" via points");
-			move_arm_client_ptr_->sendGoal(goal);
-			if(move_arm_client_ptr_->waitForResult(ros::Duration(200.0f)))
-			{
-				actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
-				if(stateFlag.state_ == stateFlag.SUCCEEDED)
+				// sending goal
+				move_arm_client_ptr_->sendGoal(goal);
+				if(move_arm_client_ptr_->waitForResult(ros::Duration(200.0f)))
 				{
-					ROS_INFO_STREAM(ros::this_node::getName()<<": Goal Achieved");
+					actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
+					if(stateFlag.state_ == stateFlag.SUCCEEDED)
+					{
+						ROS_INFO_STREAM(ros::this_node::getName()<<": Goal Achieved");
+					}
+					else
+					{
+						ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Rejected with error flag: "<<(unsigned int)stateFlag.state_);
+						break;
+					}
+
 				}
 				else
 				{
-					ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Rejected with error flag: "<<(unsigned int)stateFlag.state_);
+					move_arm_client_ptr_->cancelGoal();
+					actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
+					ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Failed with error flag: "<<(unsigned int)stateFlag.state_);
+					break;
 				}
-
-			}
-			else
-			{
-				move_arm_client_ptr_->cancelGoal();
-				actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
-				ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Failed with error flag: "<<(unsigned int)stateFlag.state_);
 			}
 
-			ros::Duration(2.0f).sleep();
+			//ros::Duration(2.0f).sleep();
 		}
 
 	}
@@ -301,6 +302,7 @@ protected:
 		planning_models::KinematicState *st = collision_models_ptr_->setPlanningScene(planning_scene_res.planning_scene);
 		if(st == NULL)
 		{
+			ROS_ERROR_STREAM(ros::this_node::getName()<<": Kinematic State for arm could not be retrieved from planning scene");
 			return false;
 		}
 
@@ -310,23 +312,6 @@ protected:
 															  robot_state);
 
 		collision_models_ptr_->revertPlanningScene(st);
-
-//		std::vector<std::string> joint_names = collision_models_ptr_->getKinematicModel()->getModelGroup(group_name)->getJointModelNames();
-//		sensor_msgs::JointState joint_state;
-//
-//		// populating joint state message
-//		std::vector<std::string>::iterator i;
-//		for(i = joint_names.begin(); i != joint_names.end(); i++)
-//		{
-//			ROS_INFO_STREAM(ros::this_node::getName()<<": joint name: "<<*i);
-//			joint_state.name.push_back(*i);
-//			joint_state.position.push_back(0.0f);
-//			joint_state.velocity.push_back(0.0f);
-//			joint_state.effort.push_back(0.0f);
-//		}
-//		robot_state.joint_state = joint_state;
-//		robot_state.multi_dof_joint_state.joint_names = joint_names;
-
 		return true;
 	}
 
@@ -367,6 +352,19 @@ protected:
 
 		// setting up planning environment members
 		collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
+
+		// listing joints in group
+		const std::vector<std::string> &joint_names =
+				collision_models_ptr_->getKinematicModel()->getModelGroup(cartesian_traj_.arm_group_)->getJointModelNames();
+
+		std::vector<std::string>::const_iterator i;
+		std::stringstream ss;
+		ss<<"\nJoint Names in group '"<<cartesian_traj_.arm_group_<<"'";
+		for(i = joint_names.begin(); i != joint_names.end() ; i++)
+		{
+			ss<<"\n\t"<<*i;
+		}
+		ROS_INFO_STREAM(ros::this_node::getName()<<ss.str());
 
 		return success;
 	}
