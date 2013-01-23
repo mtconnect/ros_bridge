@@ -47,6 +47,8 @@ def obtain_dataMap():
     try:
         with open(fn) as f:
             dataMap = yaml.load(f)
+        if dataMap == {}:
+            sys.exit(0)
     except IOError as e:
         print('({})'.format(e))
         sys.exit(0)

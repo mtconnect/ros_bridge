@@ -17,7 +17,7 @@ MaterialLoad:
     {'LOADING':'ACTIVE', 'LOADED':'COMPLETE', 'READY':'READY'}
 MaterialUnload:
     {'UNLOADING':'ACTIVE', 'UNLOADED':'COMPLETE', 'READY':'READY'}
-DoorAcknowledge:
+DoorRequest:
     {'ACK':'ACTIVE', 'READY':'READY'}
-ChuckAcknowledge:
+ChuckRequest:
     {'ACK':'ACTIVE', 'READY':'READY'}

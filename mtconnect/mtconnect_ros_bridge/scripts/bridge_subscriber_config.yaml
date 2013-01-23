@@ -1,0 +1,73 @@
+#Bridge Subscriber Configuration File
+#For use with the ROS subscriber: bridge_subscriber.py
+#
+#Usage:
+#
+#./bridge_subscriber.py [-i, --input [bridge_subscriber_config.yaml]]
+#
+#The ROS bridge subscriber requires a configuration file stored
+#in a .yaml format.  In order for the subscriber to work properly,
+#the .yaml file must follow the specific organization shown below.
+#If the file is not organized to these specifications, the subscriber
+#will terminate with an error code pointing to the source of the error.
+#
+#    ** YAML File Structure **
+#
+#The .yaml file is setup as follows:
+#
+#    MTConnect Adapter Port
+#    ROS Topic
+#        ROS Topic Type
+#            ROS Topic Member = MTConnect XML Data Item Name
+#                ROS Topic Member Conversion to MTConnect Data Item
+#
+#The ROS Topic Member must be equivalent to the MTConnect XML Data
+#Item Name that is used in the MTConnect Agent XML file.  The ROS
+#Topic Member conversion to the MTConnect data item is stored in a
+#Python dictionary:
+#
+#    {ROS Message CONSTANT : MTConnect Tag Text}
+#
+#For example, enter the MTConnect Adapter Port that the subscriber
+#will use to update the Robot XML in the format:
+#
+#    Port:
+#        Port Number (must be an integer)
+#
+#such as:
+#
+#    Port:
+#        7889
+#
+#Then enter a ROS topic name followed by ROS topic namespace/type, then
+#by the topic attributes of interest and finally by the conversion 
+#from the ROS Topic CONSTANT to the MTConnect Data Item text:
+#
+#/industrial_msgs/RobotStates:
+#    mtconnect_msgs/RobotStates:
+#        avail:
+#            {'TRUE':'AVAILABLE', 'FALSE':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+#
+#In the .yaml file, do not use tabs, only spaces for indenting.
+# -------------------------------------------------------------------------
+
+Port: 7878
+
+/RobotStateTopic:
+    mtconnect_msgs/RobotStates:
+        avail:
+            {'TRUE':'AVAILABLE', 'FALSE':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+        mode:
+            {'AUTO':'AUTOMATIC', 'MANUAL':'MANUAL', 'UNKNOWN':'UNAVAILABLE'}
+        rexec:
+            {'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+
+/RobotSpindleTopic:
+    mtconnect_msgs/RobotSpindle:
+        c_unclamp:
+            {'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+        s_inter:
+            {'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+
+# TBD ROS Topic for robot joint states
+#/joint_states:
