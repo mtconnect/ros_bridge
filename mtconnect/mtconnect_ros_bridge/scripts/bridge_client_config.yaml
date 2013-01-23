@@ -1,0 +1,33 @@
+# ROS to MTConnect Conversion Data File
+#
+# For use with the ROS action client: bridge_client.py
+#
+# User enters the URL and port to obtain current XML.
+#
+# User enters a ROS message module, a ROS action (which is
+# also the data item in the XML) to monitor when this action is
+# triggered in the XML, the action goal, and the conversion between
+# the action result and the MTConnect data item.
+#
+# For example:
+#
+# URL : Port
+# ROS message module:
+#     ROS action (same as XML Event):
+#         ROS action XML goal identifier:
+#             {ROS action result1:XML_dataitem1, ROS action result2:XML_dataitem2, ...}
+#
+# The ROS publisher will convert this data into the following dictionary:
+# 
+#----------------------------------------------------------- 
+
+localhost: 5000
+Port: 7882
+
+mtconnect_msgs:
+    MaterialLoad:
+        Material:
+            {'material_type': None, 'material_length' : None, 'material_diameter' : None}
+    MaterialUnload:
+        Material:
+            {'workpiece_type': None, 'workpiece_length' : None, 'workpiece_diameter' : None}

@@ -41,8 +41,6 @@ import rospy
 
 class BridgePublisher():
     def __init__(self):
-        rospy.init_node('bridge_publisher')
-                
         # Setup MTConnect to ROS Conversion
         self.config = read_config_file.obtain_dataMap()
         
