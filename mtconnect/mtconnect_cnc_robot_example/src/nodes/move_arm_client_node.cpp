@@ -29,6 +29,9 @@ static const std::string DEFAULT_PLANNING_SCENE_DIFF_SERVICE = "/environment_ser
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 1;
 static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
 
+// ros parameters
+static const std::string PARAM_ARM_GROUP = "arm_group";
+
 class MoveArmActionClient
 {
 
@@ -194,24 +197,6 @@ public:
 			return;
 		}
 
-		// creating move arm goal
-		MoveArmGoal goal;
-		goal.motion_plan_request.num_planning_attempts = DEFAULT_PATH_PLANNING_ATTEMPTS;
-		goal.motion_plan_request.group_name = cartesian_traj_.arm_group_;
-		goal.planner_service_name = DEFAULT_PATH_PLANNER;
-		goal.motion_plan_request.planner_id = "";
-		goal.motion_plan_request.allowed_planning_time = ros::Duration(DEFAULT_PATH_PLANNING_TIME);
-
-		SimplePoseConstraint pose_constraint;
-		pose_constraint.header.frame_id = cartesian_traj_.frame_id_;
-		pose_constraint.link_name = cartesian_traj_.link_name_;
-		pose_constraint.absolute_position_tolerance.x = 0.02f;
-		pose_constraint.absolute_position_tolerance.y = 0.02f;
-		pose_constraint.absolute_position_tolerance.z = 0.02f;
-		pose_constraint.absolute_roll_tolerance = 0.04f;
-		pose_constraint.absolute_pitch_tolerance = 0.04f;
-		pose_constraint.absolute_yaw_tolerance = 0.04f;
-
 		ros::AsyncSpinner spinner(2);
 		spinner.start();
 
@@ -224,53 +209,67 @@ public:
 //				continue;
 //			}
 
-			ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_traj_.cartesian_points_.size()<<" via points");
-			std::vector<tf::Transform>::iterator i;
-			for(i = cartesian_traj_.cartesian_points_.begin(); i != cartesian_traj_.cartesian_points_.end();i++)
+			if(!moveArm(cartesian_traj_))
 			{
-				// clearing goal
-				goal.motion_plan_request.goal_constraints.position_constraints.clear();
-				goal.motion_plan_request.goal_constraints.orientation_constraints.clear();
-				goal.motion_plan_request.goal_constraints.joint_constraints.clear();
-				goal.motion_plan_request.goal_constraints.visibility_constraints.clear();
-
-				tf::poseTFToMsg(*i,pose_constraint.pose);
-				arm_navigation_msgs::addGoalConstraintToMoveArmGoal(pose_constraint,goal);
-				//break;
-
-				// sending goal
-				move_arm_client_ptr_->sendGoal(goal);
-				if(move_arm_client_ptr_->waitForResult(ros::Duration(200.0f)))
-				{
-					actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
-					if(stateFlag.state_ == stateFlag.SUCCEEDED)
-					{
-						ROS_INFO_STREAM(ros::this_node::getName()<<": Goal Achieved");
-					}
-					else
-					{
-						ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Rejected with error flag: "<<(unsigned int)stateFlag.state_);
-						break;
-					}
-
-				}
-				else
-				{
-					move_arm_client_ptr_->cancelGoal();
-					actionlib::SimpleClientGoalState stateFlag = move_arm_client_ptr_->getState();
-					ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Failed with error flag: "<<(unsigned int)stateFlag.state_);
-					break;
-				}
+				ros::Duration(4.0f).sleep();
 			}
-
-			//ros::Duration(2.0f).sleep();
 		}
 
 	}
 
+	bool moveArm(const CartesianTrajectory &t)
+	{
+		using namespace arm_navigation_msgs;
+
+		ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_traj_.cartesian_points_.size()<<" via points");
+		bool success = true;
+		std::vector<tf::Transform>::const_iterator i;
+		for(i = t.cartesian_points_.begin(); i != t.cartesian_points_.end();i++)
+		{
+			// clearing goal
+			move_arm_goal_.motion_plan_request.goal_constraints.position_constraints.clear();
+			move_arm_goal_.motion_plan_request.goal_constraints.orientation_constraints.clear();
+			move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints.clear();
+			move_arm_goal_.motion_plan_request.goal_constraints.visibility_constraints.clear();
+
+			tf::poseTFToMsg(*i,move_pose_constraint_.pose);
+			arm_navigation_msgs::addGoalConstraintToMoveArmGoal(move_pose_constraint_,move_arm_goal_);
+
+			// sending goal
+			move_arm_client_ptr_->sendGoal(move_arm_goal_);
+			success = move_arm_client_ptr_->waitForResult(ros::Duration(200.0f));
+			if(success)
+			{
+				success = actionlib::SimpleClientGoalState::SUCCEEDED == move_arm_client_ptr_->getState().state_;
+				if(success)
+				{
+					ROS_INFO_STREAM(ros::this_node::getName()<<": Goal Achieved");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Rejected with error flag: "
+							<<(unsigned int)move_arm_client_ptr_->getState().state_);
+					break;
+				}
+
+			}
+			else
+			{
+				move_arm_client_ptr_->cancelGoal();
+				ROS_ERROR_STREAM(ros::this_node::getName()<<": Goal Failed with error flag: "
+						<<(unsigned int)move_arm_client_ptr_->getState().state_);
+				break;
+			}
+		}
+
+		return success;
+	}
+
 	bool fetchParameters(std::string nameSpace = "")
 	{
-		bool success = cartesian_traj_.fetchParameters(nameSpace);
+		ros::NodeHandle nh("~");
+
+		bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && cartesian_traj_.fetchParameters(nameSpace);
 		return success;
 	}
 
@@ -349,25 +348,53 @@ protected:
 		// setting up ros timers
 		publish_timer_ = nh.createTimer(ros::Duration(2.0f),&MoveArmActionClient::timerCallback,this);
 
-		// setting up planning environment members
-		collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
+		/*
+		 * TODO
+		 * This node will need to have the capability of taking a cartesian trajectory
+		 * defined in an arbitrary coordinate frame and perform the corresponding
+		 * transformations before it sends it to the move arm action server
+		 */
 
-		// listing joints in group
+		// obtaining arm info
+		collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
 		const planning_models::KinematicModel::JointModelGroup *joint_model_group =
-				collision_models_ptr_->getKinematicModel()->getModelGroup(cartesian_traj_.arm_group_);
+						collision_models_ptr_->getKinematicModel()->getModelGroup(arm_group_);
+		const std::vector<const planning_models::KinematicModel::JointModel *> &joint_models_ = joint_model_group->getJointModels();
+
+		// finding arm base and tip links
+		base_link_frame_id_ = joint_models_.front()->getParentLinkModel()->getName();
+		tip_link_frame_id_ = joint_models_.back()->getChildLinkModel()->getName();
+
+		// initializing move arm request members
+		move_arm_goal_.motion_plan_request.group_name = arm_group_;
+		move_arm_goal_.motion_plan_request.num_planning_attempts = DEFAULT_PATH_PLANNING_ATTEMPTS;
+		move_arm_goal_.planner_service_name = DEFAULT_PATH_PLANNER;
+		move_arm_goal_.motion_plan_request.planner_id = "";
+		move_arm_goal_.motion_plan_request.allowed_planning_time = ros::Duration(DEFAULT_PATH_PLANNING_TIME);
+
+		move_pose_constraint_.header.frame_id = base_link_frame_id_;
+		move_pose_constraint_.link_name = tip_link_frame_id_;
+		move_pose_constraint_.absolute_position_tolerance.x = 0.02f;
+		move_pose_constraint_.absolute_position_tolerance.y = 0.02f;
+		move_pose_constraint_.absolute_position_tolerance.z = 0.02f;
+		move_pose_constraint_.absolute_roll_tolerance = 0.04f;
+		move_pose_constraint_.absolute_pitch_tolerance = 0.04f;
+		move_pose_constraint_.absolute_yaw_tolerance = 0.04f;
+
+		// printing arm details
 		const std::vector<std::string> &joint_names = joint_model_group->getJointModelNames();
 		const std::vector<std::string> &link_names = joint_model_group->getGroupLinkNames();
-
-
 		std::vector<std::string>::const_iterator i;
 		std::stringstream ss;
-		ss<<"\nJoint Names in group '"<<cartesian_traj_.arm_group_<<"'";
+		ss<<"\nArm Base Link Frame: "<<base_link_frame_id_;
+		ss<<"\nArm Tip Link Frame: "<<tip_link_frame_id_;
+		ss<<"\nJoint Names in group '"<<arm_group_<<"'";
 		for(i = joint_names.begin(); i != joint_names.end() ; i++)
 		{
 			ss<<"\n\t"<<*i;
 		}
 
-		ss<<"\nLink Names in group '"<<cartesian_traj_.arm_group_<<"'";
+		ss<<"\nLink Names in group '"<<arm_group_<<"'";
 		for(i = link_names.begin(); i != link_names.end() ; i++)
 		{
 			ss<<"\n\t"<<*i;
@@ -394,12 +421,19 @@ protected:
 	// ros messages
 	nav_msgs::Path path_msg_;
 
-	// planning environment
+	// arm info
 	CollisionModelsPtr collision_models_ptr_;
 	KinematicStatePtr arm_kinematic_state_ptr_;
+	std::string base_link_frame_id_;
+	std::string tip_link_frame_id_;
 
-	// trajectory
+	// ros parameters
 	CartesianTrajectory cartesian_traj_;
+	std::string arm_group_;
+
+	// move arm request members
+	arm_navigation_msgs::MoveArmGoal move_arm_goal_;
+	arm_navigation_msgs::SimplePoseConstraint move_pose_constraint_;
 
 };
 
