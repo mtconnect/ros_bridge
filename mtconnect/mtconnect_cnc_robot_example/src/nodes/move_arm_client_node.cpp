@@ -13,6 +13,8 @@
 #include <arm_navigation_msgs/utils.h>
 #include <nav_msgs/Path.h>
 #include <tf/tf.h>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/PoseArray.h>
 #include <boost/tuple/tuple.hpp>
 
 // aliases
@@ -20,6 +22,7 @@ typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveAr
 typedef boost::shared_ptr<MoveArmClient> MoveArmClientPtr;
 typedef boost::shared_ptr<planning_environment::CollisionModels> CollisionModelsPtr;
 typedef boost::shared_ptr<planning_models::KinematicState> KinematicStatePtr;
+typedef boost::tuple<std::string,std::string,tf::Transform> CartesianGoal;
 
 // defaults
 static const std::string DEFAULT_PATH_MSG_TOPIC = "move_arm_path";
@@ -55,7 +58,7 @@ public:
 			ss<<"\n";
 			ss<<"arm_group: "<<arm_group_<<"\n";
 			ss<<"frame_id: "<<frame_id_<<"\n";
-			ss<<"link_name: "<<link_name_<<"\n";
+			ss<<"tool_name: "<<link_name_<<"\n";
 			ss<<"via points: "<<"transform array with "<<cartesian_points_.size()<<" elements"<<"\n";
 			tf::Vector3 pos;
 			tf::Quaternion q;
@@ -84,7 +87,7 @@ public:
 				// fetching frame id and link name
 				arm_group_ = static_cast<std::string>(paramVal["arm_group"]);
 				frame_id_ = static_cast<std::string>(paramVal["frame_id"]);
-				link_name_ = static_cast<std::string>(paramVal["link_name"]);
+				link_name_ = static_cast<std::string>(paramVal["tool_name"]);
 
 				// fetching cartesian via point struct array
 				cartesian_points_param = paramVal["via_points"];
@@ -200,31 +203,40 @@ public:
 		ros::AsyncSpinner spinner(2);
 		spinner.start();
 
+		// producing cartesian goals in term of arm base and tip link
+		geometry_msgs::PoseArray cartesian_poses;
+		if(!getTrajectoryInArmSpace(cartesian_traj_,cartesian_poses))
+		{
+			ROS_ERROR_STREAM(ros::this_node::getName()<<": Cartesian Trajectory could not be transformed to arm space");
+			return;
+		}
+
 		while(ros::ok())
 		{
-
 			// proceeding if latest robot state can be retrieved
 //			if(!getArmStartState(cartesian_traj_.arm_group_,goal.motion_plan_request.start_state))
 //			{
 //				continue;
 //			}
 
-			if(!moveArm(cartesian_traj_))
+			if(!moveArm(cartesian_poses))
 			{
 				ros::Duration(4.0f).sleep();
 			}
 		}
-
 	}
 
-	bool moveArm(const CartesianTrajectory &t)
+	/*
+	 * Takes and array of poses where each pose is the desired tip link pose described in terms of the arm base
+	 */
+	bool moveArm(const geometry_msgs::PoseArray &cartesian_poses)
 	{
 		using namespace arm_navigation_msgs;
 
-		ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_traj_.cartesian_points_.size()<<" via points");
-		bool success = true;
-		std::vector<tf::Transform>::const_iterator i;
-		for(i = t.cartesian_points_.begin(); i != t.cartesian_points_.end();i++)
+		ROS_INFO_STREAM(ros::this_node::getName()<<": Sending Cartesian Goal with "<<cartesian_poses.poses.size()<<" via points");
+		bool success = !cartesian_poses.poses.empty();
+		std::vector<geometry_msgs::Pose>::const_iterator i;
+		for(i = cartesian_poses.poses.begin(); i != cartesian_poses.poses.end();i++)
 		{
 			// clearing goal
 			move_arm_goal_.motion_plan_request.goal_constraints.position_constraints.clear();
@@ -232,7 +244,8 @@ public:
 			move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints.clear();
 			move_arm_goal_.motion_plan_request.goal_constraints.visibility_constraints.clear();
 
-			tf::poseTFToMsg(*i,move_pose_constraint_.pose);
+			//tf::poseTFToMsg(*i,move_pose_constraint_.pose);
+			move_pose_constraint_.pose = *i;
 			arm_navigation_msgs::addGoalConstraintToMoveArmGoal(move_pose_constraint_,move_arm_goal_);
 
 			// sending goal
@@ -404,6 +417,67 @@ protected:
 		return success;
 	}
 
+	bool getPoseInArmSpace(const CartesianGoal &cartesian_goal,geometry_msgs::Pose &base_to_tip_pose)
+	{
+		// declaring transforms
+		static tf::StampedTransform base_to_parent_tf;
+		static tf::StampedTransform tcp_to_tip_link_tf;
+		tf::Transform base_to_tip_tf; // desired pose of tip link in base coordinates
+
+		const std::string &parent_frame = boost::tuples::get<0>(cartesian_goal);
+		const std::string &tcp_frame = boost::tuples::get<1>(cartesian_goal);
+		const tf::Transform &parent_to_tcp_tf = boost::tuples::get<2>(cartesian_goal);
+
+		// finding transforms
+		try
+		{
+			tf_listener_.lookupTransform(parent_frame,base_link_frame_id_,ros::Time(0),base_to_parent_tf);
+			tf_listener_.lookupTransform(tip_link_frame_id_,tcp_frame,ros::Time(0),tcp_to_tip_link_tf);
+		}
+		catch(tf::LookupException &e)
+		{
+			ROS_ERROR_STREAM(ros::this_node::getName()<<": Unable to lookup transforms");
+			return false;
+		}
+
+		base_to_tip_tf = ((tf::Transform)base_to_parent_tf) * parent_to_tcp_tf * ((tf::Transform)tcp_to_tip_link_tf);
+		tf::poseTFToMsg(base_to_tip_tf,base_to_tip_pose);
+
+		return true;
+	}
+
+	bool getTrajectoryInArmSpace(const CartesianTrajectory &cartesian_traj,geometry_msgs::PoseArray &base_to_tip_poses)
+	{
+		// declaring transforms
+		static tf::StampedTransform base_to_parent_tf;
+		static tf::StampedTransform tcp_to_tip_link_tf;
+		tf::Transform base_to_tip_tf; // desired pose of tip link in base coordinates
+		geometry_msgs::Pose base_to_tip_pose;
+
+		// finding transforms
+		try
+		{
+			tf_listener_.lookupTransform(cartesian_traj.frame_id_,base_link_frame_id_,ros::Time(0),base_to_parent_tf);
+			tf_listener_.lookupTransform(tip_link_frame_id_,cartesian_traj.link_name_,ros::Time(0),tcp_to_tip_link_tf);
+		}
+		catch(tf::LookupException &e)
+		{
+			ROS_ERROR_STREAM(ros::this_node::getName()<<": Unable to lookup transforms");
+			return false;
+		}
+
+		std::vector<tf::Transform>::const_iterator i;
+		const std::vector<tf::Transform> &goal_array = cartesian_traj.cartesian_points_;
+		for(i = goal_array.begin(); i != goal_array.end(); i++)
+		{
+			base_to_tip_tf = (static_cast<tf::Transform>(base_to_parent_tf)) * (*i) * (static_cast<tf::Transform>(tcp_to_tip_link_tf));
+			tf::poseTFToMsg(base_to_tip_tf,base_to_tip_pose);
+			base_to_tip_poses.poses.push_back(base_to_tip_pose);
+		}
+
+		return true;
+	}
+
 protected:
 
 	// ros action clients
@@ -420,6 +494,9 @@ protected:
 
 	// ros messages
 	nav_msgs::Path path_msg_;
+
+	// tf listener
+	tf::TransformListener tf_listener_;
 
 	// arm info
 	CollisionModelsPtr collision_models_ptr_;
