@@ -1,9 +1,9 @@
 Background\ ColorB=0.466667
 Background\ ColorG=0
 Background\ ColorR=0.0941176
-Camera\ Config=0.85279 0.727614 5.05772 0 0 0
+Camera\ Config=0.26279 5.53581 5.19251 -0.384627 0.68859 0.909926
 Camera\ Type=rviz::OrbitViewController
-Fixed\ Frame=/base_link
+Fixed\ Frame=/world_frame
 Grid.Alpha=0.5
 Grid.Cell\ Size=0.5
 Grid.ColorB=0.898039
@@ -26,8 +26,8 @@ Path.ColorR=0.1
 Path.Enabled=1
 Path.Topic=/move_arm_path
 Property\ Grid\ Splitter=894,78
-Property\ Grid\ State=expanded=.Global Options,Grid.Enabled,Robot Model.Enabled,Robot: Robot ModelLinks,Robot: Robot Model Link Link_6Enabled,Robot: Robot Model Link base_linkEnabled,Path.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd00000003000000000000011d0000041efc0200000001fb000000100044006900730070006c00610079007301000000360000041e000000ee00ffffff00000001000001300000041efc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000036000001110000006700fffffffb0000000a00560069006500770073010000014d000001f0000000bb00fffffffb0000001200530065006c0065006300740069006f006e0100000343000001110000006700ffffff00000003000006400000003efc0100000001fb0000000800540069006d0065010000000000000640000002bf00ffffff000003e70000041e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ State=expanded=.Global Options,Grid.Enabled,Robot Model.Enabled,Robot: Robot ModelLinks,Robot: Robot Model Link Link_6Enabled,Robot: Robot Model Link base_linkEnabled,Path.Enabled,TF.Enabled,TF.Frames,TF.Frames./Link_6,TF.Frames./base_link,TF.Frames./robot_platform_link,TF.Frames./tool0,TF.Frames./world_frame,TF.Frames./Link_1,TF.Frames./Link_2,TF.Frames./Link_3,TF.Frames./Link_4,TF.Frames./Link_5;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000003000000000000011d0000041efc0200000001fb000000100044006900730070006c00610079007301000000360000041e000000ee00ffffff00000001000001300000041efc0200000003fb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000000360000015d0000006700fffffffb0000000a00560069006500770073010000019900000158000000bb00fffffffb0000001200530065006c0065006300740069006f006e01000002f70000015d0000006700ffffff00000003000006400000003efc0100000001fb0000000800540069006d0065010000000000000640000002bf00ffffff000003e70000041e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 Robot\ Model.Alpha=0.4
 Robot\ Model.Collision\ Enabled=0
 Robot\ Model.Enabled=1
@@ -63,6 +63,18 @@ Robot\:\ Robot\ Model\ Link\ base_linkAlpha=1
 Robot\:\ Robot\ Model\ Link\ base_linkEnabled=1
 Robot\:\ Robot\ Model\ Link\ base_linkShow\ Axes=1
 Robot\:\ Robot\ Model\ Link\ base_linkShow\ Trail=0
+Robot\:\ Robot\ Model\ Link\ robot_platform_linkAlpha=1
+Robot\:\ Robot\ Model\ Link\ robot_platform_linkEnabled=1
+Robot\:\ Robot\ Model\ Link\ robot_platform_linkShow\ Axes=0
+Robot\:\ Robot\ Model\ Link\ robot_platform_linkShow\ Trail=0
+TF.All\ Enabled=0
+TF.Enabled=1
+TF.Frame\ Timeout=15
+TF.Marker\ Scale=1
+TF.Show\ Arrows=1
+TF.Show\ Axes=1
+TF.Show\ Names=1
+TF.Update\ Interval=0
 Target\ Frame=<Fixed Frame>
 Tool\ 2D\ Nav\ GoalTopic=goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
@@ -75,8 +87,22 @@ Name=Robot Model
 [Display2]
 ClassName=rviz::PathDisplay
 Name=Path
+[Display3]
+ClassName=rviz::TFDisplay
+Name=TF
+[TF.Frames.]
+Link_1.Enabled=0
+Link_2.Enabled=0
+Link_3.Enabled=0
+Link_4.Enabled=0
+Link_5.Enabled=0
+Link_6.Enabled=0
+base_link.Enabled=0
+robot_platform_link.Enabled=0
+tool0.Enabled=0
+world_frame.Enabled=1
 [Window]
 Height=1176
 Width=1600
 X=-59
-Y=0
+Y=24

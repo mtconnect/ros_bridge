@@ -12,7 +12,7 @@
 	<node pkg="object_manipulation_tools" name="joint_trajectory_action_server" type="joint_trajectory_action" output="screen"/>
 	
 	<!-- move arm action server and required arm navigation nodes -->
-	<include file="$(find M16iB20_arm_navigation)/launch/M16iB20_arm_navigation.launch"/>
+	<include file="$(find mtconnect_arm_navigation)/launch/mtconnect_arm_navigation.launch"/>
 
 	<!-- move arm action client node -->
 	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/trajectory_definition.yaml"/>

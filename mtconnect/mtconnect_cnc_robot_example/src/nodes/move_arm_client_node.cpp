@@ -431,8 +431,8 @@ protected:
 		// finding transforms
 		try
 		{
-			tf_listener_.lookupTransform(parent_frame,base_link_frame_id_,ros::Time(0),base_to_parent_tf);
-			tf_listener_.lookupTransform(tip_link_frame_id_,tcp_frame,ros::Time(0),tcp_to_tip_link_tf);
+			tf_listener_.lookupTransform(base_link_frame_id_,parent_frame,ros::Time(0),base_to_parent_tf);
+			tf_listener_.lookupTransform(tcp_frame,tip_link_frame_id_,ros::Time(0),tcp_to_tip_link_tf);
 		}
 		catch(tf::LookupException &e)
 		{
@@ -457,8 +457,8 @@ protected:
 		// finding transforms
 		try
 		{
-			tf_listener_.lookupTransform(cartesian_traj.frame_id_,base_link_frame_id_,ros::Time(0),base_to_parent_tf);
-			tf_listener_.lookupTransform(tip_link_frame_id_,cartesian_traj.link_name_,ros::Time(0),tcp_to_tip_link_tf);
+			tf_listener_.lookupTransform(base_link_frame_id_,cartesian_traj.frame_id_,ros::Time(0),base_to_parent_tf);
+			tf_listener_.lookupTransform(cartesian_traj.link_name_,tip_link_frame_id_,ros::Time(0),tcp_to_tip_link_tf);
 		}
 		catch(tf::LookupException &e)
 		{

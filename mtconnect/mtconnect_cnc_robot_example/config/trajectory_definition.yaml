@@ -1,6 +1,6 @@
 cartesian_trajectory:
   arm_group: manipulator
-  frame_id: base_link
+  frame_id: world_frame #base_link
   tool_name: tool0 #Link_6
   via_points:
     - position:
