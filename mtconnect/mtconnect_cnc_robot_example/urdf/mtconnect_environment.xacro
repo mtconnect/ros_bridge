@@ -1,0 +1,55 @@
+<?xml version="1.0" ?>
+<robot name="mtconnect" xmlns:xacro="http://ros.org/wiki/xacro">
+	<include filename="$(find fanuc_config)/urdf/M16iB20_macro.xacro"/>
+	<xacro:M16iB20 prefix=""/>
+
+	<!-- parameters -->
+	<xacro:property name="platform_thickness" value="0.1"/>
+
+	<!-- color definitions -->
+        <material name="blue">
+                <color rgba="0 0 1 1"/>
+        </material>
+	<material name="yellow">
+                        <color rgba="1 1 0 1"/>
+        </material>
+        <material name="orange">
+                <color rgba="1 0.66 0.48 1"/>
+        </material>
+        <material name="red">
+                <color rgba="1 0 0 1"/>
+        </material>
+
+	<!-- link definitions -->
+	<link name="world_frame"/>
+	<link name="robot_platform_link">
+		<visual>
+			<origin xyz="0.0 0.0 -${platform_thickness * 0.5}" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.5 0.5 ${platform_thickness}"/>
+			</geometry>
+			<material name="orange"/>
+		</visual>
+		<collision>
+			<origin xyz="0.0 0.0 -${platform_thickness * 0.5}" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.5 0.5 ${platform_thickness}"/>
+			</geometry>
+			<material name="red"/>
+		</collision>
+	</link>
+	
+	<!-- joint definitions -->
+	<joint name="world_to_platform_joint" type ="fixed">
+		<origin xyz="0.2 0 2" rpy="3.1417 0 0"/>
+		<parent link="world_frame"/>
+		<child link="robot_platform_link"/>
+	</joint>
+
+	<joint name="platform_to_base_joint" type ="fixed">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="robot_platform_link"/>
+		<child link="base_link"/>
+	</joint>
+	
+</robot>
