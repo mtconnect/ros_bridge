@@ -16,7 +16,9 @@
 struct CartesianTrajectory
 {
 public:
-	CartesianTrajectory()
+	CartesianTrajectory():
+		frame_id_("base_link"),
+		cartesian_points_()
 	{
 
 	}

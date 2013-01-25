@@ -7,17 +7,6 @@
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MoveArmActionClient.h>
 #include <arm_navigation_msgs/utils.h>
 
-// defaults
-static const std::string DEFAULT_PATH_MSG_TOPIC = "move_arm_path";
-static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
-static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
-static const std::string DEFAULT_PLANNING_SCENE_DIFF_SERVICE = "/environment_server/set_planning_scene_diff";
-static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 1;
-static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
-
-// ros parameters
-static const std::string PARAM_ARM_GROUP = "arm_group";
-
 MoveArmActionClient::MoveArmActionClient()
 :
 	move_arm_client_ptr_()
@@ -121,7 +110,12 @@ bool MoveArmActionClient::fetchParameters(std::string nameSpace)
 
 void MoveArmActionClient::timerCallback(const ros::TimerEvent &evnt)
 {
-	path_pub_.publish(path_msg_);
+	// updating msg
+	cartesian_traj_.getMarker(path_msg_);
+	if(!path_msg_.poses.empty())
+	{
+		path_pub_.publish(path_msg_);
+	}
 }
 
 
@@ -188,7 +182,6 @@ bool MoveArmActionClient::setup()
 
 	// setting up ros publishers
 	path_pub_ = nh.advertise<nav_msgs::Path>(DEFAULT_PATH_MSG_TOPIC,1);
-	cartesian_traj_.getMarker(path_msg_);
 
 	// setting up ros timers
 	publish_timer_ = nh.createTimer(ros::Duration(2.0f),&MoveArmActionClient::timerCallback,this);

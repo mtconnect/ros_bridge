@@ -5,6 +5,7 @@
  */
 
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MoveArmActionClient.h>
+#include <object_manipulation_msgs/PickupAction.h>
 
 int main(int argc,char** argv)
 {

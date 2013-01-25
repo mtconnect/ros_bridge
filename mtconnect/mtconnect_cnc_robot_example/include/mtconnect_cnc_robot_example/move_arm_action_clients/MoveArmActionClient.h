@@ -29,6 +29,17 @@ typedef boost::shared_ptr<planning_environment::CollisionModels> CollisionModels
 typedef boost::shared_ptr<planning_models::KinematicState> KinematicStatePtr;
 typedef boost::tuple<std::string,std::string,tf::Transform> CartesianGoal;
 
+// defaults
+static const std::string DEFAULT_PATH_MSG_TOPIC = "move_arm_path";
+static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
+static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
+static const std::string DEFAULT_PLANNING_SCENE_DIFF_SERVICE = "/environment_server/set_planning_scene_diff";
+static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 1;
+static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
+
+// ros parameters
+static const std::string PARAM_ARM_GROUP = "arm_group";
+
 class MoveArmActionClient
 {
 

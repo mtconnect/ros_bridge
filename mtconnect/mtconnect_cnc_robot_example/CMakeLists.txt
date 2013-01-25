@@ -31,3 +31,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 rosbuild_add_executable(move_arm_client_node src/nodes/move_arm_client_node.cpp 
 	src/move_arm_action_clients/MoveArmActionClient.cpp)
+rosbuild_add_executable(move_pick_place_server_node src/nodes/move_pick_place_server_node.cpp
+	src/move_arm_action_clients/MovePickPlaceServer.cpp src/move_arm_action_clients/MoveArmActionClient.cpp)
