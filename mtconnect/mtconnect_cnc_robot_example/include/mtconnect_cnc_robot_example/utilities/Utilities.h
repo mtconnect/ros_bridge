@@ -11,7 +11,10 @@
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseArray.h>
+#include <object_manipulation_msgs/PlaceGoal.h>
+#include <object_manipulation_msgs/PickupGoal.h>
 #include <boost/tuple/tuple.hpp>
+
 
 struct CartesianTrajectory
 {
@@ -153,6 +156,147 @@ public:
 	std::string frame_id_;
 	std::string link_name_;
 	std::vector<tf::Transform> cartesian_points_;
+};
+
+struct PickPlaceInfo
+{
+public:
+	PickPlaceInfo()
+	{
+
+	}
+
+	~PickPlaceInfo()
+	{
+
+	}
+
+	bool parseParam(XmlRpc::XmlRpcValue &val)
+	{
+		bool success = true;
+		std::string arm_name = static_cast<std::string>(val["arm_group"]);
+
+		// parsing pick and place goals info
+		success =  parsePickGoal(val["pick_goal"],pickup_goal_)
+				&& parsePlaceGoal(val["place_goal"],place_goal_);
+		if(success)
+		{
+			place_goal_.grasp = pickup_goal_.desired_grasps[0];
+		}
+		return success;
+	}
+
+	bool parsePickGoal(XmlRpc::XmlRpcValue &pickVal, object_manipulation_msgs::PickupGoal &g)
+	{
+		bool success = true;
+
+		// allocating grasp
+		g.desired_grasps.resize(1);
+
+		// parsing distances
+		g.lift.desired_distance = static_cast<double>(pickVal["lift_distance"]);
+		g.desired_grasps[0].desired_approach_distance = static_cast<double>(pickVal["approach_distance"]);
+
+		// parsing reference frame info
+		g.target.reference_frame_id = static_cast<std::string>(pickVal["frame_id"]);
+		g.lift.direction.header.frame_id = static_cast<std::string>(pickVal["tool_name"]);
+
+		// parsing grasp pose and direction
+		success =  parseVect3(pickVal["lift_direction"],g.lift.direction.vector)
+				&& parsePose(pickVal["grasp_pose"],g.desired_grasps[0].grasp_pose)
+				&& parsePose(pickVal["object_pose"],g.target.potential_models[0].pose.pose);
+
+		return success;
+	}
+
+	bool parsePlaceGoal(XmlRpc::XmlRpcValue &val, object_manipulation_msgs::PlaceGoal &g)
+	{
+		bool success = true;
+
+		// allocating place pose
+		g.place_locations.resize(1);
+
+		// parsing distances
+		g.approach.desired_distance = static_cast<double>(val["approach_distance"]);
+		g.desired_retreat_distance = static_cast<double>(val["retreat_distance"]);
+
+		// parsing reference frame info
+		g.place_locations[0].header.frame_id = static_cast<std::string>(val["frame_id"]);
+		g.approach.direction.header.frame_id = static_cast<std::string>(val["tool_name"]);
+
+		success = parseVect3(val["approach_direction"],g.approach.direction.vector)
+				&& parsePose(val["place_pose"],g.place_locations[0].pose);
+
+		return success;
+	}
+
+
+	bool parsePose(XmlRpc::XmlRpcValue &poseVal, geometry_msgs::Pose &pose)
+	{
+		double angle;
+		tf::Quaternion q;
+		tf::Vector3 axis;
+		XmlRpc::XmlRpcValue orientVal;
+
+		// parsing position
+		parsePoint(poseVal["position"],pose.position);
+
+		// parsing orientation
+		orientVal = poseVal["orientation"];
+		angle = static_cast<double>(orientVal["angle"]);
+		parseVect3(orientVal["axis"],axis);
+		q = tf::Quaternion(axis,angle);
+		tf::quaternionTFToMsg(q,pose.orientation);
+
+		return true;
+	}
+
+	bool parsePoint(XmlRpc::XmlRpcValue &pointVal, geometry_msgs::Point &point)
+	{
+		// parsing components
+		point.x = static_cast<double>(pointVal["x"]);
+		point.y = static_cast<double>(pointVal["y"]);
+		point.z = static_cast<double>(pointVal["z"]);
+		return true;
+	}
+
+	bool parseVect3(XmlRpc::XmlRpcValue &vectVal,tf::Vector3 &v)
+	{
+		double val;
+		val = static_cast<double>(vectVal["x"]);v.setX(val);
+		val = static_cast<double>(vectVal["y"]);v.setY(val);
+		val = static_cast<double>(vectVal["z"]);v.setZ(val);
+		return true;
+	}
+
+	bool parseVect3(XmlRpc::XmlRpcValue &val, geometry_msgs::Vector3 &v)
+	{
+		tf::Vector3 vect;
+		parseVect3(val,vect);
+		tf::vector3TFToMsg(vect,v);
+		return true;
+	}
+
+	bool fetchParameters(std::string nameSpace ="")
+	{
+		ros::NodeHandle nh;
+		bool success = true;
+		XmlRpc::XmlRpcValue val;
+
+		success = nh.getParam(nameSpace + "/pick_place_moves_info",val);
+		if(success)
+		{
+			parseParam(val);
+		}
+
+		return success;
+	}
+
+public:
+
+	object_manipulation_msgs::PickupGoal pickup_goal_;
+	object_manipulation_msgs::PlaceGoal place_goal_;
+
 };
 
 #endif /* UTILITIES_H_ */

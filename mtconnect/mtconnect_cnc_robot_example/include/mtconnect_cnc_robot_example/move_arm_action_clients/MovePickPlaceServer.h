@@ -20,6 +20,7 @@
 typedef actionlib::ActionServer<object_manipulation_msgs::PickupAction> MoveArmPickupServer;
 typedef actionlib::ActionServer<object_manipulation_msgs::PlaceAction> MoveArmPlaceServer;
 typedef actionlib::SimpleActionClient<object_manipulation_msgs::GraspHandPostureExecutionAction> GraspActionClient;
+typedef object_manipulation_msgs::GraspHandPostureExecutionGoal GraspGoal;
 typedef boost::shared_ptr<MoveArmPickupServer> MoveArmPickupServerPtr;
 typedef boost::shared_ptr<MoveArmPlaceServer> MoveArmPlaceServerPtr;
 typedef boost::shared_ptr<GraspActionClient> GraspActionClientPtr;
@@ -54,8 +55,10 @@ protected:
 	virtual void placeGoalCallback(PlaceGoalHandle goal);
 	virtual void placeCancelCallback(PlaceGoalHandle goal);
 
-	void createPickupMoveSequence(const object_manipulation_msgs::PickupGoal &goal,object_manipulator::GraspExecutionInfo &seq);
-	void createPlaceMoveSequence(const object_manipulation_msgs::PlaceGoal &goal,object_manipulator::PlaceExecutionInfo &seq);
+	bool createPickupMoveSequence(const object_manipulation_msgs::PickupGoal &goal
+			,geometry_msgs::PoseArray &pickup_pose_sequence);
+	bool createPlaceMoveSequence(const object_manipulation_msgs::PlaceGoal &goal
+			,geometry_msgs::PoseArray &place_pose_sequence);
 
 protected:
 
