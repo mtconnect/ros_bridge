@@ -1,0 +1,55 @@
+cartesian_trajectory:
+  arm_group: manipulator
+  frame_id: world_frame #base_link
+  tool_name: tool0 #Link_6
+  via_points:
+    - position:
+        x: 1.2
+        y: 0.24
+        z: 0.6
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 1.57
+    - position:
+        x: 1.2
+        y: -0.24
+        z: 0.6
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 1.57
+    - position:
+        x: 1.4
+        y: -0.24
+        z: 0.6
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 1.57
+    - position:
+        x: 1.4
+        y: 0.24
+        z: 0.6
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 1.57
+    - position:
+        x: 1.2
+        y: 0.24
+        z: 0.6
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 1.57

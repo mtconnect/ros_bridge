@@ -25,54 +25,52 @@ import actionlib
 # Brings in the messages used by the material_load action.
 import mtconnect_msgs.msg
 
-def material_load_client():
-    # Creates the SimpleActionClient, passing the type of the action
-    # (MaterialLoadAction) to the constructor.
-    #client = actionlib.SimpleActionClient('MaterialLoadClient', mtconnect_msgs.msg.MaterialLoadAction)
-    client = actionlib.SimpleActionClient('ChuckAcknowledgeClient', mtconnect_msgs.msg.ChuckAcknowledgeAction)
-    
-    # Waits until the action server has started up and started listening for goals.
-    client.wait_for_server()
+class GenericActionClient():
+    def __init__(self, action_name, action_members):
+        self.client_name = action_name
+        self.member_val = action_members
+                
+    def action_client(self):
+        # Creates the SimpleActionClient, passing the type of the action (MaterialLoadAction) to the constructor.
+        # i.e. client_name = 'MaterialLoadClient', action_type = mtconnect_msgs.msg.MaterialLoadAction
+        co_str = 'action_type = mtconnect_msgs.msg.' + self.client_name[:-6] + 'Action'
+        co_exec = compile(co_str, '', 'exec')
+        exec(co_exec)
+        client = actionlib.SimpleActionClient(self.client_name, action_type)
+        
+        # Waits until the action server has started up and started listening for goals.
+        client.wait_for_server()
 
-    # Creates a MaterialLoad goal to send to the action server.
-    #goal = mtconnect_msgs.msg.MaterialLoadGoal()
-    #goal.material_length = 5.5
-    #goal.material_diameter = 32.7
-    #goal.material_message = 'MaterialLoad'
-    #goal.material_request = 'LOADING'
-    
-    # Creates a ChuckAcknowledge goal to send to the action server.
-    goal = mtconnect_msgs.msg.ChuckAcknowledgeGoal()
-    goal.chuck_state = 'OPEN'
-    goal.chuck_message = 'ChuckAcknowledge'
-    goal.chuck_request = 'ACK'
-    
-    # Sends the goal to the action server.
-    rospy.loginfo('Sending the goal')
-    client.send_goal(goal)
-    
-    # Waits for the server to finish performing the action.
-    rospy.loginfo('Waiting for result')
-    client.wait_for_result()
-    
-    # Prints out the result of the executing action
-    rospy.loginfo(('Returning the result --> %s' % client.get_result()))
-    return client.get_result()
-
+        # Creates a MaterialLoad goal to send to the action server.
+        co_str = 'goal = mtconnect_msgs.msg.' + self.client_name[:-6] + 'Goal()'
+        co_exec = compile(co_str, '', 'exec')
+        exec(co_exec)
+        
+        try:
+            if set(self.member_val.values()) == set(goal.__slots__):
+                for member, val in self.member_val.items():
+                    co_str = 'goal.' + member + ' = ' + val
+                    co_exec = compile(co_str, '', 'exec')
+                    exec(co_exec)
+                else:
+                    rospy.logerr('Error: Member assignment not a valid action attribute')
+        except Exception as e:
+            rospy.logerr("ROS Action %s Client failed: %s, releasing lock" % (self.client_name, e))
+        
+        # Sends the goal to the action server.
+        rospy.loginfo('Sending the goal')
+        client.send_goal(goal)
+        
+        # Waits for the server to finish performing the action.
+        rospy.loginfo('Waiting for result')
+        client.wait_for_result()
+        
+        # Prints out the result of the executing action
+        rospy.loginfo(('Returning the result --> %s' % client.get_result()))
+        return client.get_result()
 
 if __name__ == '__main__':
     try:
-        # Setup MTConnect Adapter
-        #self.adapter = Adapter(('0.0.0.0', 7878))
-        #self.event = Event('close_chuck')
-        #self.adapter.add_data_item(self.event)
-        #self.avail = Event('avail')
-        #self.adapter.add_data_item(self.avail)
-        #self.avail.set_value('AVAILABLE')
-        #self.adapter.start()
-        
-        
-        
         # Initializes a rospy node so that the SimpleActionClient can
         # publish and subscribe over ROS.
         rospy.init_node('ActionClient')

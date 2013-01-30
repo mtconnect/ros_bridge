@@ -1,0 +1,19 @@
+<package>
+  <description brief="mtconnect_arm_navigation">
+
+     mtconnect_arm_navigation
+
+  </description>
+  <author>Jnicho</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_arm_navigation</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="arm_navigation_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="actionlib"/>
+
+</package>
+
+

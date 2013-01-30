@@ -1,0 +1,22 @@
+joint_trajectory_action:
+  joints:
+    - Joint_1
+    - Joint_2
+    - Joint_3
+    - Joint_4
+    - Joint_5
+    - Joint_6
+  constraints:
+    goal_time: 0.3
+    Joint_1:
+      goal: 0.04
+    Joint_2:
+      goal: 0.04
+    Joint_3:
+      goal: 0.04
+    Joint_4:
+      goal: 0.04
+    Joint_5:
+      goal: 0.04
+    Joint_6:
+      goal: 0.04

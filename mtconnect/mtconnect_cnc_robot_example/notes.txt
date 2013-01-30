@@ -1,0 +1,13 @@
+Requirements for a move arm action server:
+- The move arm action node implements a 'arm_navigation_msgs::MoveArmAction' action server and it is visible under the name of [arm_name]_move_[group_name]
+- If there are several groups for one arm then there will be one move arm action server per group name.  For instance if there are the following groups for robot_arm :
+	group_names: {manipulator, end_effector, work_piece}
+  then the following nodes can be found:
+	- robot_arm_move_manipulator
+	- robot_arm_move_end_effector
+	- robot_arm_move_work_piece
+- An node that implements a 'control_msgs::FollowJointTrajectoryAction' action server must be running.  The move_arm server will not accept any goals
+  unless it can establish a connection to this server.
+- The joint_limits.yaml configuration file must define the parameters 'has_velocity_limits: true' and "max_velocity: ###' otherwise the move arm server fails
+  to filter valid trajectories.
+
