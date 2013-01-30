@@ -7,6 +7,8 @@
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MovePickPlaceServer.h>
 #include <boost/bind.hpp>
 
+using namespace mtconnect_cnc_robot_example;
+
 MovePickPlaceServer::MovePickPlaceServer() :
 	MoveArmActionClient()
 {
@@ -21,23 +23,62 @@ MovePickPlaceServer::~MovePickPlaceServer()
 
 void MovePickPlaceServer::run()
 {
+	if(!setup())
+	{
+		return;
+	}
 
+	ros::AsyncSpinner spinner(2);
+	spinner.start();
+
+	while(ros::ok())
+	{
+		if(moveArmThroughPickSequence(pick_place_moves_details_.pickup_goal_))
+		{
+			ROS_INFO_STREAM("Pickup move completed");
+		}
+		else
+		{
+			ROS_ERROR_STREAM("Pickup move failed, exiting");
+			break;
+		}
+
+		if(moveArmThroughPlaceSequence(pick_place_moves_details_.place_goal_))
+		{
+			ROS_INFO_STREAM("Place move completed");
+		}
+		else
+		{
+			ROS_ERROR_STREAM("Place move failed, exiting");
+			break;
+		}
+	}
 }
 
 bool MovePickPlaceServer::fetchParameters(std::string name_space)
 {
-	return true;
+	ros::NodeHandle nh;
+	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && pick_place_moves_details_.fetchParameters(name_space);
+	if(success)
+	{
+		ROS_INFO_STREAM("Successfully read arm and pick place info parameters");
+	}
+	else
+	{
+		ROS_ERROR_STREAM("Failed to read arm and pick place info parameters");
+	}
+	return success;
 }
 
 bool MovePickPlaceServer::setup()
 {
+	std::size_t wait_counter = 0;
+	ros::NodeHandle nh;
+
 	if(!MoveArmActionClient::setup())
 	{
 		return false;
 	}
-
-	// ros handle
-	ros::NodeHandle nh;
 
 	// setting up pickup server
 	arm_pickup_server_ptr_  = MoveArmPickupServerPtr(new MoveArmPickupServer(nh,DEFAULT_PICKUP_ACTION,
@@ -53,6 +94,14 @@ bool MovePickPlaceServer::setup()
 
 	// setting up grasp action client
 	grasp_action_client_ptr_ = GraspActionClientPtr(new GraspActionClient(DEFAULT_GRASP_ACTION,true));
+	while(!grasp_action_client_ptr_->waitForServer(ros::Duration(4.0f)))
+	{
+		if(wait_counter++ > 20)
+		{
+			ROS_ERROR_STREAM("Grasp action service was not found");
+			return false;
+		}
+	}
 
 	return true;
 }

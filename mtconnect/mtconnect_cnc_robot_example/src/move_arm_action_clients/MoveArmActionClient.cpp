@@ -7,6 +7,8 @@
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MoveArmActionClient.h>
 #include <arm_navigation_msgs/utils.h>
 
+using namespace mtconnect_cnc_robot_example;
+
 MoveArmActionClient::MoveArmActionClient()
 :
 	move_arm_client_ptr_()

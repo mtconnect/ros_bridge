@@ -16,6 +16,8 @@
 #include <object_manipulation_msgs/GraspHandPostureExecutionAction.h>
 #include <actionlib/server/simple_action_server.h>
 
+namespace mtconnect_cnc_robot_example
+{
 // aliases
 typedef actionlib::ActionServer<object_manipulation_msgs::PickupAction> MoveArmPickupServer;
 typedef actionlib::ActionServer<object_manipulation_msgs::PlaceAction> MoveArmPlaceServer;
@@ -69,6 +71,10 @@ protected:
 	// action clients
 	GraspActionClientPtr grasp_action_client_ptr_;
 
+	// pick place move info
+	PickPlaceMoveDetails pick_place_moves_details_;
+
 };
 
+}
 #endif /* MOVEPICKPLACESERVER_H_ */

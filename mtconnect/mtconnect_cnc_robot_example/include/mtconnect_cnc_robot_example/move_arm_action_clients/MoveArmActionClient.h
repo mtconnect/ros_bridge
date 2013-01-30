@@ -20,14 +20,19 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/PoseArray.h>
 #include <boost/tuple/tuple.hpp>
-#include <mtconnect_cnc_robot_example/utilities/Utilities.h>
+#include <mtconnect_cnc_robot_example/utilities/utilities.h>
 
+
+namespace mtconnect_cnc_robot_example
+{
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
 typedef boost::shared_ptr<MoveArmClient> MoveArmClientPtr;
 typedef boost::shared_ptr<planning_environment::CollisionModels> CollisionModelsPtr;
 typedef boost::shared_ptr<planning_models::KinematicState> KinematicStatePtr;
 typedef boost::tuple<std::string,std::string,tf::Transform> CartesianGoal;
+class MoveArmActionClient;
+typedef boost::shared_ptr<MoveArmActionClient> MoveArmActionClientPtr;
 
 // defaults
 static const std::string DEFAULT_PATH_MSG_TOPIC = "move_arm_path";
@@ -42,7 +47,6 @@ static const std::string PARAM_ARM_GROUP = "arm_group";
 
 class MoveArmActionClient
 {
-
 public:
 	MoveArmActionClient();
 
@@ -105,4 +109,5 @@ protected:
 
 };
 
+}
 #endif /* MOVEARMACTIONCLIENT_H_ */

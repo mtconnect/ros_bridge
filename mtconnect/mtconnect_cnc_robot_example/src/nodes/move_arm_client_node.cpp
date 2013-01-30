@@ -9,6 +9,8 @@
 
 int main(int argc,char** argv)
 {
+	using namespace mtconnect_cnc_robot_example;
+
 	ros::init(argc,argv,"move_arm_client_node");
 	ros::NodeHandle nh;
 
