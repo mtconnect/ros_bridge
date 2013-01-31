@@ -33,7 +33,7 @@ void MovePickPlaceServer::run()
 
 	while(ros::ok())
 	{
-		if(moveArmThroughPickSequence(pick_place_moves_details_.pickup_goal_))
+		if(moveArmThroughPickSequence(pickup_goal_))
 		{
 			ROS_INFO_STREAM("Pickup move completed");
 		}
@@ -43,7 +43,7 @@ void MovePickPlaceServer::run()
 			break;
 		}
 
-		if(moveArmThroughPlaceSequence(pick_place_moves_details_.place_goal_))
+		if(moveArmThroughPlaceSequence(place_goal_))
 		{
 			ROS_INFO_STREAM("Place move completed");
 		}
@@ -58,7 +58,8 @@ void MovePickPlaceServer::run()
 bool MovePickPlaceServer::fetchParameters(std::string name_space)
 {
 	ros::NodeHandle nh("~");
-	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && pick_place_moves_details_.fetchParameters(name_space);
+	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && pickup_goal_.fetchParameters()
+			&& place_goal_.fetchParameters();
 	if(success)
 	{
 		ROS_INFO_STREAM("Successfully read arm and pick place info parameters");

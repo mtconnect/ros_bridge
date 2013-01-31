@@ -72,7 +72,8 @@ protected:
 	GraspActionClientPtr grasp_action_client_ptr_;
 
 	// pick place move info
-	PickPlaceMoveDetails pick_place_moves_details_;
+	PickupGoalInfo pickup_goal_;
+	PlaceGoalInfo place_goal_;
 
 };
 

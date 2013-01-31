@@ -106,7 +106,7 @@ bool MoveArmActionClient::fetchParameters(std::string nameSpace)
 {
 	ros::NodeHandle nh("~");
 
-	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && cartesian_traj_.fetchParameters(nameSpace);
+	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && cartesian_traj_.fetchParameters();
 	return success;
 }
 

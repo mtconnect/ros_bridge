@@ -22,6 +22,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <mtconnect_cnc_robot_example/utilities/utilities.h>
 
+using namespace move_arm_utils;
 
 namespace mtconnect_cnc_robot_example
 {
