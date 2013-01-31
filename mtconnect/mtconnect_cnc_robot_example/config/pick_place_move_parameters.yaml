@@ -1,0 +1,55 @@
+pick_place_moves_info:
+  arm_group: manipulator
+######### pick move #############
+  pick_goal:
+    frame_id: world_frame
+    tool_name: tool0
+    lift_distance: 0.15
+    approach_distance: 0.1
+    lift_direction: # relative to tool coordinate frame
+      x: 1.0
+      y: 0.0
+      z: 0.0
+    grasp_pose: # tool relative to object
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      orientation:
+        angle: 1.57
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+    object_pose: # relative to world frame
+      position:
+        x: 1.2
+        y: -0.24
+        z: 0.6
+      orientation:
+        angle: 0.01
+        axis:
+          x: 0.0
+          y: 0.0
+          z: 1.0
+######### place move #############
+  place_goal:
+    frame_id: world_frame
+    tool_name: tool0
+    retreat_distance: 0.2
+    approach_distance: 0.1
+    approach_direction: # relative to tool coordinate frame
+      x: 1.0
+      y: 0.0
+      z: 0.0
+    place_pose: # relative to world frame
+      position:
+        x: 1.2
+        y: 0.24
+        z: 0.6
+      orientation:
+        angle: 0.01
+        axis:
+          x: 0.0
+          y: 0.0
+          z: 1.0

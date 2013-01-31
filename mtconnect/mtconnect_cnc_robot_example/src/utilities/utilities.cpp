@@ -151,8 +151,9 @@ bool PickPlaceMoveDetails::parsePickGoal(XmlRpc::XmlRpcValue &pickVal, object_ma
 {
 	bool success = true;
 
-	// allocating grasp
+	// allocating grasp and model data
 	g.desired_grasps.resize(1);
+	g.target.potential_models.resize(1);
 
 	// parsing distances
 	g.lift.desired_distance = static_cast<double>(pickVal["lift_distance"]);
@@ -166,6 +167,15 @@ bool PickPlaceMoveDetails::parsePickGoal(XmlRpc::XmlRpcValue &pickVal, object_ma
 	success =  parseVect3(pickVal["lift_direction"],g.lift.direction.vector)
 			&& parsePose(pickVal["grasp_pose"],g.desired_grasps[0].grasp_pose)
 			&& parsePose(pickVal["object_pose"],g.target.potential_models[0].pose.pose);
+
+	if(success)
+	{
+		ROS_INFO_STREAM("Pickup goal parameters found");
+	}
+	else
+	{
+		ROS_ERROR_STREAM("Pickup goal parameters not found");
+	}
 
 	return success;
 }
@@ -187,6 +197,15 @@ bool PickPlaceMoveDetails::parsePlaceGoal(XmlRpc::XmlRpcValue &val, object_manip
 
 	success = parseVect3(val["approach_direction"],g.approach.direction.vector)
 			&& parsePose(val["place_pose"],g.place_locations[0].pose);
+
+	if(success)
+	{
+		ROS_INFO_STREAM("Place goal parameters found");
+	}
+	else
+	{
+		ROS_ERROR_STREAM("Place goal parameters not found");
+	}
 
 	return success;
 }

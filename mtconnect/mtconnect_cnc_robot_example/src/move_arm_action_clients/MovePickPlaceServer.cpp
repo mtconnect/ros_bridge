@@ -57,7 +57,7 @@ void MovePickPlaceServer::run()
 
 bool MovePickPlaceServer::fetchParameters(std::string name_space)
 {
-	ros::NodeHandle nh;
+	ros::NodeHandle nh("~");
 	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && pick_place_moves_details_.fetchParameters(name_space);
 	if(success)
 	{
@@ -96,6 +96,7 @@ bool MovePickPlaceServer::setup()
 	grasp_action_client_ptr_ = GraspActionClientPtr(new GraspActionClient(DEFAULT_GRASP_ACTION,true));
 	while(!grasp_action_client_ptr_->waitForServer(ros::Duration(4.0f)))
 	{
+		ROS_WARN_STREAM("Waiting for grasp action server "<<DEFAULT_GRASP_ACTION);
 		if(wait_counter++ > 20)
 		{
 			ROS_ERROR_STREAM("Grasp action service was not found");
@@ -190,6 +191,10 @@ bool MovePickPlaceServer::moveArmThroughPlaceSequence(object_manipulation_msgs::
 	geometry_msgs::PoseArray place_pose_sequence;
 	geometry_msgs::PoseArray temp_place_sequence;
 	GraspGoal grasp_goal;
+
+	// initializing arm path and grasp
+	createPlaceMoveSequence(place_goal,place_pose_sequence);
+	grasp_goal.grasp = place_goal.grasp; // this might not be needed
 
 	// moving arm through approach and place poses
 	temp_place_sequence.poses.assign(place_pose_sequence.poses.begin(), place_pose_sequence.poses.end()-1);
