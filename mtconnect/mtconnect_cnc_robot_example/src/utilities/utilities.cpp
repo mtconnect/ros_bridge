@@ -7,6 +7,86 @@
 
 #include <mtconnect_cnc_robot_example/utilities/utilities.h>
 
+using namespace move_arm_utils;
+
+
+bool move_arm_utils::parsePoint(XmlRpc::XmlRpcValue &pointVal, geometry_msgs::Point &point)
+{
+	// parsing components
+	point.x = static_cast<double>(pointVal["x"]);
+	point.y = static_cast<double>(pointVal["y"]);
+	point.z = static_cast<double>(pointVal["z"]);
+	return true;
+}
+
+bool move_arm_utils::parseOrientation(XmlRpc::XmlRpcValue &val, tf::Quaternion &q)
+{
+	double angle;
+	tf::Vector3 axis;
+
+	// parsing orientation
+	angle = static_cast<double>(val["angle"]);
+	parseVect3(val["axis"],axis);
+	q.setRotation(axis,angle);
+	return true;
+}
+
+bool move_arm_utils::parseOrientation(XmlRpc::XmlRpcValue &val, geometry_msgs::Quaternion &q)
+{
+	tf::Quaternion q_tf;
+
+	if(!parseOrientation(val,q_tf))
+	{
+		return false;
+	}
+
+	tf::quaternionTFToMsg(q_tf,q);
+	return true;
+}
+
+bool move_arm_utils::parseVect3(XmlRpc::XmlRpcValue &val, geometry_msgs::Vector3 &v)
+{
+	tf::Vector3 vect;
+	parseVect3(val,vect);
+	tf::vector3TFToMsg(vect,v);
+	return true;
+}
+
+bool move_arm_utils::parseVect3(XmlRpc::XmlRpcValue &vectVal,tf::Vector3 &v)
+{
+	double val;
+	val = static_cast<double>(vectVal["x"]);v.setX(val);
+	val = static_cast<double>(vectVal["y"]);v.setY(val);
+	val = static_cast<double>(vectVal["z"]);v.setZ(val);
+	return true;
+}
+
+bool move_arm_utils::parsePose(XmlRpc::XmlRpcValue &val, geometry_msgs::Pose &pose)
+{
+	// parsing position and orientation values
+	if(parsePoint(val["position"],pose.position) &&
+			parseOrientation(val["orientation"],pose.orientation))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool move_arm_utils::parseTransform(XmlRpc::XmlRpcValue &val, tf::Transform &t)
+{
+	geometry_msgs::Pose p;
+
+	if(!parsePose(val,p))
+	{
+		return false;
+	}
+
+	tf::poseMsgToTF(p,t);
+	return true;
+}
 
 std::string CartesianTrajectory::toString()
 {
@@ -32,7 +112,7 @@ std::string CartesianTrajectory::toString()
 	return ss.str();
 }
 
-bool CartesianTrajectory::parseParam(XmlRpc::XmlRpcValue &paramVal)
+bool CartesianTrajectory::parseParameters(XmlRpc::XmlRpcValue &paramVal)
 {
 	XmlRpc::XmlRpcValue cartesian_points_param;
 	ros::NodeHandle nh;
@@ -52,39 +132,27 @@ bool CartesianTrajectory::parseParam(XmlRpc::XmlRpcValue &paramVal)
 		if((cartesian_points_param.getType() == XmlRpc::XmlRpcValue::TypeArray)
 				&& (cartesian_points_param[0].getType() == XmlRpc::XmlRpcValue::TypeStruct))
 		{
-			tf::Vector3 pos, axis;
-			tf::Quaternion q;
-			double val;
-			XmlRpc::XmlRpcValue structElmt, posElmt, rotElmt, axisElmt;
+			tf::Transform t;
+
+			ROS_INFO_STREAM("Parsing via points struct array"<<toString());
 			cartesian_points_.clear();
-
-			ROS_INFO_STREAM(ros::this_node::getName()<<": parsing via points struct array"<<toString());
-			for(std::size_t i = 0; i < cartesian_points_param.size(); i++)
+			for(int i = 0; i < cartesian_points_param.size(); i++)
 			{
-				structElmt = cartesian_points_param[i];
-				posElmt = structElmt["position"];
-				rotElmt = structElmt["orientation"];
-				axisElmt = rotElmt["axis"];
 
-				// fetching position
-				val = static_cast<double>(posElmt["x"]);pos.setX(val);
-				val = static_cast<double>(posElmt["y"]);pos.setY(val);
-				val = static_cast<double>(posElmt["z"]);pos.setZ(val);
-
-				// fetching rotation
-				val = static_cast<double>(axisElmt["x"]);axis.setX(val);
-				val = static_cast<double>(axisElmt["y"]);axis.setY(val);
-				val = static_cast<double>(axisElmt["z"]);axis.setZ(val);
-				val = static_cast<double>(rotElmt["angle"]);
-				q.setRotation(axis,val);
-
+				if(!parseTransform(cartesian_points_param[i],t))
+				{
+					// parsing failed, exiting loop
+					ROS_ERROR_STREAM("Parsing error in cartesian_trajectory point");
+					success = false;
+					break;
+				}
 				// storing as transform
-				cartesian_points_.push_back(tf::Transform(q,pos));
+				cartesian_points_.push_back(t);
 			}
 		}
 		else
 		{
-			ROS_ERROR_STREAM(ros::this_node::getName()<<": Parsing error in cartesian_trajectory parameter");
+			ROS_ERROR_STREAM("Parsing error in cartesian_trajectory, structure array is not well formed");
 			success = false;
 		}
 	}
@@ -121,7 +189,7 @@ bool CartesianTrajectory::fetchParameters(std::string nameSpace)
 {
 	XmlRpc::XmlRpcValue val;
 	ros::NodeHandle nh;
-	bool success = nh.getParam(nameSpace + "/cartesian_trajectory",val) && parseParam(val);
+	bool success = nh.getParam(nameSpace,val) && parseParameters(val);
 	if(!success)
 	{
 		ROS_ERROR_STREAM(ros::this_node::getName()<<": Parsing error in cartesian_trajectory parameter");
@@ -129,44 +197,44 @@ bool CartesianTrajectory::fetchParameters(std::string nameSpace)
 	return success;
 }
 
-
-bool PickPlaceMoveDetails::parseParam(XmlRpc::XmlRpcValue &val)
+bool PickupGoalInfo::fetchParameters(std::string nameSpace)
 {
-	bool success = true;
-	std::string arm_name = static_cast<std::string>(val["arm_group"]);
-	pickup_goal_.arm_name = arm_name;
-	place_goal_.arm_name = arm_name;
+	ros::NodeHandle nh;
+	XmlRpc::XmlRpcValue val;
 
-	// parsing pick and place goals info
-	success =  parsePickGoal(val["pick_goal"],pickup_goal_)
-			&& parsePlaceGoal(val["place_goal"],place_goal_);
-	if(success)
+	if(nh.getParam(nameSpace,val) && parseParameters(val))
 	{
-		place_goal_.grasp = pickup_goal_.desired_grasps[0];
+		return true;
 	}
-	return success;
+	else
+	{
+		return false;
+	}
 }
 
-bool PickPlaceMoveDetails::parsePickGoal(XmlRpc::XmlRpcValue &pickVal, object_manipulation_msgs::PickupGoal &g)
+bool PickupGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
 {
 	bool success = true;
 
 	// allocating grasp and model data
-	g.desired_grasps.resize(1);
-	g.target.potential_models.resize(1);
+	this->desired_grasps.resize(1);
+	this->target.potential_models.resize(1);
+
+	// parsing arm group name
+	this->arm_name = static_cast<std::string>(val["arm_group"]);
 
 	// parsing distances
-	g.lift.desired_distance = static_cast<double>(pickVal["lift_distance"]);
-	g.desired_grasps[0].desired_approach_distance = static_cast<double>(pickVal["approach_distance"]);
+	this->lift.desired_distance = static_cast<double>(val["lift_distance"]);
+	this->desired_grasps[0].desired_approach_distance = static_cast<double>(val["approach_distance"]);
 
 	// parsing reference frame info
-	g.target.reference_frame_id = static_cast<std::string>(pickVal["frame_id"]);
-	g.lift.direction.header.frame_id = static_cast<std::string>(pickVal["tool_name"]);
+	this->target.reference_frame_id = static_cast<std::string>(val["frame_id"]);
+	this->lift.direction.header.frame_id = static_cast<std::string>(val["tool_name"]);
 
 	// parsing grasp pose and direction
-	success =  parseVect3(pickVal["lift_direction"],g.lift.direction.vector)
-			&& parsePose(pickVal["grasp_pose"],g.desired_grasps[0].grasp_pose)
-			&& parsePose(pickVal["object_pose"],g.target.potential_models[0].pose.pose);
+	success =  parseVect3(val["lift_direction"],this->lift.direction.vector)
+			&& parsePose(val["grasp_pose"],this->desired_grasps[0].grasp_pose)
+			&& parsePose(val["object_pose"],this->target.potential_models[0].pose.pose);
 
 	if(success)
 	{
@@ -180,23 +248,41 @@ bool PickPlaceMoveDetails::parsePickGoal(XmlRpc::XmlRpcValue &pickVal, object_ma
 	return success;
 }
 
-bool PickPlaceMoveDetails::parsePlaceGoal(XmlRpc::XmlRpcValue &val, object_manipulation_msgs::PlaceGoal &g)
+bool PlaceGoalInfo::fetchParameters(std::string nameSpace)
+{
+	ros::NodeHandle nh;
+	XmlRpc::XmlRpcValue val;
+
+	if(nh.getParam(nameSpace,val) && parseParameters(val))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool PlaceGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
 {
 	bool success = true;
 
 	// allocating place pose
-	g.place_locations.resize(1);
+	this->place_locations.resize(1);
+
+	// parsing arm group name
+	this->arm_name = static_cast<std::string>(val["arm_group"]);
 
 	// parsing distances
-	g.approach.desired_distance = static_cast<double>(val["approach_distance"]);
-	g.desired_retreat_distance = static_cast<double>(val["retreat_distance"]);
+	this->approach.desired_distance = static_cast<double>(val["approach_distance"]);
+	this->desired_retreat_distance = static_cast<double>(val["retreat_distance"]);
 
 	// parsing reference frame info
-	g.place_locations[0].header.frame_id = static_cast<std::string>(val["frame_id"]);
-	g.approach.direction.header.frame_id = static_cast<std::string>(val["tool_name"]);
+	this->place_locations[0].header.frame_id = static_cast<std::string>(val["frame_id"]);
+	this->approach.direction.header.frame_id = static_cast<std::string>(val["tool_name"]);
 
-	success = parseVect3(val["approach_direction"],g.approach.direction.vector)
-			&& parsePose(val["place_pose"],g.place_locations[0].pose);
+	success = parseVect3(val["approach_direction"],this->approach.direction.vector)
+			&& parsePose(val["place_pose"],this->place_locations[0].pose) && parsePose(val["grasp_pose"],this->grasp.grasp_pose);
 
 	if(success)
 	{
@@ -205,68 +291,6 @@ bool PickPlaceMoveDetails::parsePlaceGoal(XmlRpc::XmlRpcValue &val, object_manip
 	else
 	{
 		ROS_ERROR_STREAM("Place goal parameters not found");
-	}
-
-	return success;
-}
-
-
-bool PickPlaceMoveDetails::parsePose(XmlRpc::XmlRpcValue &poseVal, geometry_msgs::Pose &pose)
-{
-	double angle;
-	tf::Quaternion q;
-	tf::Vector3 axis;
-	XmlRpc::XmlRpcValue orientVal;
-
-	// parsing position
-	parsePoint(poseVal["position"],pose.position);
-
-	// parsing orientation
-	orientVal = poseVal["orientation"];
-	angle = static_cast<double>(orientVal["angle"]);
-	parseVect3(orientVal["axis"],axis);
-	q = tf::Quaternion(axis,angle);
-	tf::quaternionTFToMsg(q,pose.orientation);
-
-	return true;
-}
-
-bool PickPlaceMoveDetails::parsePoint(XmlRpc::XmlRpcValue &pointVal, geometry_msgs::Point &point)
-{
-	// parsing components
-	point.x = static_cast<double>(pointVal["x"]);
-	point.y = static_cast<double>(pointVal["y"]);
-	point.z = static_cast<double>(pointVal["z"]);
-	return true;
-}
-
-bool PickPlaceMoveDetails::parseVect3(XmlRpc::XmlRpcValue &vectVal,tf::Vector3 &v)
-{
-	double val;
-	val = static_cast<double>(vectVal["x"]);v.setX(val);
-	val = static_cast<double>(vectVal["y"]);v.setY(val);
-	val = static_cast<double>(vectVal["z"]);v.setZ(val);
-	return true;
-}
-
-bool PickPlaceMoveDetails::parseVect3(XmlRpc::XmlRpcValue &val, geometry_msgs::Vector3 &v)
-{
-	tf::Vector3 vect;
-	parseVect3(val,vect);
-	tf::vector3TFToMsg(vect,v);
-	return true;
-}
-
-bool PickPlaceMoveDetails::fetchParameters(std::string nameSpace)
-{
-	ros::NodeHandle nh;
-	bool success = true;
-	XmlRpc::XmlRpcValue val;
-
-	success = nh.getParam(nameSpace + "/pick_place_moves_info",val);
-	if(success)
-	{
-		parseParam(val);
 	}
 
 	return success;

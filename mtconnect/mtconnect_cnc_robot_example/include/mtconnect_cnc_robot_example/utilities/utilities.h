@@ -16,6 +16,22 @@
 #include <object_manipulation_msgs/PickupGoal.h>
 #include <boost/tuple/tuple.hpp>
 
+namespace move_arm_utils
+{
+
+bool parsePoint(XmlRpc::XmlRpcValue &val, geometry_msgs::Point &point);
+
+bool parseOrientation(XmlRpc::XmlRpcValue &val, geometry_msgs::Quaternion &q);
+
+bool parseOrientation(XmlRpc::XmlRpcValue &val, tf::Quaternion &q);
+
+bool parseVect3(XmlRpc::XmlRpcValue &val,tf::Vector3 &v);
+
+bool parseVect3(XmlRpc::XmlRpcValue &val, geometry_msgs::Vector3 &v);
+
+bool parsePose(XmlRpc::XmlRpcValue &val, geometry_msgs::Pose &pose);
+
+bool parseTransform(XmlRpc::XmlRpcValue &val, tf::Transform &t);
 
 struct CartesianTrajectory
 {
@@ -34,11 +50,11 @@ public:
 
 	std::string toString();
 
-	bool parseParam(XmlRpc::XmlRpcValue &paramVal);
+	bool parseParameters(XmlRpc::XmlRpcValue &paramVal);
 
 	void getMarker(nav_msgs::Path &p);
 
-	bool fetchParameters(std::string nameSpace= "");
+	bool fetchParameters(std::string nameSpace= "/cartesian_trajectory");
 
 	std::string arm_group_;
 	std::string frame_id_;
@@ -46,40 +62,43 @@ public:
 	std::vector<tf::Transform> cartesian_points_;
 };
 
-struct PickPlaceMoveDetails
+struct PickupGoalInfo : object_manipulation_msgs::PickupGoal
 {
 public:
-	PickPlaceMoveDetails()
+	PickupGoalInfo()
 	{
 
 	}
 
-	~PickPlaceMoveDetails()
+	~PickupGoalInfo()
 	{
 
 	}
 
-	bool parseParam(XmlRpc::XmlRpcValue &val);
+	bool fetchParameters(std::string nameSpace = "/pickup_goal");
 
-	bool parsePickGoal(XmlRpc::XmlRpcValue &pickVal, object_manipulation_msgs::PickupGoal &g);
+	bool parseParameters(XmlRpc::XmlRpcValue &val);
+};
 
-	bool parsePlaceGoal(XmlRpc::XmlRpcValue &val, object_manipulation_msgs::PlaceGoal &g);
-
-	bool parsePose(XmlRpc::XmlRpcValue &poseVal, geometry_msgs::Pose &pose);
-
-	bool parsePoint(XmlRpc::XmlRpcValue &pointVal, geometry_msgs::Point &point);
-
-	bool parseVect3(XmlRpc::XmlRpcValue &vectVal,tf::Vector3 &v);
-
-	bool parseVect3(XmlRpc::XmlRpcValue &val, geometry_msgs::Vector3 &v);
-
-	bool fetchParameters(std::string nameSpace ="");
-
+struct PlaceGoalInfo : object_manipulation_msgs::PlaceGoal
+{
 public:
+	PlaceGoalInfo()
+	{
 
-	object_manipulation_msgs::PickupGoal pickup_goal_;
-	object_manipulation_msgs::PlaceGoal place_goal_;
+	}
+
+	~PlaceGoalInfo()
+	{
+
+	}
+
+	bool fetchParameters(std::string nameSpace = "/place_goal");
+
+	bool parseParameters(XmlRpc::XmlRpcValue &val);
 
 };
+
+}
 
 #endif /* UTILITIES_H_ */
