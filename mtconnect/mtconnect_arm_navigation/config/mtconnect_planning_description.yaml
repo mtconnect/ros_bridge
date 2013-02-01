@@ -14,8 +14,49 @@ groups:
       - Joint_6
   - name: manipulator
     base_link: base_link
-    tip_link: Link_6
+    tip_link: tcp_frame # Link_6
+  - name: robotiq_gripper
+    links:
+        palm
+        finger_1
+        finger_2
+        finger_3
+        tcp_frame
+
 default_collision_operations:
+  - object1: tcp_frame
+    object2: palm
+    operation: disable  # never in collision
+  - object1: finger_1
+    object2: finger_2
+    operation: disable  # never in collision
+  - object1: finger_1
+    object2: finger_3
+    operation: disable  # never in collision
+  - object1: finger_2
+    object2: finger_3
+    operation: disable  # never in collision
+  - object1: Link_4
+    object2: robotiq_gripper
+    operation: disable  # Adjacent in collision
+  - object1: Link_5
+    object2: robotiq_gripper
+    operation: disable  # Adjacent in collision
+  - object1: Link_6
+    object2: robotiq_gripper
+    operation: disable  # Adjacent in collision
+  - object1: tool0
+    object2: robotiq_gripper
+    operation: disable  # Adjacent in collision
+  - object1: palm
+    object2: finger_1
+    operation: disable  # Adjacent in collision
+  - object1: palm
+    object2: finger_2
+    operation: disable  # Adjacent in collision
+  - object1: palm
+    object2: finger_3
+    operation: disable  # Adjacent in collision
   - object1: base_link
     object2: Link_1
     operation: disable  # Adjacent in collision
