@@ -81,6 +81,7 @@
 
 	<!-- link definitions -->
 	<link name="world_frame"/>
+	<!--link name="palm"/-->
 	<link name="tcp_frame"/>
 	<link name="robot_platform_link">
 		<visual>

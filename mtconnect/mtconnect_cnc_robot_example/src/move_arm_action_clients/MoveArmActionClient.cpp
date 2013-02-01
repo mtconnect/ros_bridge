@@ -201,13 +201,14 @@ bool MoveArmActionClient::setup()
 
 	// obtaining arm info
 	collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
-	const planning_models::KinematicModel::JointModelGroup *joint_model_group =
-					collision_models_ptr_->getKinematicModel()->getModelGroup(arm_group_);
-	const std::vector<const planning_models::KinematicModel::JointModel *> &joint_models_ = joint_model_group->getJointModels();
-
-	// finding arm base and tip links
-	base_link_frame_id_ = joint_models_.front()->getParentLinkModel()->getName();
-	tip_link_frame_id_ = joint_models_.back()->getChildLinkModel()->getName();
+//	const planning_models::KinematicModel::JointModelGroup *joint_model_group =
+//					collision_models_ptr_->getKinematicModel()->getModelGroup(arm_group_);
+//	const std::vector<const planning_models::KinematicModel::JointModel *> &joint_models_ = joint_model_group->getJointModels();
+//
+//	// finding arm base and tip links
+//	base_link_frame_id_ = joint_models_.front()->getParentLinkModel()->getName();
+//	tip_link_frame_id_ = joint_models_.back()->getChildLinkModel()->getName();
+	getArmInfo(collision_models_ptr_.get(),arm_group_,base_link_frame_id_,tip_link_frame_id_);
 
 	// initializing move arm request members
 	move_arm_goal_.motion_plan_request.group_name = arm_group_;
@@ -225,20 +226,63 @@ bool MoveArmActionClient::setup()
 	move_pose_constraint_.absolute_pitch_tolerance = 0.04f;
 	move_pose_constraint_.absolute_yaw_tolerance = 0.04f;
 
+	return success;
+}
+
+bool MoveArmActionClient::getArmInfo(const planning_environment::CollisionModels *models,
+		const std::string &arm_group,std::string &base_link, std::string &tip_link)
+{
+	ros::NodeHandle nh;
+	XmlRpc::XmlRpcValue group_param;
+	std::stringstream ss;
+	bool success = false;
+
+	// finding arm base and tip links from group member in ros parameters
+	if(nh.getParam(DEFAULT_PLANNING_GROUPS_PARAMETER,group_param))
+	{
+		for(int i = 0; i < group_param.size(); i++)
+		{
+			XmlRpc::XmlRpcValue &element = group_param[i];
+			if((element.getType() == XmlRpc::XmlRpcValue::TypeStruct) &&
+					element.hasMember(PARAM_GROUP_KEY) &&
+					(arm_group.compare(static_cast<std::string>(element[PARAM_GROUP_KEY])) == 0) &&
+					element.hasMember(PARAM_BASE_KEY) &&
+					element.hasMember(PARAM_TIP_KEY))
+			{
+				base_link = static_cast<std::string>(element[PARAM_BASE_KEY]);
+				tip_link = static_cast<std::string>(element[PARAM_TIP_KEY]);
+				success = true;
+				break;
+			}
+
+		}
+
+	}
+	else
+	{
+		ROS_ERROR_STREAM("Did not find parameter '"<<DEFAULT_PLANNING_GROUPS_PARAMETER<<"', could not get arm information");
+		return false;
+	}
+
+	// obtaining arm joint info
+	const planning_models::KinematicModel::JointModelGroup *joint_model_group =
+					models->getKinematicModel()->getModelGroup(arm_group);
+	const std::vector<const planning_models::KinematicModel::JointModel *> &joint_models_ = joint_model_group->getJointModels();
+
+
 	// printing arm details
 	const std::vector<std::string> &joint_names = joint_model_group->getJointModelNames();
 	const std::vector<std::string> &link_names = joint_model_group->getGroupLinkNames();
 	std::vector<std::string>::const_iterator i;
-	std::stringstream ss;
-	ss<<"\nArm Base Link Frame: "<<base_link_frame_id_;
-	ss<<"\nArm Tip Link Frame: "<<tip_link_frame_id_;
-	ss<<"\nJoint Names in group '"<<arm_group_<<"'";
+	ss<<"\nArm Base Link Frame: "<<base_link;
+	ss<<"\nArm Tip Link Frame: "<<tip_link;
+	ss<<"\nJoint Names in group '"<<arm_group<<"'";
 	for(i = joint_names.begin(); i != joint_names.end() ; i++)
 	{
 		ss<<"\n\t"<<*i;
 	}
 
-	ss<<"\nLink Names in group '"<<arm_group_<<"'";
+	ss<<"\nLink Names in group '"<<arm_group<<"'";
 	for(i = link_names.begin(); i != link_names.end() ; i++)
 	{
 		ss<<"\n\t"<<*i;

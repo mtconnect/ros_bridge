@@ -46,13 +46,17 @@ typedef boost::tuple<std::string,std::string,tf::Transform> CartesianGoal;
 class MoveArmActionClient;
 typedef boost::shared_ptr<MoveArmActionClient> MoveArmActionClientPtr;
 
-// defaults
+// defaults and constants
 static const std::string DEFAULT_PATH_MSG_TOPIC = "move_arm_path";
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
 static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
 static const std::string DEFAULT_PLANNING_SCENE_DIFF_SERVICE = "/environment_server/set_planning_scene_diff";
+static const std::string DEFAULT_PLANNING_GROUPS_PARAMETER = "/robot_description_planning/groups";
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 1;
 static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
+static const std::string PARAM_GROUP_KEY = "name";
+static const std::string PARAM_BASE_KEY = "base_link";
+static const std::string PARAM_TIP_KEY = "tip_link";
 
 // ros parameters
 static const std::string PARAM_ARM_GROUP = "arm_group";
@@ -80,6 +84,9 @@ protected:
 	virtual bool getArmStartState(std::string group_name, arm_navigation_msgs::RobotState &robot_state);
 
 	virtual bool setup();
+
+	bool getArmInfo(const planning_environment::CollisionModels *models,
+			const std::string &arm_group,std::string &base_link, std::string &tip_link);
 
 	bool getPoseInArmSpace(const CartesianGoal &cartesian_goal,geometry_msgs::Pose &base_to_tip_pose);
 
