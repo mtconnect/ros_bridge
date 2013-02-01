@@ -29,7 +29,7 @@ import actionlib
 import mtconnect_msgs.msg
 
 
-class MaterialLoadServer():
+class MaterialUnloadServer():
     """DOCSTRING
     """
 
@@ -37,13 +37,13 @@ class MaterialLoadServer():
         # Setup MTConnect to ROS Conversion -- TBD
         #self.config = read_config_file.obtain_dataMap()
         
-        self.server_name = 'MaterialLoad'
+        self.server_name = 'MaterialUnload'
         self.conn = conn = HTTPConnection('localhost', 5000)
         self.ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
         self.sequence = {'ACTIVE':'COMPLETE', 'COMPLETE':'READY'}
         
-        self._result = mtconnect_msgs.msg.MaterialLoadResult()
-        self._as = actionlib.SimpleActionServer('MaterialLoadClient', mtconnect_msgs.msg.MaterialLoadAction, self.execute_cb, False)
+        self._result = mtconnect_msgs.msg.MaterialUnloadResult()
+        self._as = actionlib.SimpleActionServer('MaterialUnloadClient', mtconnect_msgs.msg.MaterialUnloadAction, self.execute_cb, False)
         self._as.start()
         self._as.accept_new_goal()
     
@@ -51,10 +51,10 @@ class MaterialLoadServer():
         rospy.loginfo('In %s Bridge Server Callback -- determining action request result.' % self.server_name)
         
         # Required actions to complete requested action
-        cnc_actions = {'CloseChuck':None, 'CloseDoor':None}
+        cnc_actions = {'OpenChuck':None, 'OpenDoor':None}
         cnc_target = collections.OrderedDict()
-        cnc_target['CloseChuck'] = ['COMPLETE', None]
-        cnc_target['CloseDoor'] = ['COMPLETE', None]
+        cnc_target['OpenChuck'] = ['COMPLETE', None]
+        cnc_target['OpenDoor'] = ['COMPLETE', None]
         
         # Start while loop and check for cnc action changes
         dwell = True
@@ -70,13 +70,13 @@ class MaterialLoadServer():
 
             cnc_body = response.read()
             root = ElementTree.fromstring(cnc_body)
-            cnc_target['CloseChuck'][1] = root.findall('.//m:CloseChuck', namespaces=self.ns)[0]
-            cnc_target['CloseDoor'][1] = root.findall('.//m:CloseDoor', namespaces=self.ns)[0]
-            #rospy.loginfo('CloseChuck --> %s\tCloseDoor --> %s' % (cnc_target['CloseChuck'][1].text, cnc_target['CloseDoor'][1].text))
+            cnc_target['OpenChuck'][1] = root.findall('.//m:OpenChuck', namespaces=self.ns)[0]
+            cnc_target['OpenDoor'][1] = root.findall('.//m:OpenDoor', namespaces=self.ns)[0]
+            #rospy.loginfo('OpenChuck --> %s\tOpenDoor --> %s' % (cnc_target['OpenChuck'][1].text, cnc_target['OpenDoor'][1].text))
             
             if inloop == 0:
-                rospy.loginfo('In MaterialLoad Server while loop')
-                rospy.loginfo('CloseChuck --> %s\tCloseDoor --> %s' % (cnc_target['CloseChuck'][1].text, cnc_target['CloseDoor'][1].text))
+                rospy.loginfo('In MaterialUnload Server while loop')
+                rospy.loginfo('OpenChuck --> %s\tOpenDoor --> %s' % (cnc_target['OpenChuck'][1].text, cnc_target['OpenDoor'][1].text))
                 inloop = 1
             
             # Wait for Close Chuck and Close Door Cycle
@@ -94,24 +94,24 @@ class MaterialLoadServer():
             # Send the successful result    
             if None not in cnc_actions.values():
                 # Set action attribute -- empty function, assumes robot loaded material
-                self._result.load_state = 'COMPLETE'
+                self._result.unload_state = 'COMPLETE'
                 dwell = False
             
             # Check for timeout
             if time.time() - start > 120.0:
-                rospy.loginfo('Material Load Server Timed Out')
+                rospy.loginfo('Material Unload Server Timed Out')
                 
         
         # Indicate a successful action
         self._as.set_succeeded(self._result)
-        rospy.loginfo('In %s Callback -- action succeeded. Result --> %s' % (self.server_name, self._result.load_state))
+        rospy.loginfo('In %s Callback -- action succeeded. Result --> %s' % (self.server_name, self._result.unload_state))
         return self._result
 
 if __name__ == '__main__':
     # Initialize the ROS node
-    rospy.init_node('MaterialLoadServer')
-    rospy.loginfo('Started ROS MaterialLoad Server')
+    rospy.init_node('MaterialUnloadServer')
+    rospy.loginfo('Started ROS MaterialUnload Server')
     
     # Launch the action server
-    server = MaterialLoadServer()
+    server = MaterialUnloadServer()
     rospy.spin()

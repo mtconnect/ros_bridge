@@ -7,16 +7,28 @@ sys.path.append(os.path.realpath(path) + '/src')
 from data_item import Event, SimpleCondition, Sample, ThreeDSample
 from mtconnect_adapter import Adapter
 
+from httplib import HTTPConnection
+from xml.etree import ElementTree
+import threading
+import time
+
 import read_config_file
 import roslib
 roslib.load_manifest('mtconnect_msgs')
 import rospy
 import mtconnect_msgs.msg
 
+import closechuck
+import closedoor
+import opendoor
+import openchuck
+
+    
 def talker():
+    rospy.loginfo('Starting ROS Robot State Publisher Thread')
     pub1 = rospy.Publisher('RobotStateTopic', mtconnect_msgs.msg.RobotStates)
     pub2 = rospy.Publisher('RobotSpindleTopic', mtconnect_msgs.msg.RobotSpindle)
-    rospy.init_node('robot_link')
+    #rospy.init_node('robot_link')
     msg1 = mtconnect_msgs.msg.RobotStates()
     msg2 = mtconnect_msgs.msg.RobotSpindle()
     
@@ -31,6 +43,56 @@ def talker():
 
         pub1.publish(msg1)
         pub2.publish(msg2)
+    return
+
+def run_actions():
+    rospy.loginfo('Starting Action Client Thread')
+    cnc_conn = HTTPConnection('localhost', 5000)
+    rbt_conn = HTTPConnection('localhost', 5001)
+    ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
+    
+    while True:
+        # Update current XML tag states
+        response = xml_get_response(cnc_conn, "/cnc/current")
+        body = response.read()
+        root = ElementTree.fromstring(body)
+        cnc_ml = root.findall('.//m:MaterialLoad', namespaces = ns)
+        cnc_mul = root.findall('.//m:MaterialUnload', namespaces = ns)
+        
+        response = xml_get_response(rbt_conn, "/Robot/current")
+        body = response.read()
+        root = ElementTree.fromstring(body)
+        rbt_ml = root.findall('.//m:MaterialLoad', namespaces = ns)
+        rbt_mul = root.findall('.//m:MaterialUnload', namespaces = ns)
+        
+        # If material load or material unload is ACTIVE, start chuck & door sequence
+        if cnc_ml[0].text == 'ACTIVE' and rbt_ml[0].text == 'ACTIVE':
+            # launch close chuck action client
+            closechuck.close_chuck_client()
+            rospy.loginfo('CloseChuck Action Completed')
+            # launch close door action client
+            closedoor.close_door_client()
+            rospy.loginfo('CloseDoor Action Completed')
+        elif cnc_mul[0].text == 'ACTIVE' and rbt_mul[0].text == 'ACTIVE':
+            # launch open door action client
+            opendoor.open_door_client()
+            rospy.loginfo('OpenDoor Action Completed')
+            # launch open chuck action client
+            openchuck.open_chuck_client()
+            rospy.loginfo('OpenChuck Action Completed')
+        time.sleep(3)
+    return
+
+def xml_get_response(conn, req):
+    conn.request("GET", req)
+    response = conn.getresponse()
+    if response.status != 200:
+        rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
+        sys.exit(0)
+    #else:
+    #    rospy.loginfo('Request --> %s, Status --> %s' % (response.reason, response.status))
+    return response
+
 
 def robot_init():
     adapter = Adapter(('0.0.0.0', 7900))
@@ -58,13 +120,13 @@ def robot_init():
     adapter.add_data_item(close_chuck_di)
 
     adapter.begin_gather()
-
-#    material_load_di.set_value('READY')
-#    material_unload_di.set_value('READY')
     open_door_di.set_value('READY')
     close_door_di.set_value('READY')
     open_chuck_di.set_value('READY')
     close_chuck_di.set_value('READY')
+
+#    material_load_di.set_value('READY')
+#    material_unload_di.set_value('READY')
 
     adapter.complete_gather()
     return
@@ -74,6 +136,10 @@ if __name__ == '__main__':
     try:
         rospy.loginfo('Launching robot_link node, CTRL-C to terminate')
         robot_init()
-        talker()
+        rospy.init_node('robot_link')
+        t1 = threading.Thread(target = talker)
+        t1.start()
+        t2 = threading.Thread(target = run_actions)
+        t2.start()
     except rospy.ROSInterruptException:
         pass

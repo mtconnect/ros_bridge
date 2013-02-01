@@ -42,10 +42,10 @@ import roslib
 import rospy
 import actionlib
 
-class GenericActionClient():
+class GenericActionServer():
     def __init__(self):
         # Initialize ROS generic client node
-        rospy.init_node('ActionClient')
+        rospy.init_node('ActionServer')
         
         # Setup MTConnect to ROS Conversion
         self.config = read_config_file.obtain_dataMap()
@@ -58,12 +58,11 @@ class GenericActionClient():
         self.lib_manifests = []
         self.type_handle = None
         self.action_list = {}
-        self.action_goals = {}            
+        self.action_goals = {}
         self.action_conv = []
         self.namespace = None
         self.xml_goal = None
         self.di_dict = {} # XML data item dictionary to store MTConnect Adapter Events
-        self.handshake = None
         
         # Setup action client data per the config file
         self.setup_topic_data()
@@ -77,23 +76,54 @@ class GenericActionClient():
         
         # Establish XML connection, read in current XML
         self.conn = HTTPConnection('localhost', self.config['localhost'])
-        response = self.xml_get_response("/cnc/current")
-        cnc_body = response.read()
+        #response = self.xml_get_response("/cnc/current")
+        #cnc_body = response.read()
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(cnc_body)
+        #seq, elements = self.xml_components(cnc_body)
         
         # Start a streaming XML connection
-        response = self.xml_get_response("/cnc/sample?interval=1000&count=1000&from=" + seq)
+        #response = self.xml_get_response("/cnc/sample?interval=1000&count=1000&from=" + seq)
         
         # Create class lock
-        self.lock = thread.allocate_lock()
+        #self.lock = thread.allocate_lock()
 
         # Create XML polling thread
-        lp = LongPull(response)
-        lp.long_pull(self.xml_callback) # Runs until user interrupts
+        #lp = LongPull(response)
+        #lp.long_pull(self.xml_callback) # Runs until user interrupts
+        
+        # Create a dictionary of _results to return upon action success
+        self._resultDict = {}
+        
+        # Create a dictionary of action servers
+        self._as = {}
+        
+        # Create a dictionary of server names
+        self.server_name = {}
+        
+        # Iterate through actions and create action call-backs and action result class instances
+        for ns, action in self.config.items():
+            if ns != 'localhost' and ns != 'Port': # Only one ROS namespace in config by design
+                for request in action.keys():
+                    di_conv = self.split_event(request)
+                    self.server_name[di_conv] = request
+                    
+                    # Create a dictionary of result class instances
+                    request_class = getattr(self.type_handle, request + 'Result')
+                    self._resultDict[request] = request_class()
+                    
+                    # Create instance of the action class
+                    action_class = getattr(self.type_handle, request + 'Action')
+                    
+                    # Create action server for requested action
+                    self._as[request] = actionlib.SimpleActionServer(request + 'Client', action_class, self.execute_cb, False)
+                    
+                    # Start the action server
+                    self._as[request].start()
+        
     
     def add_agent(self):
+        # For each data item in config file, add Event and data item
         for xml_tag in self.action_list:
             data_item = self.split_event(xml_tag)
             self.di_dict[data_item] = Event(data_item)
@@ -106,6 +136,7 @@ class GenericActionClient():
         for data_item, event in self.di_dict.items():
             event.set_value('READY')
         self.adapter.complete_gather()
+
         return
     
     def split_event(self, xml_tag):
@@ -157,7 +188,6 @@ class GenericActionClient():
         return
     
     def xml_get_response(self, req):
-        rospy.loginfo('Attempting HTTP connection on localhost:%s\tPort:%s' % (self.config['localhost'], self.config['Port']))
         self.conn.request("GET", req)
         response = self.conn.getresponse()
         if response.status != 200:
@@ -182,127 +212,70 @@ class GenericActionClient():
             find_action = root.findall('.//m:' + action, namespaces=self.ns)
             if find_action: # Element list is not empty
                 elements.append(find_action[0])
-        
         return nextSeq, elements
-    
-    def action_client(self, cb_data):
-        # Execute ROS Action
-        rospy.init_node('ActionClient')
-        
-        # Unpack action client data
-        name, goals, handle = cb_data
-        rospy.loginfo('Launched %s Action CLient' % name)
-        
-        # Creates the SimpleActionClient, passing the type of the action (MaterialLoadAction) to the constructor.
-        # i.e. name = 'MaterialLoad', action_type = mtconnect_msgs.msg.MaterialLoadAction
-        action_type = getattr(handle, name + 'Action')
-        client = actionlib.SimpleActionClient(name + 'Client', action_type)
-        
-        # Waits until the action server has started up and started listening for goals.
-        rospy.loginfo('Waiting for %s Dedicated Action Server' % name)
-        client.wait_for_server()
-        rospy.loginfo('%s Dedicated Action Server Activated' % name)
 
-        # Creates a MaterialLoad goal to send to the action server.
-        # i.e. goal = mtconnect_msgs.msg.MaterialLoad()
-        goal_handle = getattr(handle, name + 'Goal')
-        goal = goal_handle()
+    def execute_cb(self, goal):
+        # If goal is OpenDoor, use the goal defined in the message as your key, access it as goal.__slots__[0]
+        action = goal.__slots__[0]
+        # Empty function -- assumes action was successful
+        rospy.loginfo('In %s Callback -- determining action request result.' % self.server_name[action])
         
-        try:
-            for attrib, xml_goal in zip(goal_handle.__slots__, self.xml_goal):
-                setattr(goal, attrib, xml_goal)
-        except Exception as e:
-            rospy.logerr("ROS Action %s Client failed: %s" % (name, e))
-        
-        # Sends the goal to the action server.
-        rospy.loginfo('Sending the goal')
-        name_conv = self.split_event(name)
-        client.send_goal(goal, done_cb = None, active_cb = self.action_cb(name_conv, 'ACTIVE'))
-        
-        # Waits for the server to finish performing the action.
-        rospy.loginfo('Waiting for result')
-        client.wait_for_result()
-        
-        # Obtain result
-        result = client.get_result() # result must be a string
-        
-        # Prints out the result of the executing action
-        rospy.loginfo('Returning the result --> %s' % result)
-        
-        # Set the Robot XML data item
-        tokens = re.findall(r'([A-Z][a-z]*)', name)
-        tokenlist = [val.lower() for val in tokens]
-        data_item = tokenlist[0] + '_' + tokenlist[1]
-        
-        # Obtain text string for result -- Simulation Only, Replace with ROS-MTConnect conversion
-        di_result = getattr(result, result.__slots__[0])
-        
-        # Submit converted result to host via MTConnect adapter
-        self.action_cb(data_item, di_result)
-
-        return
-
-    def xml_callback(self, chunk):
-        rospy.loginfo('*******************In PROCESS_XML callback***************')
-        self.lock.acquire()
-        try:
-            # Only grab XML elements for CNC action requests 
-            _, elements = self.xml_components(chunk)
-
-            if elements:
-                # Check for existing handshake, reverse elements if necessary
-                if self.handshake != elements[0].attrib['name']:
-                    # Reverse element order
-                    elements = elements[::-1]
-                for e in elements:
-                    # Remove namespace string from the element tag for hash tables
-                    action_text = re.findall(r'(?<=\})\w+',e.tag)[0]
-                    
-                    # Check if CNC is requesting an action, if so, run action client
-                    if e.text == 'ACTIVE':
-                        # Determine goal as specified in XML
-                        response = self.xml_get_response("/cnc/current")
-                        chunk = response.read()
-                        root = ElementTree.fromstring(chunk)
-                        
-                        goal_tag = self.config[self.namespace][action_text].keys()[0]
-                        goal_element = root.findall('.//m:' + goal_tag, namespaces=self.ns)[0]
-                        self.xml_goal = (goal_element.text, 32.2, 7.4) # Should be a tuple of (material type, length, diameter)
-                        self.action_client((action_text, self.action_goals[action_text], self.type_handle))
-                        self.handshake = e.attrib['name']
-                    # Check if CNC is submitting a handshake request
-                    elif e.text == 'READY' and e.attrib['name'] == self.handshake:
-                        # Send hand shake signal
-                        self.action_cb(e.attrib['name'], 'READY')
-                        self.handshake = None
-        except Exception as e:
-            rospy.logerr("Generic Action Client: Process XML callback failed: %s, releasing lock" % e)
-        finally:
-            self.lock.release()
-        rospy.loginfo('*******************Done with PROCESS_XML callback***************')
-        return
-    
-    def action_cb(self, data_item, state):
-        # Respond that goal is accepted
-        rospy.loginfo("Changing %s to '%s'" % (data_item, state))
+        # Submit goal value to MTConnect via agent (i.e. goal.open_door = 'ACTIVE')
+        rospy.loginfo("Changing %s to 'ACTIVE'" % self.server_name[action])
         self.adapter.begin_gather()
-        self.di_dict[data_item].set_value(state)
+        self.di_dict[action].set_value('ACTIVE')
         self.adapter.complete_gather()
-        return
-
-    def ready_cb(self, chunk):
-        _, elements = self.xml_components(chunk)
-                
-        if elements[0].text == 'READY':
-            self.action_cb(elements[0].attrib['name'], 'READY')
-        return
+        robot_hold = 0 # Used to make sure you only change robot state once after 'COMPLETE' received from CNC
         
-
+        # While loop to poll CNC XML until READY is received for OpenDoor
+        dwell = True
+        while dwell == True: # Replace text with dynamic reference to yaml file
+            # While polling monitor CNC response for ACTIVE,
+            # if so, inform Action Client that goal has been accepted -- use 'set accepted' method
+            # remain in while loop
+            
+            # Poll CNC XML for goal state
+            response = self.xml_get_response("/cnc/current")
+            cnc_body = response.read()
+            
+            # Parse the XML and determine the current sequence and XML Event elements
+            root = ElementTree.fromstring(cnc_body)
+            element = root.findall('.//m:' + self.server_name[action], namespaces=self.ns)[0]
+            
+            if element.text == 'ACTIVE':
+                # Set accepted back to action client
+                pass
+            
+            # While polling monitor CNC response for COMPLETE, submit READY handshake
+            elif element.text == 'COMPLETE' and robot_hold == 0: # Need to check robot XML as well
+                rospy.loginfo("Changing %s to 'READY'" % self.server_name[action])
+                self.adapter.begin_gather()
+                self.di_dict[action].set_value('READY')
+                self.adapter.complete_gather()
+                robot_hold = 1
+            
+            elif element.text == 'READY' and robot_hold == 1:
+                dwell = False
+            
+            
+        # When response is READY, set server result and communicate as below:
+         
+        # Extract action attribute
+        result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+        
+        # Create code object to set the attribute per the ROS to MTConnect conversion
+        #setattr(self._resultDict[self.server_name[action]], result_attribute, self.config[self.server_name[action]][tbd])
+        setattr(self._resultDict[self.server_name[action]], result_attribute, 'READY')
+        
+        # Indicate a successful action
+        self._as[self.server_name[action]].set_succeeded(self._resultDict[self.server_name[action]])
+        rospy.loginfo('In %s Callback -- action succeeded.' % self.server_name[action])
+        return
 
 if __name__ == '__main__':
     try:
-        rospy.loginfo('Starting Generic Action Client')
-        robot_action = GenericActionClient()
+        rospy.loginfo('Started Generic Action Server')
+        robot_action = GenericActionServer()
+        rospy.spin()
     except rospy.ROSInterruptException:
         rospy.loginfo('program interrupted before completion')
-		
