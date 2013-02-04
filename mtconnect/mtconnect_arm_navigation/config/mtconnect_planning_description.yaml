@@ -36,9 +36,6 @@ default_collision_operations:
   - object1: finger_2
     object2: finger_3
     operation: disable  # never in collision
-  - object1: Link_4
-    object2: robotiq_gripper
-    operation: disable  # Adjacent in collision
   - object1: Link_5
     object2: robotiq_gripper
     operation: disable  # Adjacent in collision
