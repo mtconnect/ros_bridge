@@ -18,7 +18,8 @@
 	<include file="$(find mtconnect_arm_navigation)/launch/mtconnect_arm_navigation.launch"/>
 
 	<!-- move arm action client node -->
-	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_move_parameters.yaml"/>
+	<!--rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_move_parameters.yaml"/-->
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_robotiq_parameters.yaml"/>
 	<remap from="/grasp_action_service" to="/grasp_execution_action"/>
 	<remap from="/move_arm_action" to="/move_manipulator"/>
 	<node pkg="mtconnect_cnc_robot_example" type="move_pick_place_server_node" name="move_pick_place_server" output="screen">
