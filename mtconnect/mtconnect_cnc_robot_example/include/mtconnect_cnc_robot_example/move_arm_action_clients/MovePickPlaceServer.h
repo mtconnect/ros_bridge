@@ -43,6 +43,7 @@ typedef MoveArmPlaceServer::GoalHandle PlaceGoalHandle;
 static const std::string DEFAULT_PICKUP_ACTION = "pickup_action_service";
 static const std::string DEFAULT_PLACE_ACTION = "place_action_service";
 static const std::string DEFAULT_GRASP_ACTION = "grasp_action_service";
+static const double DURATION_WAIT_GRASP_RESULT = 20.0f;
 
 class MovePickPlaceServer: public MoveArmActionClient
 {

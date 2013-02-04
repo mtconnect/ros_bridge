@@ -52,14 +52,21 @@ static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
 static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
 static const std::string DEFAULT_PLANNING_SCENE_DIFF_SERVICE = "/environment_server/set_planning_scene_diff";
 static const std::string DEFAULT_PLANNING_GROUPS_PARAMETER = "/robot_description_planning/groups";
-static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 1;
+static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
 static const double DEFAULT_PATH_PLANNING_TIME = 5.0f;
-static const std::string PARAM_GROUP_KEY = "name";
-static const std::string PARAM_BASE_KEY = "base_link";
-static const std::string PARAM_TIP_KEY = "tip_link";
+static const double DEFAULT_ORIENTATION_TOLERANCE = 0.02f; //radians
+static const double DEFAULT_POSITION_TOLERANCE = 0.008f; // meters
+static const double DURATION_LOOP_PAUSE = 4.0f; // seconds
+static const double DURATION_WAIT_RESULT= 80.0f;
+static const double DURATION_TIMER_CYCLE = 2.0f;
+static const double DURATION_WAIT_SERVER = 5.0f;
+static const int MAX_WAIT_ATTEMPTS = 20;
 
 // ros parameters
 static const std::string PARAM_ARM_GROUP = "arm_group";
+static const std::string PARAM_GROUP_KEY = "name";
+static const std::string PARAM_BASE_KEY = "base_link";
+static const std::string PARAM_TIP_KEY = "tip_link";
 
 class MoveArmActionClient
 {

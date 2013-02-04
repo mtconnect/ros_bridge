@@ -56,7 +56,7 @@ void MoveArmActionClient::run()
 	{
 		if(!moveArm(cartesian_poses))
 		{
-			ros::Duration(4.0f).sleep();
+			ros::Duration(DURATION_LOOP_PAUSE).sleep();
 		}
 	}
 }
@@ -85,7 +85,7 @@ bool MoveArmActionClient::moveArm(const geometry_msgs::PoseArray &cartesian_pose
 
 		// sending goal
 		move_arm_client_ptr_->sendGoal(move_arm_goal_);
-		success = move_arm_client_ptr_->waitForResult(ros::Duration(200.0f));
+		success = move_arm_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT));
 		if(success)
 		{
 			success = actionlib::SimpleClientGoalState::SUCCEEDED == move_arm_client_ptr_->getState().state_;
@@ -130,7 +130,6 @@ void MoveArmActionClient::timerCallback(const ros::TimerEvent &evnt)
 		path_pub_.publish(path_msg_);
 	}
 }
-
 
 bool MoveArmActionClient::getArmStartState(std::string group_name, arm_navigation_msgs::RobotState &robot_state)
 {
@@ -179,10 +178,10 @@ bool MoveArmActionClient::setup()
 	// setting up action client
 	move_arm_client_ptr_ = MoveArmClientPtr(new MoveArmClient(DEFAULT_MOVE_ARM_ACTION,true));
 	unsigned int attempts = 0;
-	while(attempts++ < 20)
+	while(attempts++ < MAX_WAIT_ATTEMPTS)
 	{
 		ROS_WARN_STREAM(ros::this_node::getName()<<": waiting for "<<DEFAULT_MOVE_ARM_ACTION<<" server");
-		success = move_arm_client_ptr_->waitForServer(ros::Duration(5.0f));
+		success = move_arm_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER));
 		if(success)
 		{
 			ROS_INFO_STREAM(ros::this_node::getName()<<": Found "<<DEFAULT_MOVE_ARM_ACTION<<" server");
@@ -197,7 +196,7 @@ bool MoveArmActionClient::setup()
 	path_pub_ = nh.advertise<nav_msgs::Path>(DEFAULT_PATH_MSG_TOPIC,1);
 
 	// setting up ros timers
-	publish_timer_ = nh.createTimer(ros::Duration(2.0f),&MoveArmActionClient::timerCallback,this);
+	publish_timer_ = nh.createTimer(ros::Duration(DURATION_TIMER_CYCLE),&MoveArmActionClient::timerCallback,this);
 
 	// obtaining arm info
 	collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
@@ -219,12 +218,12 @@ bool MoveArmActionClient::setup()
 
 	move_pose_constraint_.header.frame_id = base_link_frame_id_;
 	move_pose_constraint_.link_name = tip_link_frame_id_;
-	move_pose_constraint_.absolute_position_tolerance.x = 0.02f;
-	move_pose_constraint_.absolute_position_tolerance.y = 0.02f;
-	move_pose_constraint_.absolute_position_tolerance.z = 0.02f;
-	move_pose_constraint_.absolute_roll_tolerance = 0.04f;
-	move_pose_constraint_.absolute_pitch_tolerance = 0.04f;
-	move_pose_constraint_.absolute_yaw_tolerance = 0.04f;
+	move_pose_constraint_.absolute_position_tolerance.x = DEFAULT_POSITION_TOLERANCE;
+	move_pose_constraint_.absolute_position_tolerance.y = DEFAULT_POSITION_TOLERANCE;
+	move_pose_constraint_.absolute_position_tolerance.z = DEFAULT_POSITION_TOLERANCE;
+	move_pose_constraint_.absolute_roll_tolerance = DEFAULT_ORIENTATION_TOLERANCE;
+	move_pose_constraint_.absolute_pitch_tolerance = DEFAULT_ORIENTATION_TOLERANCE;
+	move_pose_constraint_.absolute_yaw_tolerance = DEFAULT_ORIENTATION_TOLERANCE;
 
 	return success;
 }
@@ -267,8 +266,6 @@ bool MoveArmActionClient::getArmInfo(const planning_environment::CollisionModels
 	// obtaining arm joint info
 	const planning_models::KinematicModel::JointModelGroup *joint_model_group =
 					models->getKinematicModel()->getModelGroup(arm_group);
-	const std::vector<const planning_models::KinematicModel::JointModel *> &joint_models_ = joint_model_group->getJointModels();
-
 
 	// printing arm details
 	const std::vector<std::string> &joint_names = joint_model_group->getJointModelNames();

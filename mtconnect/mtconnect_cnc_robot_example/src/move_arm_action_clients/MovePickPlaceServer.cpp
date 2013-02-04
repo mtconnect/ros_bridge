@@ -84,7 +84,7 @@ bool MovePickPlaceServer::fetchParameters(std::string name_space)
 
 bool MovePickPlaceServer::setup()
 {
-	std::size_t wait_counter = 0;
+	std::size_t wait_attempts = 0;
 	ros::NodeHandle nh;
 
 	if(!MoveArmActionClient::setup())
@@ -106,10 +106,10 @@ bool MovePickPlaceServer::setup()
 
 	// setting up grasp action client
 	grasp_action_client_ptr_ = GraspActionClientPtr(new GraspActionClient(DEFAULT_GRASP_ACTION,true));
-	while(!grasp_action_client_ptr_->waitForServer(ros::Duration(4.0f)))
+	while(!grasp_action_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
 	{
 		ROS_WARN_STREAM("Waiting for grasp action server "<<DEFAULT_GRASP_ACTION);
-		if(wait_counter++ > 20)
+		if(wait_attempts ++ > MAX_WAIT_ATTEMPTS)
 		{
 			ROS_ERROR_STREAM("Grasp action service was not found");
 			return false;
@@ -145,7 +145,7 @@ bool MovePickPlaceServer::moveArmThroughPickSequence(object_manipulation_msgs::P
 	// requesting gripper pre-grasp move
 	grasp_goal.goal = GraspGoal::PRE_GRASP;
 	grasp_action_client_ptr_->sendGoal(grasp_goal);
-	if(grasp_action_client_ptr_->waitForResult(ros::Duration(20.0f)))
+	if(grasp_action_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_GRASP_RESULT)))
 	{
 		ROS_INFO_STREAM(ros::this_node::getName()<<": Pre-graps Gripper Move Achieved");
 	}
@@ -171,7 +171,7 @@ bool MovePickPlaceServer::moveArmThroughPickSequence(object_manipulation_msgs::P
 	// requesting gripper grasp move
 	grasp_goal.goal = GraspGoal::GRASP;
 	grasp_action_client_ptr_->sendGoal(grasp_goal);
-	if(grasp_action_client_ptr_->waitForResult(ros::Duration(20.0f)))
+	if(grasp_action_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_GRASP_RESULT)))
 	{
 		ROS_INFO_STREAM(ros::this_node::getName()<<": Grasp Gripper Move Achieved");
 	}
@@ -223,7 +223,7 @@ bool MovePickPlaceServer::moveArmThroughPlaceSequence(object_manipulation_msgs::
 	// requesting gripper release move
 	grasp_goal.goal = GraspGoal::RELEASE;
 	grasp_action_client_ptr_->sendGoal(grasp_goal);
-	if(grasp_action_client_ptr_->waitForResult(ros::Duration(20.0f)))
+	if(grasp_action_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_GRASP_RESULT)))
 	{
 		ROS_INFO_STREAM(ros::this_node::getName()<<": Release Gripper Move Achieved");
 	}
