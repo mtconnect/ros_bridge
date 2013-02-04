@@ -3,7 +3,7 @@ pickup_goal:
     arm_group: manipulator
     frame_id: world_frame
     tool_name: tool0
-    lift_distance: 0.2
+    lift_distance: 0.14
     approach_distance: 0.1
     lift_direction: # relative to tool coordinate frame
       x: 1.0
@@ -36,7 +36,7 @@ place_goal:
     arm_group: manipulator
     frame_id: world_frame
     tool_name: tool0
-    retreat_distance: 0.32
+    retreat_distance: 0.2
     approach_distance: 0.1
     approach_direction: # relative to tool coordinate frame
       x: 1.0
