@@ -21,7 +21,7 @@ int main(int argc,char** argv)
 {
 	using namespace mtconnect_cnc_robot_example;
 
-	ros::init(argc,argv,"move_pick_place_server_node");
+	ros::init(argc,argv,"move_pick_place_server");
 	MoveArmActionClientPtr arm_client_ptr = MoveArmActionClientPtr(new MovePickPlaceServer());
 	arm_client_ptr->run();
 
