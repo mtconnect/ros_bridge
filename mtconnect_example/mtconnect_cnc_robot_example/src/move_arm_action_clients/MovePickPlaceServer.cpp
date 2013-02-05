@@ -18,10 +18,15 @@
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MovePickPlaceServer.h>
 #include <boost/bind.hpp>
 
+// aliases
+typedef actionlib::SimpleClientGoalState GoalState;
+
 using namespace mtconnect_cnc_robot_example;
 
 MovePickPlaceServer::MovePickPlaceServer() :
-	MoveArmActionClient()
+	MoveArmActionClient(),
+	pickup_gh_(),
+	place_gh_()
 {
 	// TODO Auto-generated constructor stub
 
@@ -42,49 +47,54 @@ void MovePickPlaceServer::run()
 	ros::AsyncSpinner spinner(2);
 	spinner.start();
 
+	// starting servers;
+	arm_pickup_server_ptr_->start();
+	arm_place_server_ptr_->start();
+
 	while(ros::ok())
 	{
-		if(moveArmThroughPickSequence(pickup_goal_))
-		{
-			ROS_INFO_STREAM("Pickup move completed");
-		}
-		else
-		{
-			ROS_ERROR_STREAM("Pickup move failed, exiting");
-			break;
-		}
-
-		if(moveArmThroughPlaceSequence(place_goal_))
-		{
-			ROS_INFO_STREAM("Place move completed");
-		}
-		else
-		{
-			ROS_ERROR_STREAM("Place move failed, exiting");
-			break;
-		}
+		ros::Duration(DURATION_LOOP_PAUSE).sleep();
 	}
 }
+
+//void MovePickPlaceServer::start()
+//{
+//	if(!setup())
+//	{
+//		return;
+//	}
+//
+//	ros::AsyncSpinner spinner(2);
+//	spinner.start();
+//
+//	// starting servers;
+//	arm_pickup_server_ptr_->start();
+//	arm_place_server_ptr_->start();
+//
+//	while(ros::ok())
+//	{
+//		ros::Duration(DURATION_LOOP_PAUSE).sleep();
+//	}
+//}
 
 bool MovePickPlaceServer::fetchParameters(std::string name_space)
 {
 	ros::NodeHandle nh("~");
-	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_) && pickup_goal_.fetchParameters()
-			&& place_goal_.fetchParameters();
+	bool success =  nh.getParam(PARAM_ARM_GROUP,arm_group_);
 	if(success)
 	{
-		ROS_INFO_STREAM("Successfully read arm and pick place info parameters");
+		ROS_INFO_STREAM("Successfully read setup parameters");
 	}
 	else
 	{
-		ROS_ERROR_STREAM("Failed to read arm and pick place info parameters");
+		ROS_ERROR_STREAM("Failed to read setup parameters");
 	}
 	return success;
 }
 
 bool MovePickPlaceServer::setup()
 {
-	std::size_t wait_attempts = 0;
+	int wait_attempts = 0;
 	ros::NodeHandle nh;
 
 	if(!MoveArmActionClient::setup())
@@ -109,7 +119,7 @@ bool MovePickPlaceServer::setup()
 	while(!grasp_action_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
 	{
 		ROS_WARN_STREAM("Waiting for grasp action server "<<DEFAULT_GRASP_ACTION);
-		if(wait_attempts ++ > MAX_WAIT_ATTEMPTS)
+		if(wait_attempts++ > MAX_WAIT_ATTEMPTS)
 		{
 			ROS_ERROR_STREAM("Grasp action service was not found");
 			return false;
@@ -119,7 +129,7 @@ bool MovePickPlaceServer::setup()
 	return true;
 }
 
-bool MovePickPlaceServer::moveArmThroughPickSequence(object_manipulation_msgs::PickupGoal &pickup_goal)
+bool MovePickPlaceServer::moveArmThroughPickSequence(const object_manipulation_msgs::PickupGoal &pickup_goal)
 {
 	// declaring cartesian path and grasp moves
 	geometry_msgs::PoseArray pick_pose_sequence;
@@ -197,7 +207,7 @@ bool MovePickPlaceServer::moveArmThroughPickSequence(object_manipulation_msgs::P
 	return true;
 }
 
-bool MovePickPlaceServer::moveArmThroughPlaceSequence(object_manipulation_msgs::PlaceGoal &place_goal)
+bool MovePickPlaceServer::moveArmThroughPlaceSequence(const object_manipulation_msgs::PlaceGoal &place_goal)
 {
 	// declaring cartesian path and grasp moves
 	geometry_msgs::PoseArray place_pose_sequence;
@@ -249,24 +259,140 @@ bool MovePickPlaceServer::moveArmThroughPlaceSequence(object_manipulation_msgs::
 	return true;
 }
 
-void MovePickPlaceServer::pickupGoalCallback(PickupGoalHandle goal)
+void MovePickPlaceServer::pickupGoalCallback(PickupGoalHandle gh)
 {
+	const object_manipulation_msgs::PickupGoal &goal = *(gh.getGoal());
+	object_manipulation_msgs::PickupResult res;
 
+	// comparing goal handles
+	if(pickup_gh_ == gh)
+	{
+		if(gh.getGoalStatus().status == GoalState::ACTIVE)
+		{
+			// goal already being handled, ignoring
+			ROS_WARN_STREAM("Pickup goal is already being processed, ignoring request");
+			return;
+		}
+	}
+	else
+	{
+		// cancel current goal
+		pickupCancelCallback(pickup_gh_);
+	}
+
+	// canceling place goal first
+	placeCancelCallback(place_gh_);
+
+	// storing goal
+	pickup_gh_ = gh;
+	gh.setAccepted("accepted");
+
+	// processing goal
+	if(moveArmThroughPickSequence(goal))
+	{
+		res.manipulation_result.value = res.manipulation_result.SUCCESS;
+		gh.setSucceeded(res,"Succeeded");
+	}
+	else
+	{
+		res.manipulation_result.value = res.manipulation_result.FAILED;
+		gh.setAborted(res,"Failed");
+	}
 }
 
-void MovePickPlaceServer::pickupCancelCallback(PickupGoalHandle goal)
+void MovePickPlaceServer::pickupCancelCallback(PickupGoalHandle gh)
 {
+	object_manipulation_msgs::PickupResult res;
 
+	// comparing goal handles
+	if(pickup_gh_ == gh && gh.getGoalStatus().status == GoalState::ACTIVE)
+	{
+		// goal already being handled, ignoring
+
+		// checking state of current move arm goal
+		if(move_arm_client_ptr_->getState().state_ == GoalState::ACTIVE)
+		{
+			// cancel goal and send new one
+			move_arm_client_ptr_->cancelGoal();
+		}
+
+		// checking state of grasp goal
+		if(grasp_action_client_ptr_->getState().state_ == GoalState::ACTIVE)
+		{
+			grasp_action_client_ptr_->cancelGoal();
+		}
+
+		res.manipulation_result.value = res.manipulation_result.CANCELLED;
+		gh.setCanceled(res,"Canceled");
+
+	}
 }
 
-void MovePickPlaceServer::placeGoalCallback(PlaceGoalHandle goal)
+void MovePickPlaceServer::placeGoalCallback(PlaceGoalHandle gh)
 {
+	const object_manipulation_msgs::PlaceGoal &goal = *(gh.getGoal());
+	object_manipulation_msgs::PlaceResult res;
 
+	// comparing handles
+	if(place_gh_ == gh)
+	{
+		if(gh.getGoalStatus().status == GoalState::ACTIVE)
+		{
+			// goal already being handled, ignoring
+			ROS_WARN_STREAM("Pickup goal is already being processed, ignoring request");
+			return;
+		}
+	}
+	else
+	{
+		placeCancelCallback(place_gh_);
+	}
+
+	// canceling pickup goal first
+	pickupCancelCallback(pickup_gh_);
+
+	// storing goal
+	place_gh_ = gh;
+	gh.setAccepted("accepted");
+
+	// processing goal
+	if(moveArmThroughPlaceSequence(goal))
+	{
+		res.manipulation_result.value = res.manipulation_result.SUCCESS;
+		gh.setSucceeded(res,"Succeeded");
+	}
+	else
+	{
+		res.manipulation_result.value = res.manipulation_result.FAILED;
+		gh.setAborted(res,"Failed");
+	}
 }
 
-void MovePickPlaceServer::placeCancelCallback(PlaceGoalHandle goal)
+void MovePickPlaceServer::placeCancelCallback(PlaceGoalHandle gh)
 {
-	//goal.setAccepted("succeeded");
+	object_manipulation_msgs::PlaceResult res;
+
+	// comparing goal handles
+	if(place_gh_ == gh && gh.getGoalStatus().status == GoalState::ACTIVE)
+	{
+		// goal already being handled, ignoring
+
+		// checking state of current move arm goal
+		if(move_arm_client_ptr_->getState().state_ == GoalState::ACTIVE)
+		{
+			// cancel goal and send new one
+			move_arm_client_ptr_->cancelGoal();
+		}
+
+		// checking state of grasp goal
+		if(grasp_action_client_ptr_->getState().state_ == GoalState::ACTIVE)
+		{
+			grasp_action_client_ptr_->cancelGoal();
+		}
+
+		res.manipulation_result.value = res.manipulation_result.CANCELLED;
+		gh.setCanceled(res,"Canceled");
+	}
 }
 
 bool MovePickPlaceServer::createPickupMoveSequence(const object_manipulation_msgs::PickupGoal &goal,

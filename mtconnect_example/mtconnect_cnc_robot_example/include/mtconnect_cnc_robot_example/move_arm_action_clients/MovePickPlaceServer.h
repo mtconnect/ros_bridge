@@ -52,10 +52,12 @@ public:
 	virtual ~MovePickPlaceServer();
 
 	virtual void run();
+	//virtual void start(); // waits for client requests
+
 	virtual bool fetchParameters(std::string nameSpace = "");
 
-	virtual bool moveArmThroughPickSequence(object_manipulation_msgs::PickupGoal &pickup_goal);
-	virtual bool moveArmThroughPlaceSequence(object_manipulation_msgs::PlaceGoal &place_goal);
+	virtual bool moveArmThroughPickSequence(const object_manipulation_msgs::PickupGoal &pickup_goal);
+	virtual bool moveArmThroughPlaceSequence(const object_manipulation_msgs::PlaceGoal &place_goal);
 
 protected:
 
@@ -79,12 +81,15 @@ protected:
 	MoveArmPickupServerPtr arm_pickup_server_ptr_;
 	MoveArmPlaceServerPtr arm_place_server_ptr_;
 
+	// server goal handles
+	MoveArmPickupServer::GoalHandle pickup_gh_;
+	MoveArmPlaceServer::GoalHandle place_gh_;
+
 	// action clients
 	GraspActionClientPtr grasp_action_client_ptr_;
 
-	// pick place move info
-	PickupGoalInfo pickup_goal_;
-	PlaceGoalInfo place_goal_;
+//	PickupGoalInfo pickup_goal_;
+//	PlaceGoalInfo place_goal_;
 
 };
 
