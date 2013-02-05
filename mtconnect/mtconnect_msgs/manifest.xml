@@ -8,9 +8,11 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/mtconnect_msgs</url>
-  <depend package="industrial_msgs"/>
+  <depend package="rospy"/>  
+  <depend package="std_msgs"/>
   <depend package="actionlib"/>
   <depend package="actionlib_msgs"/>
+  <depend package="industrial_msgs"/>
 
 </package>
 
