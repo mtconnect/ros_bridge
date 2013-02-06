@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import sys
 import os
 
@@ -7,10 +9,13 @@ sys.path.append(os.path.realpath(path) + '/src')
 from data_item import Event, SimpleCondition, Sample, ThreeDSample
 from mtconnect_adapter import Adapter
 
-from httplib import HTTPConnection
+#from httplib import HTTPConnection
 from xml.etree import ElementTree
 import threading
 import time
+import urllib
+import httplib
+import socket
 
 import read_config_file
 import roslib
@@ -23,6 +28,36 @@ import closedoor
 import opendoor
 import openchuck
 
+"""
+assert ntries >= 1
+for _ in range(ntries):
+    try:
+        page = urlopen(request, timeout=timeout)
+        break # success
+    except URLError as err:
+        if not isinstance(err.reason, socket.timeout):
+           raise # propagate non-timeout errors
+else: # all ntries failed 
+    raise err # re-raise the last timeout error
+# use page here
+"""
+
+def check_connectivity(request, timeout):
+    try:
+        page = urlopen(request, timeout=timeout)
+        return True
+    except urllib.request.URLError as err:
+        if not isinstance(err.reason, socket.timeout):
+           raise # propagate non-timeout errors
+        return False
+
+
+#def check_connectivity(reference):
+#    try:
+#        urllib.request.urlopen(reference, timeout=1)
+#        return True
+#    except urllib.request.URLError:
+#        return False
     
 def talker():
     rospy.loginfo('Starting ROS Robot State Publisher Thread')
@@ -47,8 +82,8 @@ def talker():
 
 def run_actions():
     rospy.loginfo('Starting Action Client Thread')
-    cnc_conn = HTTPConnection('localhost', 5000)
-    rbt_conn = HTTPConnection('localhost', 5001)
+    cnc_conn = httplib.HTTPConnection('localhost', 5000)
+    rbt_conn = httplib.HTTPConnection('localhost', 5001)
     ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
     
     while True:
@@ -89,8 +124,6 @@ def xml_get_response(conn, req):
     if response.status != 200:
         rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
         sys.exit(0)
-    #else:
-    #    rospy.loginfo('Request --> %s, Status --> %s' % (response.reason, response.status))
     return response
 
 
@@ -137,9 +170,19 @@ if __name__ == '__main__':
         rospy.loginfo('Launching robot_link node, CTRL-C to terminate')
         robot_init()
         rospy.init_node('robot_link')
+        
+        #while True:
+        #    try:
+        #        if check_connectivity('localhost:5000', 2) and check_connectivity('localhost:5001', 2):
+        #            break
+        #    except socket.error as e:
+        #        rospy.loginfo('HTTP connection error %s' % e)
+        #        time.sleep(5)
+        
         t1 = threading.Thread(target = talker)
         t1.start()
         t2 = threading.Thread(target = run_actions)
         t2.start()
     except rospy.ROSInterruptException:
-        pass
+        t1.join()
+        t2.join()

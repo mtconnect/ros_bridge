@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 """
    Copyright 2013 Southwest Research Institute
@@ -23,6 +23,7 @@ import operator
 import thread
 import re
 import time
+import socket
 from importlib import import_module
 from httplib import HTTPConnection
 from xml.etree import ElementTree
@@ -49,10 +50,16 @@ class GenericActionClient():
         
         # Setup MTConnect to ROS Conversion
         self.config = read_config_file.obtain_dataMap()
+        self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace', 'adapter_port']
+        self.url = self.config[self.msg_parameters[0]]
+        self.url_port = self.config[self.msg_parameters[1]]
+        self.mtool = self.config[self.msg_parameters[2]]
+        self.xml_ns = self.config[self.msg_parameters[3]]
+        self.port = self.config[self.msg_parameters[4]]
         
         # Setup MTConnect Adapter for robot status data items
-        self.adapter = Adapter(('0.0.0.0', self.config['Port']))
-        self.ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
+        self.adapter = Adapter((self.url, self.port))
+        self.ns = dict(m = self.xml_ns)
         
         # Create empty lists for actions, message type handles, etc.
         self.lib_manifests = []
@@ -76,15 +83,21 @@ class GenericActionClient():
         self.adapter.start()
         
         # Establish XML connection, read in current XML
-        self.conn = HTTPConnection('localhost', self.config['localhost'])
-        response = self.xml_get_response("/cnc/current")
-        cnc_body = response.read()
+        while True:
+            try:
+                self.conn = HTTPConnection(self.url, self.url_port)
+                response = self.xml_get_response(self.mtool + "/current")
+                body = response.read()
+                break
+            except socket.error as e:
+                rospy.loginfo('HTTP connection error %s' % e)
+                time.sleep(10)
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(cnc_body)
-        
+        seq, elements = self.xml_components(body)
+
         # Start a streaming XML connection
-        response = self.xml_get_response("/cnc/sample?interval=1000&count=1000&from=" + seq)
+        response = self.xml_get_response(self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
         
         # Create class lock
         self.lock = thread.allocate_lock()
@@ -94,7 +107,10 @@ class GenericActionClient():
         lp.long_pull(self.xml_callback) # Runs until user interrupts
     
     def add_agent(self):
-        for xml_tag in self.action_list:
+        """Function creates Adapter Events and then adds data items
+        to the Adapter.
+        """
+        for xml_tag in self.action_list.keys():
             data_item = self.split_event(xml_tag)
             self.di_dict[data_item] = Event(data_item)
             self.adapter.add_data_item(self.di_dict[data_item])
@@ -109,6 +125,9 @@ class GenericActionClient():
         return
     
     def split_event(self, xml_tag):
+        """Simple function to convert XML tag from CamelCase to
+        the data_item format:  camel_case.
+        """
         tokens = re.findall(r'([A-Z][a-z]*)', xml_tag)
         tokenlist = [val.lower() for val in tokens]
         data_item = tokenlist[0] + '_' + tokenlist[1]
@@ -131,7 +150,7 @@ class GenericActionClient():
         """
         
         for namespace, action in self.config.items():
-            if namespace != 'localhost' and namespace != 'Port': # Only one ROS namespace in config by design
+            if namespace not in self.msg_parameters: # Only one ROS namespace in config by design
                 # Load package manifest if unique
                 if namespace not in self.lib_manifests:
                     roslib.load_manifest(namespace)
@@ -145,19 +164,19 @@ class GenericActionClient():
                 self.namespace = namespace
                 
                 for action_req in action.keys():
-                    # Capture action name for action client callback reference
-                    self.action_list[action_req] = action_req
+                    # Capture action name and action goal xml tag for action client callback reference
+                    goal_tag = self.config[namespace][action_req].keys()[0]
+                    self.action_list[action_req] = {goal_tag : self.config[namespace][action_req][goal_tag].keys()}
                     
                     # Capture ROS Action parameters
-                    goal_key = self.config[namespace][action_req].keys()[0]
-                    self.action_goals[action_req] = self.config[namespace][action_req][goal_key].keys()
+                    self.action_goals[action_req] = None
                     
                     # Capture ROS to MTConnect state conversion dictionary
                     #self.action_conv[action_req] = self.config[namespace][action_req]['conversion']
         return
     
     def xml_get_response(self, req):
-        rospy.loginfo('Attempting HTTP connection on localhost:%s\tPort:%s' % (self.config['localhost'], self.config['Port']))
+        rospy.loginfo('Attempting HTTP connection on url: %s:%s\tPort:%s' % (self.url, self.url_port, self.port))
         self.conn.request("GET", req)
         response = self.conn.getresponse()
         if response.status != 200:
@@ -168,21 +187,43 @@ class GenericActionClient():
         return response
     
     def xml_components(self, xml):
-        """ Find all elements in the updated xml.
-        root.find requires namespaces to be a dictionary.
-        Return sequence and elements to process ROS msgs.
+        """ Find all elements in the updated XML.  root.find requires namespaces
+        to be a dictionary.  Function returns two variables:
+        1.  next XML sequence for streaming XML via longpull.py
+        2.  only the elements that match the action items in the configuration file
         """
         root = ElementTree.fromstring(xml)
         header = root.find('.//m:Header', namespaces=self.ns)
         nextSeq = header.attrib['nextSequence']
        
         elements = []
+        find_goal = None
 
-        for action in self.action_list:
-            find_action = root.findall('.//m:' + action, namespaces=self.ns)
+        for action, goals in self.action_list.items():
+            find_action = root.findall('.//m:' + action, namespaces = self.ns)
             if find_action: # Element list is not empty
                 elements.append(find_action[0])
-        
+
+            goal_tag = goals.keys()[0]
+            rospy.loginfo('GOAL-TAG --> %s' % goal_tag)
+            find_goal = root.findall('.//m:' + goal_tag, namespaces = self.ns)
+            rospy.loginfo('GOAL-ELEMENT --> %s' % find_goal)
+            
+            rospy.loginfo('ACTION --> %s' % action)
+            
+            if find_goal:
+                rospy.loginfo('GOAL-ELEMENT SET--> %s' % find_goal[0].text)
+                goal_conv = []
+                tokens = find_goal[0].text.split(", ")
+                for item in tokens:
+                    try:
+                        goal_conv.append(float(item))
+                    except ValueError:
+                        goal_conv.append(item)
+                self.action_goals[action] = goal_conv
+            else:
+                rospy.loginfo('self.action_goals --> %s' % self.action_goals)
+
         return nextSeq, elements
     
     def action_client(self, cb_data):
@@ -208,8 +249,15 @@ class GenericActionClient():
         goal_handle = getattr(handle, name + 'Goal')
         goal = goal_handle()
         
+        # Check goal source for required attributes
+        for attrib, attrib_type, action_goal in zip(goal_handle.__slots__, goal_handle._slot_types, self.action_goals[name]):
+            rospy.loginfo('SLOT --> %s\tTYPE --> %s\tGOAL --> %s' % (attrib, attrib_type, action_goal))
+            if attrib_type != type(action_goal):
+                rospy.logerr('INCOMPATIBLE GOAL TYPES ROS MSG: %s --> XML: %s' % (attrib_type, type(action_goal)))
+        
+        # Set the goal attributes from XML data
         try:
-            for attrib, xml_goal in zip(goal_handle.__slots__, self.xml_goal):
+            for attrib, xml_goal in zip(goal_handle.__slots__, self.action_goals[name]):
                 setattr(goal, attrib, xml_goal)
         except Exception as e:
             rospy.logerr("ROS Action %s Client failed: %s" % (name, e))
@@ -260,14 +308,6 @@ class GenericActionClient():
                     
                     # Check if CNC is requesting an action, if so, run action client
                     if e.text == 'ACTIVE':
-                        # Determine goal as specified in XML
-                        response = self.xml_get_response("/cnc/current")
-                        chunk = response.read()
-                        root = ElementTree.fromstring(chunk)
-                        
-                        goal_tag = self.config[self.namespace][action_text].keys()[0]
-                        goal_element = root.findall('.//m:' + goal_tag, namespaces=self.ns)[0]
-                        self.xml_goal = (goal_element.text, 32.2, 7.4) # Should be a tuple of (material type, length, diameter)
                         self.action_client((action_text, self.action_goals[action_text], self.type_handle))
                         self.handshake = e.attrib['name']
                     # Check if CNC is submitting a handshake request
@@ -289,15 +329,6 @@ class GenericActionClient():
         self.di_dict[data_item].set_value(state)
         self.adapter.complete_gather()
         return
-
-    def ready_cb(self, chunk):
-        _, elements = self.xml_components(chunk)
-                
-        if elements[0].text == 'READY':
-            self.action_cb(elements[0].attrib['name'], 'READY')
-        return
-        
-
 
 if __name__ == '__main__':
     try:

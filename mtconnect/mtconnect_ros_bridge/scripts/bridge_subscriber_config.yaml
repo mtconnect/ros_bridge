@@ -51,7 +51,8 @@
 #In the .yaml file, do not use tabs, only spaces for indenting.
 # -------------------------------------------------------------------------
 
-Port: 7878
+url: 'localhost'
+adapter_port: 7878
 
 /RobotStateTopic:
     mtconnect_msgs/RobotStates:

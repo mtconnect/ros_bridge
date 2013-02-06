@@ -20,9 +20,11 @@
 import sys
 import os
 import operator
-import thread
+import thread # for thread locking
 import re
 import time
+from Queue import Queue
+from threading import Thread
 from importlib import import_module
 from httplib import HTTPConnection
 from xml.etree import ElementTree
@@ -41,8 +43,16 @@ import rospy
 
 class BridgePublisher():
     def __init__(self):
+        # Initialize the ROS publisher node
+        rospy.init_node('bridge_publisher')
+        
         # Setup MTConnect to ROS Conversion
         self.config = read_config_file.obtain_dataMap()
+        self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace']
+        self.url = self.config[self.msg_parameters[0]]
+        self.url_port = self.config[self.msg_parameters[1]]
+        self.mtool = self.config[self.msg_parameters[2]]
+        self.xml_ns = self.config[self.msg_parameters[3]]
         
         # Create the data lists for the topic names, types, manifests, data items, ROS publishers, and ROS messages
         self.topic_name_list = []
@@ -62,12 +72,12 @@ class BridgePublisher():
         self.di_changed = None
         
         # Establish XML connection, read in current XML
-        conn = HTTPConnection('localhost', self.config['localhost'])
-        response = self.xml_http_connection(conn, "/cnc/current")
-        cnc_body = response.read()
+        conn = HTTPConnection(self.url, self.url_port)
+        response = self.xml_http_connection(conn, self.mtool + "/current")
+        body = response.read()
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(cnc_body)
+        seq, elements = self.xml_components(body)
         
         # Use XML to establish current data item state dictionary
         self.di_current = {e.attrib['name']:e.text for e in elements if 'name' in e.attrib.keys()}
@@ -79,13 +89,17 @@ class BridgePublisher():
                 sys.exit()
         
         # Start a streaming XML connection
-        response = self.xml_http_connection(conn, "/cnc/sample?interval=1000&count=1000&from=" + seq)
+        response = self.xml_http_connection(conn, self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
         
         # Create class lock
         self.lock = thread.allocate_lock()
 
         # Create publishing thread
-        rospy.Timer(rospy.Duration(0.1), self.ros_publisher)
+        #rospy.Timer(rospy.Duration(0.1), self.ros_publisher)
+        self.XML_queue = Queue()
+        ROSpub = Thread(target = self.ros_publisher, args=())
+        ROSpub.setDaemon(True)
+        ROSpub.start()
 
         # Streams data from the agent...
         lp = LongPull(response)
@@ -100,7 +114,7 @@ class BridgePublisher():
         via the getattr(import_module) function.  Data is stored in the
         following class attributes:
         
-            self.data_items   --> used for ROS data structure tracking
+            self.data_items   --> used for ROS data structure tracking, stores list of data items for each topic
             self.pub          --> used to setup ROS topic publishers
             self.msg          --> data structure for msg class instances of the topic type
             self.topic_name_list  --> used for configuration file key reference
@@ -108,7 +122,7 @@ class BridgePublisher():
         """
         
         for topic_name, type_name in self.config.items():
-            if topic_name != 'localhost':
+            if topic_name not in self.msg_parameters:
                 # TOPIC --> topic name, such as 'chatter'
                 # TOPIC TYPE --> message namespace and name, such as mtconnect_msgs/CncStatus
                 tn = type_name.keys()[0]
@@ -154,13 +168,11 @@ class BridgePublisher():
         return response
 
     def xml_components(self, xml):
-        """ Find all elements in the updated xml.
-        root.find requires namespaces to be a dictionary.
+        """ Find all elements in the updated xml. root.find requires namespaces to be a dictionary.
         Return sequence and elements to process ROS msgs.
         """
-        #rospy.loginfo('XML STREAM -->\n%s' % xml)
         root = ElementTree.fromstring(xml)
-        ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
+        ns = dict(m = self.xml_ns)
         header = root.find('.//m:Header', namespaces=ns)
         nextSeq = header.attrib['nextSequence']
         elements = root.findall('.//m:Events/*', namespaces=ns)        
@@ -209,76 +221,83 @@ class BridgePublisher():
         msg.header.stamp = rospy.Time.now()
         
         for di_name, value in self.di_changed.items():
-            # Convert tag text from MTConnect to ROS
+            # Convert tag text from MTConnect to ROS and set attribute value
             if di_name in data_items:
                 if value is not None:
-                    # Used changed value in di_changed
-                    rospy.loginfo('%s changed, set from di_changed' % di_name) # DEBUG
-                    
                     # Check for conversion key error
                     conv_keys = self.config[topic_name][topic_type][di_name].keys()
                     if value not in conv_keys:
                         rospy.logerr("CONVERSION ERROR IN TOPIC CONFIG FILE: XML is '%s' --> CONFIG is %s" % (value, conv_keys))
                         os._exit(0)
                     
+                    # Used changed value in di_changed
+                    rospy.loginfo('%s changed, set from di_changed' % di_name) # DEBUG
+                    
                     # Convert from MTConnect to ROS format from di_changed
                     ros_tag = self.config[topic_name][topic_type][di_name][self.di_changed[di_name]]
                 else:
                     # Use stored value in di_current
-                    #rospy.loginfo('%s did not change, set from di_current' % di_name) # DEBUG
-                    
                     # Convert from MTConnect to ROS format via di_current
                     ros_tag = self.config[topic_name][topic_type][di_name][self.di_current[di_name]]
                 
-                #rospy.loginfo('%s, %s' % (di_name, value))
+                # Obtain the state value via operator.attrgetter object: 'door_state.CLOSED'
+                state_object = operator.attrgetter(di_name + '.' + ros_tag)
+                state_value = state_object(msg)
                 
-                # Obtain the state value via callable object: 'door_state.CLOSED'
-                valueCall = operator.attrgetter(di_name + '.' + ros_tag)
-                state_value = valueCall(msg)
-    
-                # Create a code object and execute to assign the attribute to the state value
-                co_str = compile('msg.' + di_name + '.val = state_value', '', 'exec')
-                exec(co_str)
+                # From the msg class, obtain the message attribute using data item name: attrib = msg.door_state
+                attrib = getattr(msg, di_name)
+                
+                # Set the attribute to the converted ROS value: setattr(msg, 'door_state.val', 1) --> msg.door_state.val = 1
+                setattr(attrib, attrib.__slots__[0], state_value)
 
         pub.publish(msg)
         return
 
     def xml_callback(self, chunk):
         #rospy.loginfo('*******************In PROCESS_XML callback***************')
-        self.lock.acquire()
+        #self.lock.acquire()
         try:
             _, self.di_changed = self.process_xml(chunk)
+            self.XML_queue.put(self.di_changed)
+            rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
         except Exception as e:
             rospy.logerr("Bridge Publisher: Process XML callback failed: %s, releasing lock" % e)
         finally:
-            self.lock.release()
+            #self.lock.release()
+            pass
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
         
-    def ros_publisher(self, event):
+    #def ros_publisher(self, event):
+    def ros_publisher(self):
         #rospy.loginfo('-------------------In ROS_PUBLISHER callback---------------')
-        self.lock.acquire()
-        try:
-            if self.di_changed != None:
-                publishers = []
-                for topic_name, topic_type, pub, message, di in zip(self.topic_name_list, self.topic_type_list,
-                                                                self.pub, self.msg, self.data_items):
-                    # Publish topic
-                    rospy.init_node('bridge_publisher')
-                    publishers.append(self.topic_publisher((topic_name, topic_type, pub, message, di)))
-                
-                # Reset current data items to None
-                self.di_changed = self.init_di_dict()
-        except Exception as e:
-            rospy.logerr("Bridge Publisher: ROS-Publisher callback failed: %s, releasing lock" % e)        
-        finally:
-            self.lock.release()
+        #self.lock.acquire()
+        while True:
+            data = self.XML_queue.get()
+            
+            try:
+                #if self.di_changed != None:
+                if data != None:
+                    publishers = []
+                    for topic_name, topic_type, pub, message, di in zip(self.topic_name_list, self.topic_type_list,
+                                                                    self.pub, self.msg, self.data_items):
+                        # Publish topic
+                        rospy.init_node('bridge_publisher')
+                        publishers.append(self.topic_publisher((topic_name, topic_type, pub, message, di)))
+                    
+                    # Reset current data items to None
+                    self.di_changed = self.init_di_dict()
+            except Exception as e:
+                rospy.logerr("Bridge Publisher: ROS-Publisher callback failed: %s, releasing lock" % e)        
+            finally:
+                #self.lock.release()
+                self.XML_queue.task_done()
         #rospy.loginfo('-------------------Done with ROS_PUBLISHER callback---------------')
         return
 
 if __name__ == '__main__':
     try:
-        rospy.loginfo('Publishing CNC Messages')
+        rospy.loginfo('Launching Bridge Publisher -- Publishing Machine Tool Messages')
         mtc_parse = BridgePublisher()
     except rospy.ROSInterruptException:
         sys.exit(0)
