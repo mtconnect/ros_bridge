@@ -26,7 +26,10 @@
 #                    'UNAVAILABLE': 'UNKNOWN', 'COMPLETE': 'TRUE'}}}}
 #----------------------------------------------------------- 
 
-localhost: 5000
+url: 'localhost'
+url_port: 5000
+machine_tool: '/cnc'
+xml_namespace: 'urn:mtconnect.org:MTConnectStreams:1.2'
 
 CncResponseTopic:
     mtconnect_msgs/CncStatus:

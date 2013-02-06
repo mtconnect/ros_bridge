@@ -40,20 +40,86 @@ import rospy
 
 class BridgeSubscriber():
     def __init__(self):
+        # Initialize the ROS Bridge subscriber node
+        rospy.init_node('bridge_subscriber')
+        
         # Read configuration file and extract topics and types
         self.config = read_config_file.obtain_dataMap()
-        #rospy.loginfo(self.config)
+        self.msg_parameters = ['url', 'adapter_port']
+        self.url = self.config[self.msg_parameters[0]]
+        self.adapter_port = self.config[self.msg_parameters[1]]
         
         # Setup MTConnect Adapter for robot status data items
-        self.adapter = Adapter(('0.0.0.0', self.config['Port']))
+        self.adapter = Adapter((self.url, self.adapter_port))
+        self.di_dict = {} # XML data item dictionary to store MTConnect Adapter Events
         
         # Setup ROS topics as specified in .yaml file
         self.topic_name_list = [] # List of topic names
         self.subscribed_list = [] # List of subscribed topics
         self.lib_manifests = [] # Stores loaded ROS library manifests
 
+        # Topic type and MTConnect message members from the module import
+        self.topic_type_list = {}
+        self.member_types = {}
+        self.member_names = {}
+        
+        # The ROS message text retainer, used to map ROS values to MTConnect XML tag.text 
+        self.msg_text = {}
+        
+        # Create the data sets for the topic types, member names, and member types
+        self.setup_topic_data()
+        
+        # Start the adapter
+        rospy.loginfo('Start the Robot Link adapter')
+        self.adapter.start()
+        
+        # Create class lock
+        self.lock = thread.allocate_lock()
+        
+        # Create ROS subscribers
+        #self.topic_listener()
+        
+        # Loop through requested topics and spawn ROS subscribers when topics are available
+        topic_list = self.topic_name_list
+        dwell = 10
+        while topic_list:
+            published_topics = dict(rospy.get_published_topics())
+            for topic_name in topic_list:
+                if topic_name in published_topics.keys():
+                    # Create ROS Subscriber
+                    idx = topic_list.index(topic_name)
+                    del topic_list[idx]
+                    self.topic_listener((topic_name, self.topic_type_list[topic_name], self.member_names[topic_name], self.msg_text[topic_name]))
+                else:
+                    rospy.loginfo('ROS Topic %s not available, will try to subscribe in %d seconds' % (topic_name, dwell))
+                    time.sleep(dwell)
+
+    def add_agent(self):
+        """Function creates Adapter Events and then adds data items
+        to the Adapter."""
+        
+        for xml_tag in self.data_items:
+            self.di_dict[xml_tag] = Event(xml_tag)
+            self.adapter.add_data_item(self.di_dict[xml_tag])
+            
+            rospy.loginfo('data_item --> %s' % xml_tag)
+        return
+
+    def setup_topic_data(self):
+        """This function captures the topic name, type, and member attributes that are required for 
+        the ROS subscriber.  This task is completed for each topic specified in the configuration file.
+        
+        This function then performs a relative import of the topic via the getattr(import_module) function.
+        Data is stored in the following class attributes:
+        
+            self.topic_type_list   --> used for module import and msg parameters
+            self.member_types --> member type, not used in msg parameters, future use
+            self.member_names --> used for ROS subscriber msg parameters
+        
+        """
+            
         for topic, topic_type in self.config.items():
-            if topic != 'Port':
+            if topic not in self.msg_parameters:
                 self.topic_name_list.append(topic)
                 
                 # Only one type per topic
@@ -64,90 +130,27 @@ class BridgeSubscriber():
                 self.data_items = [data_item for data_item in topic_type[type_key].keys()]
         
                 # Add data items to the MTConnect Adapter - must be unique data items
-                for data_item in self.data_items:
-                    co_str = "self." + data_item + "_di = Event('" + data_item + "')"
-                    co_exec = compile(co_str, '', 'exec')
-                    exec(co_exec)
-        
-                    co_str = 'self.adapter.add_data_item(self.' + data_item + '_di)'
-                    co_exec = compile(co_str, '', 'exec')
-                    exec(co_exec)
-
-        # Start the adapter
-        rospy.loginfo('Start the Robot Link adapter')
-        self.adapter.start()
-        
-        # Topic type and MTConnect message members from the module import
-        self.topic_type_list = []
-        self.member_types = []
-        self.member_names = []
-        
-        # The ROS message text retainer, used to map ROS values to MTConnect XML tag.text 
-        self.msg_text = []
-        
-        # Create the data sets for the topic types, member names, and member types
-        self.setup_topic_data()
-        
-        # Create class lock
-        self.lock = thread.allocate_lock()
-        
-        # Create ROS subscribers
-        self.topic_listener()
-
-    def setup_topic_data(self):
-        """This function verifies topic availability and captures the
-        topic name, type, and member attributes that are required for 
-        the ROS subscriber.  This task is completed for each topic
-        specified in the configuration file.
-        
-        This function then performs a relative import of the topic
-        via the getattr(import_module) function.  Date is stored in the
-        following class attributes:
-        
-            self.topic_type_list   --> used for module import and msg parameters
-            self.member_types --> member type, not used in msg parameters, future use
-            self.member_names --> used for ROS subscriber msg parameters
-        
-        If the topic is not being published, then the user has the option 
-        to quit or proceed.  Note that the code does not try to re-subscribe to
-        the topic if it is published after this code executes.
-        """
-        rospy.loginfo('TOPIC NAME LIST --> %s' % self.topic_name_list)
-        
-        published_topics = dict(rospy.get_published_topics())
-        rospy.loginfo('PUBLISHED TOPICS: %s' % published_topics)
-        
-        for topic_name, type_name in zip(self.topic_name_list, self.subscribed_list):
-            if topic_name not in published_topics.keys():
-                rospy.loginfo('WARNING: %s is not published and will not be included in the subscription' % topic_name)
-                resume = False
-                while resume == False:
-                    ans = raw_input('Continue (C) or Quit (Q) --> ')
-                    if ans.lower() == 'q':
-                        sys.exit(0)
-                    elif ans.lower() == 'c':
-                        resume = True
-                        pass
-            else:
+                self.add_agent()
+                
                 # Extract package namespace and topic type name
-                tokens = type_name.split('/')
+                tokens = topic_type.keys()[0].split('/')
                 namespace = tokens[0]
                 type_name = tokens[1]
                 
                 # Load package manifest if unique
-                if tokens[0] not in self.lib_manifests:
-                    roslib.load_manifest(tokens[0])
-                    self.lib_manifests.append(tokens[0])
-
+                if namespace not in self.lib_manifests:
+                    roslib.load_manifest(namespace)
+                    self.lib_manifests.append(namespace)
+                
                 # Import module and create topic type class,
                 #    i.e. append <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
                 rospy.loginfo('Class Instance --> ' + namespace + '.msg.' + type_name)
                 type_handle = getattr(import_module(namespace + '.msg'), type_name)
 
-                self.topic_type_list.append(type_handle)
-                self.msg_text.append(type_handle._full_text)
-                self.member_types.append(type_handle._slot_types)
-                self.member_names.append(type_handle.__slots__)
+                self.topic_type_list[topic] = type_handle
+                self.msg_text[topic] = type_handle._full_text
+                self.member_types[topic] = type_handle._slot_types
+                self.member_names[topic] = type_handle.__slots__
         return
     
     def topic_callback(self, data, cb_data):
@@ -163,23 +166,43 @@ class BridgeSubscriber():
         """
         self.lock.acquire()
         try:
-            (topic_name, type_name, member_set, msg_text) = cb_data
+            (topic_name, type_handle, member_set, msg_text) = cb_data
+            type_name = type_handle._type
             
             # Repackage members into a dictionary
             dout = {val:val for val in member_set}
 
-            # Create output string
+            # Iterate through data items and capture message data
             #rospy.loginfo('Message on %s for %s' % (topic_name, rospy.get_name()))
             msg_data = []
+            msg_constants = {}
             for dataitem in member_set:
+                # Capture attribute for namespace/Topic Type --> industrial_msgs/TriState.avail
+                attrib_handle = getattr(type_handle(), dataitem)
+                
                 if 'header' not in dataitem:
-                    # Acquire published data for the topic
-                    item_value = operator.attrgetter(dout[dataitem])(data)
-                    #rospy.loginfo('%s: --> %s' % (dataitem, item_value))
+                    # Extract string representing message attribute --> 'val'
+                    val_key = attrib_handle.__slots__[0]
+                    
+                    # Capture message data.attrib --> <class message data>.dataitem: TriState.avail
+                    token = getattr(data, dataitem)
+                    
+                    # Capture the integer value for the attribute: avail.val
+                    item_value = getattr(token, val_key)
+                    
+                    # Store published message data for the topic
                     msg_data.append((dataitem, item_value))
+                    
+                    # Create a list of strings containing message CONSTANTS
+                    msg_constants[dataitem] = []
+                    for attrib in dir(attrib_handle):
+                        if attrib.isupper():
+                            if getattr(attrib_handle, attrib) == item_value:
+                                msg_constants[dataitem].append(attrib)
+                    #rospy.loginfo('MESSAGE CONSTANTS --> %s\tVAL --> %s' % (msg_constants, item_value))
             
             # Execute the ROS to MTConnet conversion function
-            self.data_item_conversion(topic_name, type_name, msg_data, msg_text)
+            self.data_item_conversion(topic_name, type_name, msg_data, msg_text, msg_constants)
             
         except Exception as e:
             rospy.logerr('Topic callback failed: %s, releasing lock' % e)
@@ -187,14 +210,12 @@ class BridgeSubscriber():
             self.lock.release()
         return
 
-    def data_item_conversion(self, topic_name, type_name, msg_data, msg_text):
+    def data_item_conversion(self, topic_name, type_name, msg_data, msg_text, constants):
         # Set the Robot XML data item via the MTConnect Adapter
         for member_data in msg_data:
             
-            # Create list of ROS message CONSTANTS
-            constants = self.msg_const_pull(member_data[1].val, msg_text)
-            
-            for const_val in constants:
+            # Iterate through list of ROS message CONSTANTS and set the MTConnect Adapter value
+            for const_val in constants[member_data[0]]:
                 if const_val in self.config[topic_name][type_name][member_data[0]].keys():
                     # If ROS to MTConnect mapping dictionary contains the constant, set the adapter value 
                     adapter_val = self.config[topic_name][type_name][member_data[0]][const_val]
@@ -207,31 +228,21 @@ class BridgeSubscriber():
 
             # Set the Robot XML data item
             self.adapter.begin_gather()
-            co_str = "self." + member_data[0] + "_di.set_value('" + adapter_val + "')"
-            co_exec = compile(co_str, '', 'exec')
-            exec(co_exec)
+            self.di_dict[member_data[0]].set_value(adapter_val)
             self.adapter.complete_gather()
         return
     
-    def msg_const_pull(self, val, msg_text):
-        # Create regex to extract the message CONSTANTS based on ROS message value
-        #     i.e. matches 1..n of CONSTANT=val and creates a list of constant strings
-        re_str = '([A-Z]+)=' + str(val)
-        regex = re.compile(re_str)
-        msg_constants = regex.findall(msg_text)
-        return msg_constants
 
-    def topic_listener(self):
+    def topic_listener(self, data):
         """Main ROS subscriber function.  A new thread is created for each callback.
         self.topic_name_list and self.data_items determined from the configuration file.
         The remaining callback data derived from the setup_topic_data function.
         """
-        subscribers = []
-        for topic_name, type_handle, member_set, msg_text in zip(self.topic_name_list, 
-                                                    self.topic_type_list, self.member_names, self.msg_text):
-            rospy.init_node('bridge_subscriber')
-            subscribers.append(rospy.Subscriber(topic_name, type_handle, self.topic_callback,
-                                                (topic_name, type_handle._type, member_set, msg_text)))
+        # Unpack arguments
+        topic_name, type_handle, member_set, msg_text = data
+        
+        # Launch the ROS subscriber
+        rospy.Subscriber(topic_name, type_handle, self.topic_callback, data)
         return
 
 #--------------------------------------------------
