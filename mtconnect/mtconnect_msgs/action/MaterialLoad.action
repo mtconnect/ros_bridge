@@ -1,0 +1,9 @@
+# Define the goal
+string material_type
+float32 material_length
+float32 material_diameter
+---
+# Define the result
+string load_state
+---
+# Define a feedback message (No feedback for this action)

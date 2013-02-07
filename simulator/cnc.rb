@@ -68,7 +68,7 @@ module Cnc
       @mode.value = 'AUTOMATIC'
       @door_state.value = "OPEN"
 
-      @material.value = 'ROUND 440C THING'
+      @material.value = "'ROUND 440C THING', 3.27, 11.23"
 
       @system.normal
 

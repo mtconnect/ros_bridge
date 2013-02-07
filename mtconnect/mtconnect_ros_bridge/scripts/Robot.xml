@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MTConnectDevices xmlns:m="urn:mtconnect.org:MTConnectDevices:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:mtconnect.org:MTConnectDevices:1.2">
+  <Header creationTime="2009-03-22T01:50:29+00:00" sender="localhost" instanceId="1237628993" bufferSize="100000" version="1.1"/>
+  <Devices>
+    <Device uuid="ROBOT-000" name="Robot" sampleRate="10.0" id="b">
+      <Description manufacturer="Mom" serialNumber="0000"/>
+      <DataItems>
+	      <DataItem type="AVAILABILITY" category="EVENT" id="avail" name="avail"/>
+          <DataItem type="SYSTEM" category="CONDITION" id="sy" name="system" />
+      </DataItems>
+      <Components>
+        <Controller name="Controller" id="cont">
+          <DataItems>
+        		<DataItem type="CONTROLLER_MODE" category="EVENT" id="mode" name="mode"/>
+        		<DataItem type="EXECUTION" category="EVENT" id="rexec" name="rexec"/>
+          </DataItems>
+        </Controller>
+        <Interfaces name="interfaces" id="if">
+          <Components>
+            <MaterialLoader name="material" id="ml">
+              <DataItems>
+                <!-- Interfaces -->
+                <DataItem type="MATERIAL_LOAD" subType="RESPONSE" category="EVENT" id="lm" name="material_load" />
+                <DataItem type="MATERIAL_UNLOAD" subType="RESPONSE" category="EVENT" id="ulm" name="material_unload" />
+              </DataItems>
+            </MaterialLoader>
+            <ChuckInterface name="chuck" id="chi">
+              <DataItems>
+                <!-- Interfaces -->
+                <DataItem type="OPEN_CHUCK" subType="REQUEST" category="EVENT" id="oc" name="open_chuck" />
+                <DataItem type="CLOSE_CHUCK" subType="REQUEST" category="EVENT" id="cc" name="close_chuck" />
+
+                <!-- Events - Interlocks -->
+                <DataItem type="SPINDLE_INTERLOCK" category="EVENT" id="si" name="s_inter" />
+                <DataItem type="MANUAL_CHUCK_UNCLAMP_INTERLOCK" category="EVENT" id="mcu" name="c_unclamp" />
+              </DataItems>
+            </ChuckInterface>
+            <DoorInterface name="door_inter" id="rdri">
+              <DataItems>
+                <!-- Interfaces -->
+                <DataItem type="OPEN_DOOR" subType="REQUEST" category="EVENT" id="rod" name="open_door" />
+                <DataItem type="CLOSE_DOOR" subType="REQUEST" category="EVENT" id="rcd" name="close_door" />
+              </DataItems>
+            </DoorInterface>
+          </Components>
+        </Interfaces>
+      </Components>
+    </Device>
+  </Devices>
+</MTConnectDevices>
