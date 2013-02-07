@@ -21,8 +21,11 @@
 # 
 #----------------------------------------------------------- 
 
-localhost: 5000
-Port: 7886
+url: 'localhost'
+url_port: 5000
+machine_tool: '/cnc'
+xml_namespace: 'urn:mtconnect.org:MTConnectStreams:1.2'
+adapter_port: 7886
 
 mtconnect_msgs:
     OpenDoor:

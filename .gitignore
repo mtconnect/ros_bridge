@@ -4,3 +4,8 @@
 .DS_Store
 simulator/graph
 simulator/agent
+*Action.msg
+*Feedback.msg
+*Goal.msg
+*Result.msg
+*~
