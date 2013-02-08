@@ -19,10 +19,13 @@
 # Import standard Python modules
 import sys
 import os
+import optparse
+import yaml
 import operator
 import thread # for thread locking
 import re
 import time
+import urllib2
 from Queue import Queue
 from threading import Thread, Timer
 from importlib import import_module
@@ -54,6 +57,9 @@ class BridgePublisher():
         self.mtool = self.config[self.msg_parameters[2]]
         self.xml_ns = self.config[self.msg_parameters[3]]
         
+        # Check for url connectivity, dwell until system timeout
+        self.check_connectivity(1)
+        
         # Create the data lists for the topic names, types, manifests, data items, ROS publishers, and ROS messages
         self.topic_name_list = []
         self.topic_type_list = []
@@ -73,8 +79,8 @@ class BridgePublisher():
         self.di_changed = None
         
         # Establish XML connection, read in current XML
-        conn = HTTPConnection(self.url, self.url_port)
-        response = self.xml_http_connection(conn, self.mtool + "/current")
+        self.conn = HTTPConnection(self.url, self.url_port)
+        response = self.xml_get_response(self.mtool + "/current")
         body = response.read()
         
         # Parse the XML and determine the current sequence and XML Event elements
@@ -90,7 +96,7 @@ class BridgePublisher():
                 sys.exit()
         
         # Start a streaming XML connection
-        response = self.xml_http_connection(conn, self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
+        response = self.xml_get_response(self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
         
         # Create queue for streaming XML
         self.XML_queue = Queue()
@@ -101,6 +107,23 @@ class BridgePublisher():
         # Streams data from the agent...
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
+    
+    def check_connectivity(self, tout):
+        current = time.time()
+        time_out = current + 20
+        rospy.loginfo('Checking for URL availability')
+        while time_out > current:
+            try:
+                response = urllib2.urlopen('http://' + self.url + ':' + str(self.url_port) + '/current', timeout = tout)
+                rospy.loginfo('Connection available')
+                break
+            except urllib2.URLError as err:
+                current = time.time()
+                pass
+        else:
+            rospy.loginfo('System Time Out: URL Unavailable, check if the MTConnect Agent is running')
+            sys.exit()
+        return
     
     def setup_topic_data(self):
         """This function captures the topic name, type, and member
@@ -154,9 +177,10 @@ class BridgePublisher():
         
         return
 
-    def xml_http_connection(self, conn, req):
-        conn.request("GET", req)
-        response = conn.getresponse()
+    def xml_get_response(self, req):
+        rospy.loginfo('Attempting HTTP connection on url: %s:%s\tPort:%s' % (self.url, self.url_port, self.port))
+        self.conn.request("GET", req)
+        response = self.conn.getresponse()
         if response.status != 200:
             rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
             sys.exit(0)

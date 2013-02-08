@@ -16,6 +16,7 @@
    limitations under the License.
    """
 
+import sys
 import logging
 import threading
 import time
@@ -30,82 +31,90 @@ import mtconnect_msgs.msg
 
 
 class MaterialUnloadServer():
-    """DOCSTRING
+    """Dedicated Material Unload Server -- without robot interface
+    Class establishes a simple action server for the MaterialUnloadAction, and
+    starts a thread to subscribe to the ROS topic CncStatus.
+    
+    The Material Unload sequence is completed once the door state and the chuck
+    state are open.
+    
+    @param server_name: string, 'MaterialUnload'
+    @param _result: instance of the mtconnect_msgs.msg.MaterialUnloadResult class
+    @param _as: ROS actionlib SimpleActionServer
+    @param door_state: int, published value for the CNC door state [0:Open, 1:Closed, -1:Unlatched]
+    @param chuck_state: int, published value for the CNC chuck state [0:Open, 1:Closed, -1:Unlatched]
+    @param sub_thread: thread that launches a ROS subscriber to the CncResponseTopic via bridge_publisher node
+
     """
 
     def __init__(self):
-        # Setup MTConnect to ROS Conversion -- TBD
-        #self.config = read_config_file.obtain_dataMap()
-        
         self.server_name = 'MaterialUnload'
-        self.conn = conn = HTTPConnection('localhost', 5000)
-        self.ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
-        self.sequence = {'ACTIVE':'COMPLETE', 'COMPLETE':'READY'}
         
         self._result = mtconnect_msgs.msg.MaterialUnloadResult()
         self._as = actionlib.SimpleActionServer('MaterialUnloadClient', mtconnect_msgs.msg.MaterialUnloadAction, self.execute_cb, False)
         self._as.start()
         self._as.accept_new_goal()
+        
+        # Subscribe to CNC state topic
+        self.door_state = None
+        self.chuck_state = None
+        
+        # Check for CncResponseTopic
+        dwell = 2
+        while True:
+            published_topics = dict(rospy.get_published_topics())
+            if '/CncResponseTopic' in published_topics.keys():
+                rospy.loginfo('ROS CncResponseTopic available, starting subscriber')
+                break
+            else:
+                rospy.loginfo('ROS CncResponseTopic not available, will try to subscribe in %d seconds' % dwell)
+                time.sleep(dwell)
+        
+        # Create ROS Subscriber thread
+        sub_thread = threading.Thread(target = self.subscriber_thread)
+        sub_thread.daemon = True
+        sub_thread.start()
     
     def execute_cb(self, goal):
         rospy.loginfo('In %s Bridge Server Callback -- determining action request result.' % self.server_name)
         
-        # Required actions to complete requested action
-        cnc_actions = {'OpenChuck':None, 'OpenDoor':None}
-        cnc_target = collections.OrderedDict()
-        cnc_target['OpenChuck'] = ['COMPLETE', None]
-        cnc_target['OpenDoor'] = ['COMPLETE', None]
+        # Initialize timeout parameter
+        start = time.time()
         
         # Start while loop and check for cnc action changes
+        rospy.loginfo('In MaterialLoad Server while loop')
+        previous = time.time()
         dwell = True
-        inloop = 0
-        start = time.time()
         while dwell == True:
-            # Establish XML connection, read in current XML
-            self.conn.request("GET", "/cnc/current")
-            response = self.conn.getresponse()
-            if response.status != 200:
-                rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
-                sys.exit(0)
+            # Current CNC state
+            if time.time() - previous > 1.0:
+                rospy.loginfo('CNC State: %s' % [self.door_state, self.chuck_state])
+                previous = time.time()
 
-            cnc_body = response.read()
-            root = ElementTree.fromstring(cnc_body)
-            cnc_target['OpenChuck'][1] = root.findall('.//m:OpenChuck', namespaces=self.ns)[0]
-            cnc_target['OpenDoor'][1] = root.findall('.//m:OpenDoor', namespaces=self.ns)[0]
-            #rospy.loginfo('OpenChuck --> %s\tOpenDoor --> %s' % (cnc_target['OpenChuck'][1].text, cnc_target['OpenDoor'][1].text))
-            
-            if inloop == 0:
-                rospy.loginfo('In MaterialUnload Server while loop')
-                rospy.loginfo('OpenChuck --> %s\tOpenDoor --> %s' % (cnc_target['OpenChuck'][1].text, cnc_target['OpenDoor'][1].text))
-                inloop = 1
-            
-            # Wait for Close Chuck and Close Door Cycle
-            for device, target in cnc_target.items():
-                if target[0] != 'PASSED':
-                    #rospy.loginfo('DEVICE --> %s\tTARGET --> %s' % (device, target[1].text))
-                    #time.sleep(5)
-                    if target[1].text == target[0] and target[0] != 'READY':
-                        cnc_target[device][0] = self.sequence[target[1].text]
-                        cnc_actions[device] = 'READY'
-                        cnc_target[device][0] = 'PASSED'
-                        rospy.loginfo('%s PASSED' % device)
-                        rospy.loginfo('cnc_action_values --> %s' % cnc_actions.values())
-
-            # Send the successful result    
-            if None not in cnc_actions.values():
-                # Set action attribute -- empty function, assumes robot loaded material
+            if self.door_state == 0 and self.chuck_state == 0:
+                # Chuck and Door are closed, complete the material load cycle
                 self._result.unload_state = 'COMPLETE'
                 dwell = False
-            
+
             # Check for timeout
             if time.time() - start > 120.0:
                 rospy.loginfo('Material Unload Server Timed Out')
-                
+                sys.exit()
         
         # Indicate a successful action
         self._as.set_succeeded(self._result)
         rospy.loginfo('In %s Callback -- action succeeded. Result --> %s' % (self.server_name, self._result.unload_state))
         return self._result
+    
+    def topic_callback(self, msg):
+        self.door_state = msg.door_state.val
+        self.chuck_state = msg.chuck_state.val
+        return
+    
+    def subscriber_thread(self):
+        rospy.Subscriber('CncResponseTopic', mtconnect_msgs.msg.CncStatus, self.topic_callback)
+        rospy.spin()
+        return
 
 if __name__ == '__main__':
     # Initialize the ROS node

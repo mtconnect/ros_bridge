@@ -19,6 +19,8 @@
 # Import standard Python modules
 import sys
 import os
+import optparse
+import yaml
 import operator
 import thread
 import re

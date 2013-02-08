@@ -19,10 +19,13 @@
 # Import standard Python modules
 import sys
 import os
+import optparse
+import yaml
 import operator
 import thread
 import re
 import time
+import urllib2
 from Queue import Queue
 from threading import Thread, Timer
 from importlib import import_module
@@ -57,6 +60,9 @@ class GenericActionServer():
         self.mtool = self.config[self.msg_parameters[2]]
         self.ns = dict(m = self.config[self.msg_parameters[3]])
         self.port = self.config[self.msg_parameters[4]]
+        
+        # Check for url connectivity, dwell until system timeout
+        self.check_connectivity(1)
         
         # Setup MTConnect Adapter for robot status data items
         self.adapter = Adapter((self.url, self.port))
@@ -108,6 +114,23 @@ class GenericActionServer():
         xml_thread = Thread(target = lp.long_pull, args = (self.xml_callback,))
         xml_thread.daemon = True
         xml_thread.start()
+    
+    def check_connectivity(self, tout):
+        current = time.time()
+        time_out = current + 20
+        rospy.loginfo('Checking for URL availability')
+        while time_out > current:
+            try:
+                response = urllib2.urlopen('http://' + self.url + ':' + str(self.url_port) + '/current', timeout = tout)
+                rospy.loginfo('Connection available')
+                break
+            except urllib2.URLError as err:
+                current = time.time()
+                pass
+        else:
+            rospy.loginfo('System Time Out: URL Unavailable, check if the MTConnect Agent is running')
+            sys.exit()
+        return
         
     def add_agent(self):
         # For each data item in config file, add Event and data item
@@ -190,6 +213,7 @@ class GenericActionServer():
         return
     
     def xml_get_response(self, req):
+        rospy.loginfo('Attempting HTTP connection on url: %s:%s\tPort:%s' % (self.url, self.url_port, self.port))
         self.conn.request("GET", req)
         response = self.conn.getresponse()
         if response.status != 200:
@@ -297,3 +321,4 @@ if __name__ == '__main__':
         rospy.spin()
     except rospy.ROSInterruptException:
         rospy.loginfo('program interrupted before completion')
+        xml_thread.join()
