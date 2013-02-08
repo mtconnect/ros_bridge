@@ -6,4 +6,5 @@ float32 material_diameter
 # Define the result
 string load_state
 ---
-# Define a feedback message (No feedback for this action)
+# Define a feedback message
+mtconnect_msgs/MaterialHandlingFeedback feedback
