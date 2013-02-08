@@ -305,10 +305,24 @@ bool JointStateInfo::fetchParameters(std::string nameSpace)
 bool JointStateInfo::parseParameters(XmlRpc::XmlRpcValue &param)
 {
 	// declaring member name strings
+	const std::string arm_group_mb = "arm_group";
+	const std::string joints_mb = "joints";
 	const std::string position_mb = "position";
 	const std::string name_mb = "name";
 	const std::string velocity_mb = "velocity";
 	const std::string effort_mb = "effort";
+
+	// declaring params
+	XmlRpc::XmlRpcValue joint_param;
+
+	// parsing arm group name (optional)
+	arm_group = (param.hasMember(arm_group_mb) ? static_cast<std::string>(param[arm_group_mb]): arm_group);
+
+	// checking joints struct array
+	if(!param.hasMember(joints_mb))
+	{
+		return false;
+	}
 
 	// clearing arrays
 	position.clear();
@@ -316,12 +330,14 @@ bool JointStateInfo::parseParameters(XmlRpc::XmlRpcValue &param)
 	velocity.clear();
 	effort.clear();
 
-	if(param.getType()== XmlRpc::XmlRpcValue::TypeArray && param[0].getType() == XmlRpc::XmlRpcValue::TypeStruct &&
-			param[0].hasMember(position_mb) && param[0].hasMember(name_mb))
+	// retrieving and parsing joint struct array
+	joint_param = param[joints_mb];
+	if(joint_param.getType()== XmlRpc::XmlRpcValue::TypeArray && joint_param[0].getType() == XmlRpc::XmlRpcValue::TypeStruct &&
+			joint_param[0].hasMember(position_mb) && joint_param[0].hasMember(name_mb))
 	{
-		for(int i = 0 ; i < param.size(); i++)
+		for(int i = 0 ; i < joint_param.size(); i++)
 		{
-			XmlRpc::XmlRpcValue &element = param[i];
+			XmlRpc::XmlRpcValue &element = joint_param[i];
 			position.push_back(static_cast<double>(element[position_mb]));
 			name.push_back(static_cast<std::string>(element[name_mb]));
 

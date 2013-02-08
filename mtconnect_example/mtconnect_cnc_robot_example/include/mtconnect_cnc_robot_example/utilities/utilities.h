@@ -114,7 +114,8 @@ public:
 struct JointStateInfo: sensor_msgs::JointState
 {
 public:
-	JointStateInfo()
+	JointStateInfo():
+		arm_group("")
 	{
 
 	}
@@ -127,6 +128,8 @@ public:
 	bool fetchParameters(std::string nameSpace = "/joint_state");
 	bool parseParameters(XmlRpc::XmlRpcValue &val);
 	void toJointConstraints(double tol_above,double tol_below, std::vector<arm_navigation_msgs::JointConstraint> &joint_constraints);
+
+	std::string arm_group;
 };
 
 }
