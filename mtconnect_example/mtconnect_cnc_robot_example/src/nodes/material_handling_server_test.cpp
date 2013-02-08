@@ -15,7 +15,7 @@
    limitations under the License.
  */
 
-#include <mtconnect_msgs/CncStatus.h>
+//#include <mtconnect_msgs/CncStatus.h>
 #include <mtconnect_msgs/CloseChuckAction.h>
 #include <mtconnect_msgs/OpenChuckAction.h>
 #include <mtconnect_msgs/CloseDoorAction.h>
@@ -29,14 +29,16 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
 #include <ros/ros.h>
+#include <boost/assign/list_inserter.hpp>
+#include <boost/assign/list_of.hpp>
 
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
 typedef actionlib::SimpleActionClient<object_manipulation_msgs::PickupAction> MovePickupClient;
 typedef actionlib::SimpleActionClient<object_manipulation_msgs::PlaceAction> MovePlaceClient;
-typedef actionlib::SimpleActionClient<mtconnect_msgs::CloseChuckAction> CncOpenDoorClient;
-typedef actionlib::SimpleActionClient<mtconnect_msgs::CloseChuckAction> CncCloseDoorClient;
-typedef actionlib::SimpleActionClient<mtconnect_msgs::CloseChuckAction> CncOpenChuckClient;
+typedef actionlib::SimpleActionClient<mtconnect_msgs::OpenDoorAction> CncOpenDoorClient;
+typedef actionlib::SimpleActionClient<mtconnect_msgs::CloseDoorAction> CncCloseDoorClient;
+typedef actionlib::SimpleActionClient<mtconnect_msgs::OpenChuckAction> CncOpenChuckClient;
 typedef actionlib::SimpleActionClient<mtconnect_msgs::CloseChuckAction> CncCloseChuckClient;
 typedef actionlib::SimpleActionServer<mtconnect_msgs::MaterialLoadAction> MaterialLoadServer;
 typedef actionlib::SimpleActionServer<mtconnect_msgs::MaterialUnloadAction> MaterialUnloadServer;
@@ -49,8 +51,12 @@ typedef boost::shared_ptr<CncOpenChuckClient> CncOpenChuckClientPtr;
 typedef boost::shared_ptr<CncCloseChuckClient> CncCloseChuckClientPtr;
 typedef boost::shared_ptr<MaterialLoadServer> MaterialLoadServerPtr;
 typedef boost::shared_ptr<MaterialUnloadServer> MaterialUnloadServerPtr;
+typedef std::vector<int> MaterialHandlingSequence;
 
 // defaults
+static const std::string PARAM_ARM_GROUP = "arm_group";
+static const std::string PARAM_JOINT_HOME_POSITION = "/joint_home_position";
+static const std::string PARAM_JOINT_WAIT_POSITION = "/joint_wait_position";
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
 static const std::string DEFAULT_PICKUP_ACTION = "pickup_action_service";
 static const std::string DEFAULT_PLACE_ACTION = "place_action_service";
@@ -61,10 +67,13 @@ static const std::string DEFAULT_CNC_CLOSE_DOOR_ACTION = "cnc_close_door_action"
 static const std::string DEFAULT_CNC_OPEN_CHUCK_ACTION = "cnc_open_chuck_action";
 static const std::string DEFAULT_CNC_CLOSE_CHUCK_ACTION = "cnc_close_chuck_action";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
+static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
+static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
 static const double DURATION_LOOP_PAUSE = 2.0f;
 static const double DURATION_WAIT_SERVER = 2.0f;
+static const double DURATION_PLANNING_TIME = 5.0f;
+static const double DURATION_WAIT_RESULT = 40.0f;
 static const int MAX_WAIT_ATTEMPTS = 10;
-
 
 class SimpleMaterialHandlingServer
 {
@@ -93,21 +102,35 @@ public:
 		material_load_server_ptr_->start();
 		material_unload_server_ptr_->start();
 
+		// moving the arm home
+
 		while(ros::ok())
 		{
 			ros::Duration(DURATION_LOOP_PAUSE).sleep();
 		}
 	}
 
+public:
+
+	MaterialHandlingSequence material_load_sequence_;
+	MaterialHandlingSequence material_unload_sequence_;
+
 protected:
 
 	bool fetchParameters(std::string ns = "")
 	{
-		return pickup_goal_.fetchParameters() && place_goal_.fetchParameters();
+		ros::NodeHandle ph("~");
+		return ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
+				material_load_pickup_goal_.fetchParameters() && material_load_place_goal_.fetchParameters() &&
+				material_unload_pickup_goal_.fetchParameters() && material_unload_place_goal_.fetchParameters() &&
+				joint_home_pos_.fetchParameters(PARAM_JOINT_HOME_POSITION) && joint_wait_pos_.fetchParameters(PARAM_JOINT_WAIT_POSITION);
 	}
 
 	bool setup()
 	{
+		using namespace boost::assign;
+		typedef mtconnect_msgs::MaterialHandlingFeedback Feedback;
+
 		ros::NodeHandle nh;
 		int wait_attempts = 0;
 
@@ -116,6 +139,23 @@ protected:
 			ROS_ERROR_STREAM("Failed to read parameters, exiting");
 			return false;
 		}
+
+		// initializing task sequence lists
+		material_load_sequence_ = list_of((int)Feedback::OPENNING_DOOR)((int)Feedback::OPENNING_CHUCK)
+				((int)Feedback::TRANSPORTING_MATERIAL)((int)Feedback::PLACING_MATERIAL)
+				((int)Feedback::CLEARING_WORK_AREA)((int)Feedback::CLOSING_CHUCK)
+				((int)Feedback::CLOSING_DOOR);
+
+		material_unload_sequence_ = list_of((int)Feedback::OPENNING_DOOR)((int)Feedback::OPENNING_CHUCK)
+				((int)Feedback::RETRIEVING_WORKPIECE)((int)Feedback::TRANSPORTING_WORKPIECE)
+				((int)Feedback::CLOSING_CHUCK)((int)Feedback::CLOSING_DOOR);
+
+		// setting up move arm goal
+		move_arm_goal_.motion_plan_request.group_name = arm_group_;
+		move_arm_goal_.motion_plan_request.num_planning_attempts = 2;
+		move_arm_goal_.planner_service_name = DEFAULT_PATH_PLANNER;
+		move_arm_goal_.motion_plan_request.allowed_planning_time = ros::Duration(DURATION_PLANNING_TIME);
+		move_arm_goal_.motion_plan_request.planner_id = "";
 
 		// initializing service servers
 		material_load_server_ptr_ = MaterialLoadServerPtr(new MaterialLoadServer(nh,DEFAULT_MATERIAL_LOAD_ACTION,
@@ -130,7 +170,7 @@ protected:
 		arm_place_client_ptr_ = MovePlaceClientPtr(new MovePlaceClient(DEFAULT_PLACE_ACTION,true));
 		open_door_client_ptr_ =CncOpenDoorClientPtr(new CncOpenDoorClient(DEFAULT_CNC_OPEN_DOOR_ACTION,true));
 		close_door_client_ptr_ =CncCloseDoorClientPtr(new CncCloseDoorClient(DEFAULT_CNC_CLOSE_DOOR_ACTION,true));
-		open_chuck_client_ptr_ =CncOpenChuckClientPtr(new CncOpenDoorClient(DEFAULT_CNC_OPEN_CHUCK_ACTION,true));
+		open_chuck_client_ptr_ =CncOpenChuckClientPtr(new CncOpenChuckClient(DEFAULT_CNC_OPEN_CHUCK_ACTION,true));
 		close_chuck_client_ptr_ =CncCloseChuckClientPtr(new CncCloseChuckClient(DEFAULT_CNC_CLOSE_CHUCK_ACTION,true));
 
 		// waiting for service service
@@ -155,15 +195,242 @@ protected:
 
 	void materialLoadGoalCallback(const MaterialLoadServer::GoalConstPtr &gh)
 	{
+		// declaring result
+		MaterialLoadServer::Result res;
 
+		material_load_server_ptr_->acceptNewGoal();
+		if(executeMaterialHandlingTasks(material_load_sequence_))
+		{
+			res.load_state = "Succeeded";
+			material_load_server_ptr_->setAborted(res);
+		}
+		else
+		{
+			res.load_state = "Failed";
+			material_load_server_ptr_->setSucceeded(res);
+		}
 	}
 
 	void materialUnloadGoalCallback(const MaterialUnloadServer::GoalConstPtr &gh)
 	{
+		// declaring result
+		MaterialUnloadServer::Result res;
 
+		material_unload_server_ptr_->acceptNewGoal();
+		if(executeMaterialHandlingTasks(material_load_sequence_))
+		{
+			res.unload_state= "Succeeded";
+			material_unload_server_ptr_->setAborted(res);
+		}
+		else
+		{
+			res.unload_state = "Failed";
+			material_unload_server_ptr_->setSucceeded(res);
+		}
 	}
 
+	bool executeMaterialHandlingTasks(const MaterialHandlingSequence &seq)
+	{
+		typedef mtconnect_msgs::MaterialHandlingFeedback Feedback;
+		typedef MaterialHandlingSequence::const_iterator ConstSequenceIterator;
+		std::string task_name;
 
+		for(ConstSequenceIterator i = seq.begin(); i != seq.end(); i++)
+		{
+			switch (*i)
+			{
+			case Feedback::TRANSPORTING_MATERIAL:
+
+				task_name = "TRANSPORTING_MATERIAL";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				arm_pickup_client_ptr_->sendGoal(material_load_pickup_goal_);
+				if(arm_pickup_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					if(arm_pickup_client_ptr_->getResult()->manipulation_result.value != object_manipulation_msgs::ManipulationResult::SUCCESS)
+					{
+						ROS_ERROR_STREAM(task_name <<" task failed with status '"<< arm_pickup_client_ptr_->getResult()->manipulation_result.value
+								<<"', exiting");
+						return false;
+					}
+
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::TRANSPORTING_WORKPIECE:
+
+				task_name = "TRANSPORTING_WORKPIECE";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				arm_place_client_ptr_->sendGoal(material_unload_place_goal_);
+				if(arm_place_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					if(arm_place_client_ptr_->getResult()->manipulation_result.value != object_manipulation_msgs::ManipulationResult::SUCCESS)
+					{
+						ROS_ERROR_STREAM(task_name <<" task failed with status '"<< arm_place_client_ptr_->getResult()->manipulation_result.value
+								<<"', exiting");
+						return false;
+					}
+
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::OPENNING_DOOR:
+
+				task_name = "OPENNING_DOOR";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				open_door_client_ptr_->sendGoal(mtconnect_msgs::OpenDoorGoal());
+				if(open_door_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::OPENNING_CHUCK:
+
+				task_name = "OPENNING_CHUCK";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				open_chuck_client_ptr_->sendGoal(mtconnect_msgs::OpenChuckGoal());
+				if(open_chuck_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+				break;
+			case Feedback::CLOSING_CHUCK:
+
+				task_name = "CLOSING_CHUCK";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				close_chuck_client_ptr_->sendGoal(mtconnect_msgs::CloseChuckGoal());
+				if(close_chuck_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::CLOSING_DOOR:
+
+				task_name = "CLOSING_DOOR";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				close_door_client_ptr_->sendGoal(mtconnect_msgs::CloseDoorGoal());
+				if(close_door_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::PLACING_MATERIAL:
+
+				task_name = "PLACING_MATERIAL";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				arm_place_client_ptr_->sendGoal(material_load_place_goal_);
+				if(arm_place_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					if(arm_place_client_ptr_->getResult()->manipulation_result.value != object_manipulation_msgs::ManipulationResult::SUCCESS)
+					{
+						ROS_ERROR_STREAM(task_name <<" task failed with status '"<< arm_place_client_ptr_->getResult()->manipulation_result.value
+								<<"', exiting");
+						return false;
+					}
+
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::RETRIEVING_WORKPIECE:
+
+				task_name = "RETRIEVING_WORKPIECE";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+				arm_pickup_client_ptr_->sendGoal(material_unload_pickup_goal_);
+				if(arm_pickup_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					if(arm_pickup_client_ptr_->getResult()->manipulation_result.value != object_manipulation_msgs::ManipulationResult::SUCCESS)
+					{
+						ROS_ERROR_STREAM(task_name <<" task failed with status '"<< arm_pickup_client_ptr_->getResult()->manipulation_result.value
+								<<"', exiting");
+						return false;
+					}
+
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+			case Feedback::WAITING_ON_EXTERNAL_DEVICE:
+				break;
+			case Feedback::CLEARING_WORK_AREA:
+
+				task_name = "CLEARING_WORK_AREA";
+				ROS_INFO_STREAM(task_name <<" task in progress");
+
+				// setting goal joint constraints
+				move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints.clear();
+				joint_wait_pos_.toJointConstraints(DEFAULT_JOINT_ERROR_TOLERANCE,DEFAULT_JOINT_ERROR_TOLERANCE,
+						move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints);
+
+				move_arm_client_ptr_->sendGoal(move_arm_goal_);
+				if(move_arm_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
+				{
+					if(move_arm_client_ptr_->getResult()->error_code.val != arm_navigation_msgs::ArmNavigationErrorCodes::SUCCESS)
+					{
+						ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+						return false;
+					}
+
+					ROS_INFO_STREAM(task_name <<" task completed");
+				}
+				else
+				{
+					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					return false;
+				}
+				break;
+
+
+			}
+		}
+		return true;
+	}
 protected:
 
 	// action servers
@@ -179,9 +446,15 @@ protected:
 	CncOpenChuckClientPtr open_chuck_client_ptr_;
 	CncCloseChuckClientPtr close_chuck_client_ptr_;
 
-	// pick place info members
-	move_arm_utils::PickupGoalInfo pickup_goal_;
-	move_arm_utils::PlaceGoalInfo place_goal_;
+	// arm group, pick, place and joint info members
+	std::string arm_group_;
+	arm_navigation_msgs::MoveArmGoal move_arm_goal_;
+	move_arm_utils::PickupGoalInfo material_load_pickup_goal_;
+	move_arm_utils::PlaceGoalInfo material_load_place_goal_;
+	move_arm_utils::PickupGoalInfo material_unload_pickup_goal_;
+	move_arm_utils::PlaceGoalInfo material_unload_place_goal_;
+	move_arm_utils::JointStateInfo joint_home_pos_;
+	move_arm_utils::JointStateInfo joint_wait_pos_;
 
 };
 
