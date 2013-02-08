@@ -7,3 +7,4 @@ float32 workpiece_diameter
 string unload_state
 ---
 # Define the feedback
+mtconnect_msgs/MaterialHandlingFeedback feedback

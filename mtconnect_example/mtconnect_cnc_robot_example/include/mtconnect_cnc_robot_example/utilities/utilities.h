@@ -26,6 +26,7 @@
 #include <object_manipulation_msgs/PlaceGoal.h>
 #include <object_manipulation_msgs/PickupGoal.h>
 #include <boost/tuple/tuple.hpp>
+#include <sensor_msgs/JointState.h>
 
 namespace move_arm_utils
 {
@@ -108,6 +109,27 @@ public:
 
 	bool parseParameters(XmlRpc::XmlRpcValue &val);
 
+};
+
+struct JointStateInfo: sensor_msgs::JointState
+{
+public:
+	JointStateInfo():
+		arm_group("")
+	{
+
+	}
+
+	~JointStateInfo()
+	{
+
+	}
+
+	bool fetchParameters(std::string nameSpace = "/joint_state");
+	bool parseParameters(XmlRpc::XmlRpcValue &val);
+	void toJointConstraints(double tol_above,double tol_below, std::vector<arm_navigation_msgs::JointConstraint> &joint_constraints);
+
+	std::string arm_group;
 };
 
 }

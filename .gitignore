@@ -9,3 +9,7 @@ simulator/agent
 *Goal.msg
 *Result.msg
 *~
+*Action.msg
+*Feedback.msg
+*Result.msg
+*Goal.msg

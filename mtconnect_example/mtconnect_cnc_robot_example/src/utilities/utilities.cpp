@@ -198,8 +198,7 @@ void CartesianTrajectory::getMarker(nav_msgs::Path &p)
 bool CartesianTrajectory::fetchParameters(std::string nameSpace)
 {
 	XmlRpc::XmlRpcValue val;
-	ros::NodeHandle nh;
-	bool success = nh.getParam(nameSpace,val) && parseParameters(val);
+	bool success = ros::param::get(nameSpace,val) && parseParameters(val);
 	if(!success)
 	{
 		ROS_ERROR_STREAM(ros::this_node::getName()<<": Parsing error in cartesian_trajectory parameter");
@@ -260,17 +259,8 @@ bool PickupGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
 
 bool PlaceGoalInfo::fetchParameters(std::string nameSpace)
 {
-	ros::NodeHandle nh;
 	XmlRpc::XmlRpcValue val;
-
-	if(nh.getParam(nameSpace,val) && parseParameters(val))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return ros::param::get(nameSpace,val) && parseParameters(val);
 }
 
 bool PlaceGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
@@ -304,5 +294,78 @@ bool PlaceGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
 	}
 
 	return success;
+}
+
+bool JointStateInfo::fetchParameters(std::string nameSpace)
+{
+	XmlRpc::XmlRpcValue val;
+	return ros::param::get(nameSpace,val) && parseParameters(val);
+}
+
+bool JointStateInfo::parseParameters(XmlRpc::XmlRpcValue &param)
+{
+	// declaring member name strings
+	const std::string arm_group_mb = "arm_group";
+	const std::string joints_mb = "joints";
+	const std::string position_mb = "position";
+	const std::string name_mb = "name";
+	const std::string velocity_mb = "velocity";
+	const std::string effort_mb = "effort";
+
+	// declaring params
+	XmlRpc::XmlRpcValue joint_param;
+
+	// parsing arm group name (optional)
+	arm_group = (param.hasMember(arm_group_mb) ? static_cast<std::string>(param[arm_group_mb]): arm_group);
+
+	// checking joints struct array
+	if(!param.hasMember(joints_mb))
+	{
+		return false;
+	}
+
+	// clearing arrays
+	position.clear();
+	name.clear();
+	velocity.clear();
+	effort.clear();
+
+	// retrieving and parsing joint struct array
+	joint_param = param[joints_mb];
+	if(joint_param.getType()== XmlRpc::XmlRpcValue::TypeArray && joint_param[0].getType() == XmlRpc::XmlRpcValue::TypeStruct &&
+			joint_param[0].hasMember(position_mb) && joint_param[0].hasMember(name_mb))
+	{
+		for(int i = 0 ; i < joint_param.size(); i++)
+		{
+			XmlRpc::XmlRpcValue &element = joint_param[i];
+			position.push_back(static_cast<double>(element[position_mb]));
+			name.push_back(static_cast<std::string>(element[name_mb]));
+
+			// optional entries ( Assigns 0  when member is not found )
+			velocity.push_back(element.hasMember(velocity_mb) ? static_cast<double>(element[velocity_mb]) : 0 );
+			effort.push_back(element.hasMember(effort_mb) ?  static_cast<double>(element[effort_mb]) : 0);
+		}
+	}
+	else
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void JointStateInfo::toJointConstraints(double tol_above,double tol_below,
+		std::vector<arm_navigation_msgs::JointConstraint> &joint_constraints)
+{
+	arm_navigation_msgs::JointConstraint val;
+	val.tolerance_above = tol_above;
+	val.tolerance_below = tol_below;
+	val.weight = 0.0f;
+
+	for(std::size_t i ; i < name.size(); i++)
+	{
+		val.joint_name = name[i];
+		val.position = position[i];
+	}
 }
 
