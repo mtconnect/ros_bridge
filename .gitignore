@@ -5,3 +5,7 @@
 simulator/graph
 simulator/agent
 *~
+*Action.msg
+*Feedback.msg
+*Result.msg
+*Goal.msg
