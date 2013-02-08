@@ -35,3 +35,6 @@ rosbuild_add_executable(move_pick_place_server_node src/nodes/move_pick_place_se
 	src/utilities/utilities.cpp src/move_arm_action_clients/MovePickPlaceServer.cpp src/move_arm_action_clients/MoveArmActionClient.cpp)
 rosbuild_add_executable(move_pick_place_test src/nodes/move_pick_place_test.cpp
 	src/utilities/utilities.cpp src/move_arm_action_clients/MovePickPlaceServer.cpp src/move_arm_action_clients/MoveArmActionClient.cpp)
+	
+rosbuild_add_executable(material_handling_server_test src/nodes/material_handling_server_test.cpp 
+	src/utilities/utilities.cpp)
