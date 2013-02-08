@@ -76,9 +76,6 @@ class BridgeSubscriber():
         # Create class lock
         self.lock = thread.allocate_lock()
         
-        # Create ROS subscribers
-        #self.topic_listener()
-        
         # Loop through requested topics and spawn ROS subscribers when topics are available
         topic_list = self.topic_name_list
         dwell = 10

@@ -24,7 +24,7 @@ import thread # for thread locking
 import re
 import time
 from Queue import Queue
-from threading import Thread
+from threading import Thread, Timer
 from importlib import import_module
 from httplib import HTTPConnection
 from xml.etree import ElementTree
@@ -61,6 +61,7 @@ class BridgePublisher():
         self.data_items = []
         self.pub = []
         self.msg = []
+        self.data_hold = None
         
         # Setup topic, data items, pub, etc. via configuration file
         self.setup_topic_data()
@@ -91,16 +92,12 @@ class BridgePublisher():
         # Start a streaming XML connection
         response = self.xml_http_connection(conn, self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
         
-        # Create class lock
-        self.lock = thread.allocate_lock()
-
-        # Create publishing thread
-        #rospy.Timer(rospy.Duration(0.1), self.ros_publisher)
+        # Create queue for streaming XML
         self.XML_queue = Queue()
-        ROSpub = Thread(target = self.ros_publisher, args=())
-        ROSpub.setDaemon(True)
-        ROSpub.start()
-
+        
+        # Create a ROS publishing thread
+        self.ros_publisher()
+        
         # Streams data from the agent...
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
@@ -182,7 +179,7 @@ class BridgePublisher():
         """ Initialize the data item dictionary with data item : None
         pairs.  Dictionary used to record only changed event states.
         """
-        return {val:None for item in self.data_items for val in item}
+        return {di:None for di_list in self.data_items for di in di_list}
     
     def process_xml(self, xml):
         """Function determines if an event of interest has changed and updates
@@ -197,18 +194,21 @@ class BridgePublisher():
         local_di = self.init_di_dict()
 
         # Loop through XML elements, update the di_changed and di_current
-        for e in elements:
-            rospy.loginfo('Changing ROS message --> %s --> %s' % (e.tag, e.text))
-            
-            di_list = [val for di_vals in self.data_items for val in di_vals]
-
-            if 'name' in e.attrib.keys():
-                if e.attrib['name'] in di_list:
-                    # Change local_di from None to current MTConnect event status
-                    di = e.attrib['name']
-                    local_di[di] = e.text
-                    self.di_current[di] = e.text # Update di_current with new state
-        return nextSeq, local_di
+        if elements:
+            for e in elements:
+                #rospy.loginfo('Changing ROS message --> %s --> %s' % (e.tag, e.text))
+                
+                di_list = [di_val for di_list in self.data_items for di_val in di_list]
+    
+                if 'name' in e.attrib.keys():
+                    if e.attrib['name'] in di_list:
+                        # Change local_di from None to current MTConnect event status
+                        di = e.attrib['name']
+                        local_di[di] = e.text
+                        self.di_current[di] = e.text # Update di_current with new state
+            return nextSeq, local_di
+        else:
+            return nextSeq, None
 
     def topic_publisher(self, cb_data):
         """ Publishes the MTConnect message.  This function is a generic publisher.
@@ -231,7 +231,7 @@ class BridgePublisher():
                         os._exit(0)
                     
                     # Used changed value in di_changed
-                    rospy.loginfo('%s changed, set from di_changed' % di_name) # DEBUG
+                    #rospy.loginfo('%s changed, set from di_changed' % di_name) # DEBUG
                     
                     # Convert from MTConnect to ROS format from di_changed
                     ros_tag = self.config[topic_name][topic_type][di_name][self.di_changed[di_name]]
@@ -255,43 +255,59 @@ class BridgePublisher():
 
     def xml_callback(self, chunk):
         #rospy.loginfo('*******************In PROCESS_XML callback***************')
-        #self.lock.acquire()
         try:
             _, self.di_changed = self.process_xml(chunk)
-            self.XML_queue.put(self.di_changed)
-            rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
+            if self.di_changed is not None:
+                self.XML_queue.put(self.di_changed)
+                #rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
+                if self.XML_queue.qsize() > 1:
+                    rospy.loginfo('STORED XML INTO QUEUE, WAITING ON ROS PUBLISHER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
         except Exception as e:
             rospy.logerr("Bridge Publisher: Process XML callback failed: %s, releasing lock" % e)
         finally:
-            #self.lock.release()
             pass
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
         
-    #def ros_publisher(self, event):
     def ros_publisher(self):
         #rospy.loginfo('-------------------In ROS_PUBLISHER callback---------------')
-        #self.lock.acquire()
-        while True:
+
+        # Create timer thread
+        ROSpub = Timer(1.0, self.ros_publisher)
+        ROSpub.daemon = True
+        ROSpub.start()
+        
+        # Pull from queue if XML is available, if not use stored value
+        if self.XML_queue.empty() and self.data_hold is not None:
+            data = self.data_hold
+        elif not self.XML_queue.empty():
             data = self.XML_queue.get()
-            
-            try:
-                #if self.di_changed != None:
-                if data != None:
-                    publishers = []
-                    for topic_name, topic_type, pub, message, di in zip(self.topic_name_list, self.topic_type_list,
-                                                                    self.pub, self.msg, self.data_items):
-                        # Publish topic
-                        rospy.init_node('bridge_publisher')
-                        publishers.append(self.topic_publisher((topic_name, topic_type, pub, message, di)))
-                    
-                    # Reset current data items to None
-                    self.di_changed = self.init_di_dict()
-            except Exception as e:
-                rospy.logerr("Bridge Publisher: ROS-Publisher callback failed: %s, releasing lock" % e)        
-            finally:
-                #self.lock.release()
+        else:
+            # XML data is not available, do not publish
+            data = None
+        
+        try:
+            if data != None:
+                # Publish all topics specified in the configuration file
+                publishers = []
+                for topic_name, topic_type, pub, message, di in zip(self.topic_name_list, self.topic_type_list,
+                                                                self.pub, self.msg, self.data_items):
+                    # Publish topic
+                    rospy.init_node('bridge_publisher')
+                    publishers.append(self.topic_publisher((topic_name, topic_type, pub, message, di)))
+                
+                # Reset current data items to None
+                self.di_changed = self.init_di_dict()
+        except Exception as e:
+            rospy.logerr("Bridge Publisher: ROS-Publisher callback failed: %s, releasing lock" % e)        
+        finally:
+            if data != self.data_hold:
+                # Update the persistent variable and close the queue
+                self.data_hold = data
                 self.XML_queue.task_done()
+            else:
+                pass
+
         #rospy.loginfo('-------------------Done with ROS_PUBLISHER callback---------------')
         return
 

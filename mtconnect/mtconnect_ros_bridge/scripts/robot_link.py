@@ -108,6 +108,7 @@ def run_actions():
             # launch close door action client
             closedoor.close_door_client()
             rospy.loginfo('CloseDoor Action Completed')
+            time.sleep(3)
         elif cnc_mul[0].text == 'ACTIVE' and rbt_mul[0].text == 'ACTIVE':
             # launch open door action client
             opendoor.open_door_client()
