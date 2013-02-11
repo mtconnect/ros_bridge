@@ -16,6 +16,18 @@
    limitations under the License.
    """
 
+## @package bridge_publisher.py
+# This module launches a ROS node that will read the Event data from the machine tool
+# and then publishes the data as a ROS topic.  Topics and topic parameters are specified
+# by a configuration file that must be included with the main program during execution.
+# If this file is not provided, the node will terminate with an error message indicating
+# the need for this file.
+#
+# Command line example:
+#
+#     bridge_publisher.py -i bridge_publisher_config.yaml
+#     bridge_publisher.py -input bridge_publisher_config.yaml
+
 # Import standard Python modules
 import sys
 import os
@@ -44,7 +56,18 @@ from long_pull import LongPull
 import roslib
 import rospy
 
+## @class BridgePublisher
+## @brief The BridgePublisher
+## parses XML data from an HTTP connection and starts a ROS publishing
+## thread that publishes topic data at 10 hertz.  The class contains the following methods:
+## setup_topic_data -- utilizes introspection to set up topic instance variables
+## init_di_dict -- creates hash table of data_item:None pairs
+## process_xml -- parses xml elements and updates the di_current and di_changed dictionaries
+## topic_publisher -- gets and sets attributes for a ROS message. Publishes ROS message
+## xml_callback -- callback function invoked by longpull, executes process_xml function and stores copy of di_changed into XML_queue
+## ros_publisher -- function that uses a Timer thread to publish ROS topic.  Extracts data from XML_queue and executes topic_publisher
 class BridgePublisher():
+    ## @brief Constructor for a BridgePublisher
     def __init__(self):
         # Initialize the ROS publisher node
         rospy.init_node('bridge_publisher')
@@ -118,22 +141,20 @@ class BridgePublisher():
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
 
+    ## @brief This function captures the topic name, type, and member
+    ## attributes that are required for the ROS publisher.  This task
+    ## is completed for each topic specified in the configuration file.
+    ## 
+    ## This function then performs a relative import of the topic
+    ## via the getattr(import_module) function.  Data is stored in the
+    ## following class attributes:
+    ##    
+    ##     self.data_items   --> used for ROS data structure tracking, stores list of data items for each topic
+    ##     self.pub          --> used to setup ROS topic publishers
+    ##     self.msg          --> data structure for msg class instances of the topic type
+    ##     self.topic_name_list  --> used for configuration file key reference
+    ##     self.topic_type_list  --> used for module import and config file key reference
     def setup_topic_data(self):
-        """This function captures the topic name, type, and member
-        attributes that are required for the ROS publisher.  This task
-        is completed for each topic specified in the configuration file.
-        
-        This function then performs a relative import of the topic
-        via the getattr(import_module) function.  Data is stored in the
-        following class attributes:
-        
-            self.data_items   --> used for ROS data structure tracking, stores list of data items for each topic
-            self.pub          --> used to setup ROS topic publishers
-            self.msg          --> data structure for msg class instances of the topic type
-            self.topic_name_list  --> used for configuration file key reference
-            self.topic_type_list  --> used for module import and config file key reference
-        """
-        
         for topic_name, type_name in self.config.items():
             if topic_name not in self.msg_parameters:
                 # TOPIC --> topic name, such as 'chatter'
@@ -170,19 +191,20 @@ class BridgePublisher():
         
         return
     
+    ## @brief Initialize the data item dictionary with data item : None pairs.
+    ## Dictionary used to record only changed event states.
+    ## @return A dictionary of data_item:None pairs for every data item in the configuration file.
+    ## Even if multiple topics are used, all of the data items are stored in a single hash table.
     def init_di_dict(self):
-        """ Initialize the data item dictionary with data item : None
-        pairs.  Dictionary used to record only changed event states.
-        """
         return {di:None for di_list in self.data_items for di in di_list}
     
+    ## @brief Function determines if an event of interest has changed and updates
+    ## the current and changed data item dictionaries.  Events that will be
+    ## published are specified by the user in a .yaml file.
+    ## @param xml: xml data, read from response.read()
+    ## @return integer representing the next sequence to be added to XPath expression for streaming
+    ## @return dictionary of changed data items that includes the ROS attribute value for the ROS msg data structure.
     def process_xml(self, xml):
-        """Function determines if an event of interest has changed and updates
-        the current and changed data item dictionaries.  Events that will be
-        published are specified by the user in a .yaml file.  The function 
-        returns the updated changed data item dictionary that includes the
-        ROS attribute value for the ROS msg data structure.
-        """
         nextSeq, elements = bridge_library.xml_components(xml, self.ns, self.di_current)
 
         # Create local data item dictionary to track event changes
@@ -199,13 +221,18 @@ class BridgePublisher():
                         self.di_current[d_item] = e.text # Update di_current with new state
                         break
         return nextSeq, local_di
-
+    
+    ## @brief Publishes the MTConnect message.  This function is a generic publisher.
+    ## If the machine tool xml changed, the message attribute is updated with this value.
+    ## Otherwise the message attribute is updated with the value stored in the di_current dictionary.
+    ## @param cb_data: tuple containing the following parameters:
+    ## @param topic_name: string containing the name of the ROS topic
+    ## @param topic_type: string containing the name of the topic type
+    ## @param pub: ROS publisher object for the topic_name and topic_type
+    ## @param msg: ROS message class instance for the topic_name and topic_type
+    ## @param data_items: list containing a string of data items for the specified topic
     def topic_publisher(self, cb_data):
-        """ Publishes the MTConnect message.  This function is a generic publisher.
-        Attribute fetches are obtained via the attrgetter function in the operator
-        module.  In order to assign a value to a relative attribute, a code object
-        is created and then executed.  
-        """
+        # Unpack function arguments
         topic_name, topic_type, pub, msg, data_items = cb_data
         
         msg.header.stamp = rospy.Time.now()
@@ -239,7 +266,12 @@ class BridgePublisher():
 
         pub.publish(msg)
         return
-
+    
+    ## @brief Processes the xml chunk provided by the LongPull class instance and stores the result
+    ## into di_changed since the tags have changed.  di_changed is then stored into a queue
+    ## to be used by ros_publisher.  The queue is used to ensure capture of updated tags while
+    ## ros_publisher is blocked publishing a message.
+    ## @param chunk: xml data, read from response.read()
     def xml_callback(self, chunk):
         #rospy.loginfo('*******************In PROCESS_XML callback***************')
         try:
@@ -255,7 +287,10 @@ class BridgePublisher():
             pass
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
-        
+    
+    ## @brief Starts a publishing thread at 10 hertz.  Data required for the ROS publisher
+    ## is obtained from the XML queue.  If data is not available, the function will not launch
+    ## the ROS publisher.  If the queue is empty, data publishes the previous message.
     def ros_publisher(self):
         #rospy.loginfo('-------------------In ROS_PUBLISHER callback---------------')
 
