@@ -31,8 +31,8 @@ from importlib import import_module
 from httplib import HTTPConnection
 from xml.etree import ElementTree
 
-# Import custom Python module to read config file
-import read_config_file
+# Import custom ROS-MTConnect function library
+import bridge_library
 
 # Import custom Python modules for MTConnect Adapter interface
 path, file = os.path.split(__file__)
@@ -52,20 +52,19 @@ class GenericActionClient():
         rospy.init_node('ActionClient')
         
         # Setup MTConnect to ROS Conversion
-        self.config = read_config_file.obtain_dataMap()
+        self.config = bridge_library.obtain_dataMap()
         self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace', 'adapter_port']
         self.url = self.config[self.msg_parameters[0]]
         self.url_port = self.config[self.msg_parameters[1]]
         self.mtool = self.config[self.msg_parameters[2]]
-        self.xml_ns = self.config[self.msg_parameters[3]]
+        self.ns = dict(m = self.config[self.msg_parameters[3]])
         self.port = self.config[self.msg_parameters[4]]
         
         # Check for url connectivity, dwell until system timeout
-        self.check_connectivity(1)
+        bridge_library.check_connectivity((1,self.url,self.url_port))
         
         # Setup MTConnect Adapter for robot status data items
         self.adapter = Adapter((self.url, self.port))
-        self.ns = dict(m = self.xml_ns)
         
         # Create empty lists for actions, message type handles, etc.
         self.lib_manifests = []
@@ -82,7 +81,7 @@ class GenericActionClient():
         self.setup_topic_data()
         
         # Add data items to the MTConnect Adapter - must be unique data items
-        self.add_agent()
+        bridge_library.add_event((self.adapter, self.action_list, self.di_dict, True))
         
         # Start the adapter
         rospy.loginfo('Start the Robot Link adapter')
@@ -92,7 +91,7 @@ class GenericActionClient():
         while True:
             try:
                 self.conn = HTTPConnection(self.url, self.url_port)
-                response = self.xml_get_response(self.mtool + "/current")
+                response = bridge_library.xml_get_response((self.url, self.url_port, self.port, self.conn, self.mtool + "/current"))
                 body = response.read()
                 break
             except socket.error as e:
@@ -100,10 +99,10 @@ class GenericActionClient():
                 time.sleep(10)
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(body)
+        seq, elements = bridge_library.xml_components(body, self.ns, self.action_list)
 
         # Start a streaming XML connection
-        response = self.xml_get_response(self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
+        response = bridge_library.xml_get_response((self.url, self.url_port, self.port, self.conn, self.mtool + "/sample?interval=1000&count=1000&from=" + seq))
         
         # Create class lock
         self.lock = thread.allocate_lock()
@@ -112,50 +111,6 @@ class GenericActionClient():
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
     
-    def check_connectivity(self, tout):
-        current = time.time()
-        time_out = current + 20
-        rospy.loginfo('Checking for URL availability')
-        while time_out > current:
-            try:
-                response = urllib2.urlopen('http://' + self.url + ':' + str(self.url_port) + '/current', timeout = tout)
-                rospy.loginfo('Connection available')
-                break
-            except urllib2.URLError as err:
-                current = time.time()
-                pass
-        else:
-            rospy.loginfo('System Time Out: URL Unavailable, check if the MTConnect Agent is running')
-            sys.exit()
-        return
-    
-    def add_agent(self):
-        """Function creates Adapter Events and then adds data items
-        to the Adapter.
-        """
-        for xml_tag in self.action_list.keys():
-            data_item = self.split_event(xml_tag)
-            self.di_dict[data_item] = Event(data_item)
-            self.adapter.add_data_item(self.di_dict[data_item])
-            
-            rospy.loginfo('data_item --> %s' % xml_tag)
-        
-        # Set initial states for robot actions
-        self.adapter.begin_gather()
-        for data_item, event in self.di_dict.items():
-            event.set_value('READY')
-        self.adapter.complete_gather()
-        return
-    
-    def split_event(self, xml_tag):
-        """Simple function to convert XML tag from CamelCase to
-        the data_item format:  camel_case.
-        """
-        tokens = re.findall(r'([A-Z][a-z]*)', xml_tag)
-        tokenlist = [val.lower() for val in tokens]
-        data_item = tokenlist[0] + '_' + tokenlist[1]
-        return data_item
-                
     def setup_topic_data(self):
         """This function captures the topic namespace, type, action goals,
         and action state conversion from ROS to MTConnect as required for
@@ -196,58 +151,7 @@ class GenericActionClient():
                     
                     # Capture ROS to MTConnect state conversion dictionary
                     #self.action_conv[action_req] = self.config[namespace][action_req]['conversion']
-        return
-    
-    def xml_get_response(self, req):
-        rospy.loginfo('Attempting HTTP connection on url: %s:%s\tPort:%s' % (self.url, self.url_port, self.port))
-        self.conn.request("GET", req)
-        response = self.conn.getresponse()
-        if response.status != 200:
-            rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
-            sys.exit(0)
-        else:
-            rospy.loginfo('Request --> %s, Status --> %s' % (response.reason, response.status))
-        return response
-    
-    def xml_components(self, xml):
-        """ Find all elements in the updated XML.  root.find requires namespaces
-        to be a dictionary.  Function returns two variables:
-        1.  next XML sequence for streaming XML via longpull.py
-        2.  only the elements that match the action items in the configuration file
-        """
-        root = ElementTree.fromstring(xml)
-        header = root.find('.//m:Header', namespaces = self.ns)
-        nextSeq = header.attrib['nextSequence']
-       
-        elements = []
-        find_goal = None
-
-        for action, goals in self.action_list.items():
-            find_action = root.findall('.//m:' + action, namespaces = self.ns)
-            if find_action: # Element list is not empty
-                elements.append(find_action[0])
-
-            goal_tag = goals.keys()[0]
-            rospy.loginfo('GOAL-TAG --> %s' % goal_tag)
-            find_goal = root.findall('.//m:' + goal_tag, namespaces = self.ns)
-            rospy.loginfo('GOAL-ELEMENT --> %s' % find_goal)
-            
-            rospy.loginfo('ACTION --> %s' % action)
-            
-            if find_goal:
-                rospy.loginfo('GOAL-ELEMENT SET--> %s' % find_goal[0].text)
-                goal_conv = []
-                tokens = find_goal[0].text.split(", ")
-                for item in tokens:
-                    try:
-                        goal_conv.append(float(item))
-                    except ValueError:
-                        goal_conv.append(item)
-                self.action_goals[action] = goal_conv
-            else:
-                rospy.loginfo('self.action_goals --> %s' % self.action_goals)
-
-        return nextSeq, elements
+        return    
     
     def action_client(self, cb_data):
         # Execute ROS Action
@@ -287,8 +191,9 @@ class GenericActionClient():
         
         # Sends the goal to the action server.
         rospy.loginfo('Sending the goal')
-        name_conv = self.split_event(name)
-        client.send_goal(goal, done_cb = None, active_cb = self.action_cb(name_conv, 'ACTIVE'))
+        name_conv = bridge_library.split_event(name)
+        client.send_goal(goal, done_cb = None, active_cb = bridge_library.action_cb((self.adapter, self.di_dict, name_conv, 'ACTIVE')))
+        
         
         # Waits for the server to finish performing the action.
         rospy.loginfo('Waiting for result')
@@ -301,15 +206,13 @@ class GenericActionClient():
         rospy.loginfo('Returning the result --> %s' % result)
         
         # Set the Robot XML data item
-        tokens = re.findall(r'([A-Z][a-z]*)', name)
-        tokenlist = [val.lower() for val in tokens]
-        data_item = tokenlist[0] + '_' + tokenlist[1]
+        data_item = bridge_library.split_event(name)
         
         # Obtain text string for result -- Simulation Only, Replace with ROS-MTConnect conversion
         di_result = getattr(result, result.__slots__[0])
         
         # Submit converted result to host via MTConnect adapter
-        self.action_cb(data_item, di_result)
+        bridge_library.action_cb((self.adapter, self.di_dict, data_item, di_result))
 
         return
 
@@ -318,7 +221,7 @@ class GenericActionClient():
         self.lock.acquire()
         try:
             # Only grab XML elements for CNC action requests 
-            _, elements = self.xml_components(chunk)
+            _, elements, self.action_goals = bridge_library.xml_components(chunk, self.ns, self.action_list, get_goal = True, action_goals = self.action_goals)
 
             if elements:
                 # Check for existing handshake, reverse elements if necessary
@@ -336,21 +239,13 @@ class GenericActionClient():
                     # Check if CNC is submitting a handshake request
                     elif e.text == 'READY' and e.attrib['name'] == self.handshake:
                         # Send hand shake signal
-                        self.action_cb(e.attrib['name'], 'READY')
+                        bridge_library.action_cb((self.adapter, self.di_dict, e.attrib['name'], 'READY'))
                         self.handshake = None
         except Exception as e:
             rospy.logerr("Generic Action Client: Process XML callback failed: %s, releasing lock" % e)
         finally:
             self.lock.release()
         rospy.loginfo('*******************Done with PROCESS_XML callback***************')
-        return
-    
-    def action_cb(self, data_item, state):
-        # Respond that goal is accepted
-        rospy.loginfo("Changing %s to '%s'" % (data_item, state))
-        self.adapter.begin_gather()
-        self.di_dict[data_item].set_value(state)
-        self.adapter.complete_gather()
         return
 
 if __name__ == '__main__':

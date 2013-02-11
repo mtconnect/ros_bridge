@@ -155,15 +155,6 @@ class RobotSim():
                 tokenML = cnc_root.findall('.//m:MaterialLoad', namespaces = self.ns)
                 tokenMUL = cnc_root.findall('.//m:MaterialUnload', namespaces = self.ns)
                 
-                # ------DEBUG-----------
-                if not tokenML:
-                    print 'CNC MaterialLoad is empty, but we have a Queue'
-                if not tokenMUL:
-                    print 'CNC MaterialUnload is empty, but we have a Queue'
-                if not tokenML and not tokenMUL:
-                    print cnc_body
-                # ------DEBUG-----------
-                
                 if tokenML and tokenML[0].text == 'ACTIVE':
                     if sequence is None:
                         sequence = 'MaterialLoad'
@@ -296,7 +287,7 @@ class RobotSim():
         return
 
     def cnc_xml_callback(self, chunk):
-        rospy.loginfo('*******************In CNC XML Queue callback***************')
+        #rospy.loginfo('*******************In CNC XML Queue callback***************')
         if self.cnc_capture_xml == True:
             try:
                 self.XML_CNC_queue.put(chunk)
@@ -307,11 +298,11 @@ class RobotSim():
                 rospy.logerr("Robot Simulation: CNC XML Queue callback failed: %s, releasing lock" % e)
             finally:
                 pass
-        rospy.loginfo('*******************Done with CNC XML Queue callback***************')
+        #rospy.loginfo('*******************Done with CNC XML Queue callback***************')
         return
     
     def rbt_xml_callback(self, chunk):
-        rospy.loginfo('*******************In ROBOT XML Queue callback***************')
+        #rospy.loginfo('*******************In ROBOT XML Queue callback***************')
         if self.rbt_capture_xml == True:
             try:
                 self.XML_RBT_queue.put(chunk)
@@ -322,7 +313,7 @@ class RobotSim():
                 rospy.logerr("Robot Simulation: ROBOT XML Queue callback failed: %s, releasing lock" % e)
             finally:
                 pass
-        rospy.loginfo('*******************Done with ROBOT XML Queue callback***************')
+        #rospy.loginfo('*******************Done with ROBOT XML Queue callback***************')
         return
 
     

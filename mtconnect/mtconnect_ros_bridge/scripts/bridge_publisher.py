@@ -32,8 +32,8 @@ from importlib import import_module
 from httplib import HTTPConnection
 from xml.etree import ElementTree
 
-# Import custom Python module to read config file
-import read_config_file
+# Import custom ROS-MTConnect function library
+import bridge_library
 
 # Import custom Python modules for MTConnect Adapter interface
 path, file = os.path.split(__file__)
@@ -50,15 +50,15 @@ class BridgePublisher():
         rospy.init_node('bridge_publisher')
         
         # Setup MTConnect to ROS Conversion
-        self.config = read_config_file.obtain_dataMap()
+        self.config = bridge_library.obtain_dataMap()
         self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace']
         self.url = self.config[self.msg_parameters[0]]
         self.url_port = self.config[self.msg_parameters[1]]
         self.mtool = self.config[self.msg_parameters[2]]
-        self.xml_ns = self.config[self.msg_parameters[3]]
+        self.ns = dict(m = self.config[self.msg_parameters[3]])
         
         # Check for url connectivity, dwell until system timeout
-        self.check_connectivity(1)
+        bridge_library.check_connectivity((1,self.url,self.url_port))
         
         # Create the data lists for the topic names, types, manifests, data items, ROS publishers, and ROS messages
         self.topic_name_list = []
@@ -73,21 +73,31 @@ class BridgePublisher():
         self.setup_topic_data()
         
         # Hash table of persistent CNC event states, only updates when state changes
-        self.di_current = {}
+        self.di_current = self.init_di_dict()
         
         # Hash table to store changed CNC event states
         self.di_changed = None
         
         # Establish XML connection, read in current XML
-        self.conn = HTTPConnection(self.url, self.url_port)
-        response = self.xml_get_response(self.mtool + "/current")
-        body = response.read()
+        while True:
+            try:
+                self.conn = HTTPConnection(self.url, self.url_port)
+                response = bridge_library.xml_get_response((self.url, self.url_port, None, self.conn, self.mtool + "/current"))
+                body = response.read()
+                break
+            except socket.error as e:
+                rospy.loginfo('HTTP connection error %s' % e)
+                time.sleep(10)
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(body)
+        seq, elements = bridge_library.xml_components(body, self.ns, self.di_current)
         
         # Use XML to establish current data item state dictionary
-        self.di_current = {e.attrib['name']:e.text for e in elements if 'name' in e.attrib.keys()}
+        for di in self.di_current.keys():
+            name = bridge_library.split_event(di)
+            for e in elements:
+                if name == e.attrib['name']:
+                    self.di_current[di] = e.text
         
         # Confirm that data items in config file are present in XML
         for di_set in self.data_items:
@@ -96,7 +106,7 @@ class BridgePublisher():
                 sys.exit()
         
         # Start a streaming XML connection
-        response = self.xml_get_response(self.mtool + "/sample?interval=1000&count=1000&from=" + seq)
+        response = bridge_library.xml_get_response((self.url, self.url_port, None, self.conn, self.mtool + "/sample?interval=1000&count=1000&from=" + seq))
         
         # Create queue for streaming XML
         self.XML_queue = Queue()
@@ -107,24 +117,7 @@ class BridgePublisher():
         # Streams data from the agent...
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
-    
-    def check_connectivity(self, tout):
-        current = time.time()
-        time_out = current + 20
-        rospy.loginfo('Checking for URL availability')
-        while time_out > current:
-            try:
-                response = urllib2.urlopen('http://' + self.url + ':' + str(self.url_port) + '/current', timeout = tout)
-                rospy.loginfo('Connection available')
-                break
-            except urllib2.URLError as err:
-                current = time.time()
-                pass
-        else:
-            rospy.loginfo('System Time Out: URL Unavailable, check if the MTConnect Agent is running')
-            sys.exit()
-        return
-    
+
     def setup_topic_data(self):
         """This function captures the topic name, type, and member
         attributes that are required for the ROS publisher.  This task
@@ -161,7 +154,7 @@ class BridgePublisher():
                 type_handle = getattr(import_module(namespace + '.msg'), topic_type_name)
                 
                 # Append list of data items specified in the ROS topic message
-                self.data_items.append([val for val in type_handle.__slots__ if val != 'header'])
+                self.data_items.append(self.config[topic_name][type_name.keys()[0]].keys())
                 
                 # Create ROS publisher
                 self.pub.append(rospy.Publisher(topic_name, type_handle))
@@ -176,28 +169,6 @@ class BridgePublisher():
         rospy.loginfo('TOPIC NAME LIST --> %s' % self.topic_name_list)
         
         return
-
-    def xml_get_response(self, req):
-        rospy.loginfo('Attempting HTTP connection on url: %s:%s\tPort:%s' % (self.url, self.url_port, self.port))
-        self.conn.request("GET", req)
-        response = self.conn.getresponse()
-        if response.status != 200:
-            rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
-            sys.exit(0)
-        else:
-            rospy.loginfo('Request --> %s, Status --> %s' % (response.reason, response.status))
-        return response
-
-    def xml_components(self, xml):
-        """ Find all elements in the updated xml. root.find requires namespaces to be a dictionary.
-        Return sequence and elements to process ROS msgs.
-        """
-        root = ElementTree.fromstring(xml)
-        ns = dict(m = self.xml_ns)
-        header = root.find('.//m:Header', namespaces=ns)
-        nextSeq = header.attrib['nextSequence']
-        elements = root.findall('.//m:Events/*', namespaces=ns)        
-        return nextSeq, elements
     
     def init_di_dict(self):
         """ Initialize the data item dictionary with data item : None
@@ -212,27 +183,22 @@ class BridgePublisher():
         returns the updated changed data item dictionary that includes the
         ROS attribute value for the ROS msg data structure.
         """
-        nextSeq, elements = self.xml_components(xml)
-        
+        nextSeq, elements = bridge_library.xml_components(xml, self.ns, self.di_current)
+
         # Create local data item dictionary to track event changes
         local_di = self.init_di_dict()
 
         # Loop through XML elements, update the di_changed and di_current
+        di_list = [di_val for di_list in self.data_items for di_val in di_list]
+        
         if elements:
             for e in elements:
-                #rospy.loginfo('Changing ROS message --> %s --> %s' % (e.tag, e.text))
-                
-                di_list = [di_val for di_list in self.data_items for di_val in di_list]
-    
-                if 'name' in e.attrib.keys():
-                    if e.attrib['name'] in di_list:
-                        # Change local_di from None to current MTConnect event status
-                        di = e.attrib['name']
-                        local_di[di] = e.text
-                        self.di_current[di] = e.text # Update di_current with new state
-            return nextSeq, local_di
-        else:
-            return nextSeq, None
+                for d_item in di_list:
+                    if e.attrib['name'] == bridge_library.split_event(d_item):
+                        local_di[d_item] = e.text
+                        self.di_current[d_item] = e.text # Update di_current with new state
+                        break
+        return nextSeq, local_di
 
     def topic_publisher(self, cb_data):
         """ Publishes the MTConnect message.  This function is a generic publisher.
@@ -254,22 +220,19 @@ class BridgePublisher():
                         rospy.logerr("CONVERSION ERROR IN TOPIC CONFIG FILE: XML is '%s' --> CONFIG is %s" % (value, conv_keys))
                         os._exit(0)
                     
-                    # Used changed value in di_changed
-                    #rospy.loginfo('%s changed, set from di_changed' % di_name) # DEBUG
-                    
                     # Convert from MTConnect to ROS format from di_changed
                     ros_tag = self.config[topic_name][topic_type][di_name][self.di_changed[di_name]]
                 else:
-                    # Use stored value in di_current
                     # Convert from MTConnect to ROS format via di_current
                     ros_tag = self.config[topic_name][topic_type][di_name][self.di_current[di_name]]
                 
                 # Obtain the state value via operator.attrgetter object: 'door_state.CLOSED'
-                state_object = operator.attrgetter(di_name + '.' + ros_tag)
+                name = bridge_library.split_event(di_name)
+                state_object = operator.attrgetter(name + '.' + ros_tag)
                 state_value = state_object(msg)
                 
                 # From the msg class, obtain the message attribute using data item name: attrib = msg.door_state
-                attrib = getattr(msg, di_name)
+                attrib = getattr(msg, name)
                 
                 # Set the attribute to the converted ROS value: setattr(msg, 'door_state.val', 1) --> msg.door_state.val = 1
                 setattr(attrib, attrib.__slots__[0], state_value)
@@ -283,7 +246,7 @@ class BridgePublisher():
             _, self.di_changed = self.process_xml(chunk)
             if self.di_changed is not None:
                 self.XML_queue.put(self.di_changed)
-                #rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
+                rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
                 if self.XML_queue.qsize() > 1:
                     rospy.loginfo('STORED XML INTO QUEUE, WAITING ON ROS PUBLISHER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
         except Exception as e:
@@ -297,7 +260,7 @@ class BridgePublisher():
         #rospy.loginfo('-------------------In ROS_PUBLISHER callback---------------')
 
         # Create timer thread
-        ROSpub = Timer(1.0, self.ros_publisher)
+        ROSpub = Timer(0.1, self.ros_publisher)
         ROSpub.daemon = True
         ROSpub.start()
         

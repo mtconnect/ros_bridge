@@ -33,22 +33,22 @@ xml_namespace: 'urn:mtconnect.org:MTConnectStreams:1.2'
 
 CncResponseTopic:
     mtconnect_msgs/CncStatus:
-        open_door:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        close_door:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        door_state:
+        OpenDoor:
+            {'ACTIVE':'CLOSED','COMPLETE':'UNKNOWN','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        CloseDoor:
+            {'ACTIVE':'OPEN','COMPLETE':'UNKNOWN','READY':'CLOSED', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        DoorState:
             {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN', 'NOT READY':'UNKNOWN', 'UNAVAILABLE':'UNKNOWN'}
-        open_chuck:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        close_chuck:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        chuck_state:
+        OpenChuck:
+            {'ACTIVE':'CLOSED','COMPLETE':'UNKNOWN','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        CloseChuck:
+            {'ACTIVE':'OPEN','COMPLETE':'UNKNOWN','READY':'CLOSED', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        ChuckState:
             {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN', 'NOT READY':'UNKNOWN', 'UNAVAILABLE':'UNKNOWN'}
 
 CncRequestTopic:
     mtconnect_msgs/CncRequest:
-        material_load:
+        MaterialLoad:
             {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        material_unload:
+        MaterialUnload:
             {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}

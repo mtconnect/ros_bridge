@@ -27,8 +27,8 @@ import re
 import time
 from importlib import import_module
 
-# Import custom Python module to read config file
-import read_config_file
+# Import custom ROS-MTConnect function library
+import bridge_library
 
 # Import custom Python modules for MTConnect Adapter interface
 path, file = os.path.split(__file__)
@@ -46,7 +46,7 @@ class BridgeSubscriber():
         rospy.init_node('bridge_subscriber')
         
         # Read configuration file and extract topics and types
-        self.config = read_config_file.obtain_dataMap()
+        self.config = bridge_library.obtain_dataMap()
         self.msg_parameters = ['url', 'adapter_port']
         self.url = self.config[self.msg_parameters[0]]
         self.adapter_port = self.config[self.msg_parameters[1]]
@@ -93,17 +93,6 @@ class BridgeSubscriber():
                     rospy.loginfo('ROS Topic %s not available, will try to subscribe in %d seconds' % (topic_name, dwell))
                     time.sleep(dwell)
 
-    def add_agent(self):
-        """Function creates Adapter Events and then adds data items
-        to the Adapter."""
-        
-        for xml_tag in self.data_items:
-            self.di_dict[xml_tag] = Event(xml_tag)
-            self.adapter.add_data_item(self.di_dict[xml_tag])
-            
-            rospy.loginfo('data_item --> %s' % xml_tag)
-        return
-
     def setup_topic_data(self):
         """This function captures the topic name, type, and member attributes that are required for 
         the ROS subscriber.  This task is completed for each topic specified in the configuration file.
@@ -129,7 +118,7 @@ class BridgeSubscriber():
                 self.data_items = [data_item for data_item in topic_type[type_key].keys()]
         
                 # Add data items to the MTConnect Adapter - must be unique data items
-                self.add_agent()
+                bridge_library.add_event((self.adapter, self.data_items, self.di_dict, False))
                 
                 # Extract package namespace and topic type name
                 tokens = topic_type.keys()[0].split('/')
@@ -226,9 +215,7 @@ class BridgeSubscriber():
                 rospy.logerr('ROS to MTConnect Mapping failed')
 
             # Set the Robot XML data item
-            self.adapter.begin_gather()
-            self.di_dict[member_data[0]].set_value(adapter_val)
-            self.adapter.complete_gather()
+            bridge_library.action_cb((self.adapter, self.di_dict, member_data[0], adapter_val))
         return
     
 
