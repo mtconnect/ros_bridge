@@ -55,6 +55,10 @@ typedef std::vector<int> MaterialHandlingSequence;
 
 // defaults
 static const std::string PARAM_ARM_GROUP = "arm_group";
+static const std::string PARAM_UNLOAD_PICKUP_GOAL = "unload_pickup_goal";
+static const std::string PARAM_UNLOAD_PLACE_GOAL = "unload_place_goal";
+static const std::string PARAM_LOAD_PICKUP_GOAL = "load_pickup_goal";
+static const std::string PARAM_LOAD_PLACE_GOAL = "load_place_goal";
 static const std::string PARAM_JOINT_HOME_POSITION = "/joint_home_position";
 static const std::string PARAM_JOINT_WAIT_POSITION = "/joint_wait_position";
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
@@ -121,8 +125,8 @@ protected:
 	{
 		ros::NodeHandle ph("~");
 		return ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
-				material_load_pickup_goal_.fetchParameters() && material_load_place_goal_.fetchParameters() &&
-				material_unload_pickup_goal_.fetchParameters() && material_unload_place_goal_.fetchParameters() &&
+				material_load_pickup_goal_.fetchParameters(PARAM_LOAD_PICKUP_GOAL) && material_load_place_goal_.fetchParameters(PARAM_LOAD_PLACE_GOAL) &&
+				material_unload_pickup_goal_.fetchParameters(PARAM_UNLOAD_PICKUP_GOAL) && material_unload_place_goal_.fetchParameters(PARAM_UNLOAD_PLACE_GOAL) &&
 				joint_home_pos_.fetchParameters(PARAM_JOINT_HOME_POSITION) && joint_wait_pos_.fetchParameters(PARAM_JOINT_WAIT_POSITION);
 	}
 
@@ -134,7 +138,11 @@ protected:
 		ros::NodeHandle nh;
 		int wait_attempts = 0;
 
-		if(!fetchParameters())
+		if(fetchParameters())
+		{
+			ROS_INFO_STREAM("Read all parameters successfully");
+		}
+		else
 		{
 			ROS_ERROR_STREAM("Failed to read parameters, exiting");
 			return false;
@@ -187,6 +195,7 @@ protected:
 				return false;
 			}
 			ROS_WARN_STREAM("Waiting for action servers");
+			ros::Duration(DURATION_WAIT_SERVER).sleep();
 		}
 
 		ROS_INFO_STREAM("Found all action servers");
