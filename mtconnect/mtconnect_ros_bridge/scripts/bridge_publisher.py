@@ -17,16 +17,16 @@
    """
 
 ## @package bridge_publisher.py
-# This module launches a ROS node that will read the Event data from the machine tool
-# and then publishes the data as a ROS topic.  Topics and topic parameters are specified
-# by a configuration file that must be included with the main program during execution.
-# If this file is not provided, the node will terminate with an error message indicating
-# the need for this file.
-#
-# Command line example:
-#
-#     bridge_publisher.py -i bridge_publisher_config.yaml
-#     bridge_publisher.py -input bridge_publisher_config.yaml
+## This module launches a ROS node that will read the Event data from the machine tool
+## and then publishes the data as a ROS topic.  Topics and topic parameters are specified
+## by a configuration file that must be included with the main program during execution.
+## If this file is not provided, the node will terminate with an error message indicating
+## the need for this file.
+##
+## Command line example:
+##
+##     bridge_publisher.py -i bridge_publisher_config.yaml
+##     bridge_publisher.py -input bridge_publisher_config.yaml
 
 # Import standard Python modules
 import sys
