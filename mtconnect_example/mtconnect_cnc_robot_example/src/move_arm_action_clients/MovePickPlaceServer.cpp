@@ -89,6 +89,7 @@ bool MovePickPlaceServer::fetchParameters(std::string name_space)
 	{
 		ROS_ERROR_STREAM("Failed to read setup parameters");
 	}
+
 	return success;
 }
 
@@ -103,18 +104,21 @@ bool MovePickPlaceServer::setup()
 	}
 
 	// setting up pickup server
+	ROS_INFO_STREAM("Setting up pickup server");
 	arm_pickup_server_ptr_  = MoveArmPickupServerPtr(new MoveArmPickupServer(nh,DEFAULT_PICKUP_ACTION,
 			boost::bind(&MovePickPlaceServer::pickupGoalCallback,this, _1),
 			boost::bind(&MovePickPlaceServer::pickupCancelCallback,this,_1),
 			false));
 
 	// setting up place server
+	ROS_INFO_STREAM("Setting up place server");
 	arm_place_server_ptr_  = MoveArmPlaceServerPtr(new MoveArmPlaceServer(nh,DEFAULT_PLACE_ACTION,
 			boost::bind(&MovePickPlaceServer::placeGoalCallback,this, _1),
 			boost::bind(&MovePickPlaceServer::placeCancelCallback,this,_1),
 			false));
 
 	// setting up grasp action client
+	ROS_INFO_STREAM("Setting up grasp client");
 	grasp_action_client_ptr_ = GraspActionClientPtr(new GraspActionClient(DEFAULT_GRASP_ACTION,true));
 	while(!grasp_action_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
 	{

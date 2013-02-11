@@ -44,6 +44,7 @@ public:
 		ros::AsyncSpinner spinner(2);
 		spinner.start();
 
+		ROS_INFO_STREAM("Cycling through pick and place moves");
 		while(ros::ok())
 		{
 			if(moveArmThroughPickSequence(pickup_goal_))
@@ -68,7 +69,7 @@ public:
 		}
 	}
 
-	virtual bool fetchParameters()
+	virtual bool fetchParameters(std::string ns = "")
 	{
 		// fetching pick and place parameters for protected pick place members (only needed if not servicing client requests)
 		if(MovePickPlaceServer::fetchParameters() && pickup_goal_.fetchParameters() && place_goal_.fetchParameters())
@@ -91,7 +92,6 @@ public:
 
 int main(int argc,char** argv)
 {
-
 
 	ros::init(argc,argv,"move_pick_place_test");
 	MoveArmActionClientPtr arm_client_ptr = MoveArmActionClientPtr(new MovePickPlaceTest());
