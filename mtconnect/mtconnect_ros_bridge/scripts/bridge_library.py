@@ -16,20 +16,20 @@
    limitations under the License.
    """
 
+## @package bridge_library.py
+# This module contains functions utilized by the MTConnect to ROS bridge nodes.
+# Currently, this module is a container for HTTP connectivity verification,
+# XML parsing, importing configuration files for the ROS nodes, and several
+# MTConnect Adapter related functions.
+
 # Import standard Python modules
 import sys
 import os
 import optparse
 import yaml
-#import operator
-#import thread
 import re
 import time
 import urllib2
-#from Queue import Queue
-#from threading import Thread, Timer
-#from importlib import import_module
-#from httplib import HTTPConnection
 from xml.etree import ElementTree
 
 # Import custom Python modules for MTConnect Adapter interface
@@ -40,14 +40,27 @@ from data_item import Event, SimpleCondition, Sample, ThreeDSample
 # Import ROS Python modules
 import rospy
 
+## obtain_dataMap Function documentation.
+#
+# This function utilizes python option parser to determine the option filename.
+# Once the file name is obtained, the .yaml file contents are stored in a dictionary.
+# Program terminates if the option file is not available, or if it is in an
+# incorrect .yaml format.
+# 
+# This function does not take any arguments.
+#
+# @return: dataMap, dictionary of node parameters
+# 
+# Command line example:
+#
+#     bridge_publisher.py -i bridge_publisher_config.yaml
 def obtain_dataMap():
-    """The code is executed with options, so this function
-    utilizes python option parser to determine the option
-    filename. Once the file name is obtained, the .yaml file
-    contents are stored in a dictionary.  Program terminates
-    if the option file is not available, or if it is in an
-    incorrect .yaml format. 
-    """
+    ## determine_config_file_name Function documentation
+    #
+    # In order to execute a ROS bridge node a configuration file in YAML
+    # format is required.  This function allows the following input
+    # options for the configuration file:
+    #     -i, --input
     def determine_config_file_name():
         parser = optparse.OptionParser()
         parser.add_option('-i', '--input',
@@ -74,6 +87,17 @@ def obtain_dataMap():
         sys.exit(0)
     return dataMap
 
+## check_connectivity Function documentation
+#
+# The purpose of this function is to determine if an HTTP connection is available.
+# It will continue to try to make a connection up to a user specified time.
+#
+# This function takes the following arguments:
+# @param data: data is a tuple containing the following parameters:
+#
+# @param tout: int, allowable time in seconds before the open request times out
+# @param url: string, url that will be opened
+# @param url_port: int, url port that will be concatenated to the url string
 def check_connectivity(data):
     # Unpack function arguments
     tout, url, url_port = data
@@ -95,6 +119,21 @@ def check_connectivity(data):
         sys.exit()
     return
 
+## xml_get_response Function documentation
+#
+# This function determines if an HTTP connection can be made.  If so, it returns a response
+# to a user specified "GET" request.
+#
+# This function takes the following arguments:
+# @param data: data is a tuple containing the following parameters:
+#
+# @param url: string, url that will be opened
+# @param url_port: int, url port that will be concatenated to the url string
+# @param port: int, Adapter port used by MTConnect adapter.py module
+# @param conn: Python httplib.HTTPConnection
+# @param req: string, user specified selector url
+#
+# @return: response, "GET" response
 def xml_get_response(data):
     # Unpack data
     url, url_port, port, conn, req = data
@@ -110,13 +149,26 @@ def xml_get_response(data):
         rospy.loginfo('Request --> %s, Status --> %s' % (response.reason, response.status))
     return response
 
+## xml_components Function documentation
+#
+# This function finds all elements in the updated XML.  If an action goal is required,
+# the string acquired from the XML is parsed and returned with the appropriate type.
+# For example, if the goal is "'ALUMINUM 6061-T6', 5.00, 2", the function will
+# convert this string into the following list ['ALUMINUN 6061-T6', 5.00, 2.50] which contains
+# the following types: [str, float, float]
+#
+# This function takes the following arguments:
+# @param xml: xml data, read from response.read()
+# @param ns: dictionary, xml namespace dictionary
+# @param tag_list: dictionary, xml tag stored as tag:goal or tag:tag pairs
+# @param get_goal: boolean, optional parameter, used when a action goal is required
+# @param action_goals: dictionary, optional parameter, stored action goals by xml_tag key
+#
+# Function returns:
+# @return: nextSeq, int, next XML sequence for streaming XML via longpull.py
+# @return: elements, Python Element object
+# @return: action_goals, dictionary, optional, hash table of xml_tag:goal pairs
 def xml_components(xml, ns, tag_list, get_goal = False, action_goals = None):
-    """ Find all elements in the updated XML.  root.find requires namespaces
-    to be a dictionary.  Function returns two variables:
-    1.  next XML sequence for streaming XML via longpull.py
-    2.  only the elements that match the action items in the configuration file
-    """
-    
     # Extract XML Event elements
     root = ElementTree.fromstring(xml)
     header = root.find('.//m:Header', namespaces = ns)
@@ -157,6 +209,18 @@ def xml_components(xml, ns, tag_list, get_goal = False, action_goals = None):
     else:
         return nextSeq, elements 
 
+## add_event Function documentation
+#
+# This function creates instances of the Adapter Event class for
+# each of the xml_tags provided to the function.
+#
+# This function takes the following arguments:
+# @param data: data is a tuple containing the following parameters:
+#
+# @param adapter: Adapter class object
+# @param tag_list: list of xml_tags culled from node configuration file
+# @param di_dict: dictionary {string:string}, stored Adapter Event class instances for each xml_tag
+# @param init: boolean, user specified boolean to determine if the Adapter Events must be initialized  
 def add_event(data):
     # Unpack function arguments
     adapter, tag_list, di_dict, init = data
@@ -183,12 +247,31 @@ def add_event(data):
         adapter.complete_gather()
     return
 
+## split_event Function documentation
+#
+# This function converts a data item Event string from CamelCase to camel_case
+#
+# This function takes and returns the following arguments:
+# @param xml_tag: string, Event data item in CamelCase format
+# @return: data_item, string, Event data item in camel_case format
 def split_event(xml_tag):
     tokens = re.findall(r'([A-Z][a-z]*)', xml_tag)
     tokenlist = [val.lower() for val in tokens]
     data_item = tokenlist[0] + '_' + tokenlist[1]
     return data_item
 
+## action_cb Function documentation
+#
+# This function sets the value of an Adapter Event.  It is used to port
+# xml_tag changes back to machine tool.
+#
+# This function takes the following arguments:
+# @param data: data is a tuple containing the following parameters:
+#
+# @param adapter: Adapter class object
+# @param di_dict: dictionary {string:string}, stored Adapter Event class instances for each xml_tag
+# @param data_item: string, data item used to locate the Adapter Event
+# @param state: string, Event will be changed to this value
 def action_cb(data):
     # Unpack function arguments
     adapter, di_dict, data_item, state = data
