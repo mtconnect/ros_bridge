@@ -16,6 +16,24 @@
    limitations under the License.
    """
 
+## @package bridge_client.py
+## This module launches a ROS node that will stream xml data from the machine tool
+## and will launch a ROS action client if the machine tool requests an action.  For example,
+## if the machine tool requests a MaterialLoad action, it will change the MaterialLoad Event
+## tag from 'READY' to 'ACTIVE'.  Once this change is captured by this class, the class
+## launches a ROS MaterialLoadAction client.  Subsequently, the MaterialLoadAction server must be
+## executed to process the action.  If not, the system waits until the MaterialLoadAction server
+## is available.
+##
+## Actions and goals are specified by a configuration file that must be included with the
+## main program during execution. If this file is not provided, the node will terminate
+## with an error message indicating the need for this file.
+##
+## Command line example:
+##
+##     bridge_client.py -i bridge_client_config.yaml
+##     bridge_client.py -input bridge_client_config.yaml
+
 # Import standard Python modules
 import sys
 import os
@@ -46,7 +64,17 @@ import roslib
 import rospy
 import actionlib
 
+## @class GenericActionClient
+## @brief The GenericActionClient
+## will launch a ROS node that streams xml data from the machine tool and will launch
+## a ROS action client if the machine tool requests an action.
+##
+## The class contains the following methods:
+## setup_topic_data -- utilizes introspection to set up class instance variables
+## action_client -- function triggered by the xml_callback that executes a ROS action
+## xml_callback -- parses xml stream and launches action client.  Completes 'READY' handshake with machine tool.
 class GenericActionClient():
+    ## @brief Constructor for a GenericActionClient
     def __init__(self):
         # Initialize ROS generic client node
         rospy.init_node('ActionClient')
@@ -110,23 +138,19 @@ class GenericActionClient():
         # Create XML polling thread
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
-    
+
+    ## @brief This function captures the topic namespace, type, action goals, and action
+    ## state conversion from ROS to MTConnect as required for the ROS action client.
+    ## This task is completed for each topic specified in the configuration file.
+    ## 
+    ## This function then performs a relative import of the topic via the getattr(import_module)
+    ## function.  Data is stored in the following class attributes:
+    ## 
+    ##     self.lib_manifests --> used to track which manifests have been loaded
+    ##     self.type_handle   --> used for ROS SimpleActionClient, stores namespace with action messages
+    ##     self.action_list   --> used for ROS SimpleActionClient, stores CNC action request strings
+    ##     self.action_goals  --> data structure for message class instances of the topic type 
     def setup_topic_data(self):
-        """This function captures the topic namespace, type, action goals,
-        and action state conversion from ROS to MTConnect as required for
-        the ROS action client.  This task completed for each topic specified
-        in the configuration file.
-        
-        This function then performs a relative import of the topic
-        via the getattr(import_module) function.  Data is stored in the
-        following class attributes:
-        
-            self.lib_manifests --> used to track which manifests have been loaded
-            self.type_handle   --> used for ROS SimpleActionClient, stores namespace with action messages
-            self.action_list   --> used for ROS SimpleActionClient, stores CNC action request strings
-            self.action_goals  --> data structure for message class instances of the topic type
-        """
-        
         for namespace, action in self.config.items():
             if namespace not in self.msg_parameters: # Only one ROS namespace in config by design
                 # Load package manifest if unique
@@ -153,6 +177,15 @@ class GenericActionClient():
                     #self.action_conv[action_req] = self.config[namespace][action_req]['conversion']
         return    
     
+    ## @brief ROS Action client function that compiles and sends the action goal to the
+    ## dedicated ROS action server.  The function will block until the server becomes available.
+    ## After the goal result is received from the dedicated ROS action server, the function
+    ## sets the robot data item via the MTConnect adapter.
+    ## 
+    ## @param cb_data: tuple containing the following parameters:
+    ## @param name: string containing the data item name for the robot action
+    ## @param goals: dictionary of data_item:goal pairs in str:str or str:float format
+    ## @param handle: Python <module 'mtconnect_msgs.msg'>
     def action_client(self, cb_data):
         # Execute ROS Action
         rospy.init_node('ActionClient')
@@ -216,6 +249,12 @@ class GenericActionClient():
 
         return
 
+    ## @brief Callback function that launches a ROS action client if the machine
+    ## tool data item tag is 'ACTIVE'.  Once the action is completed, it completes
+    ## the handshake signal between the machine tool and the robot via the MTConnect
+    ## adapter.
+    ## 
+    ## @param chunk: xml data, read from response.read()
     def xml_callback(self, chunk):
         rospy.loginfo('*******************In PROCESS_XML callback***************')
         self.lock.acquire()

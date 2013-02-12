@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 """
    Copyright 2013 Southwest Research Institute
@@ -15,6 +15,21 @@
    See the License for the specific language governing permissions and
    limitations under the License.
    """
+
+## @package bridge_server.py
+## This module launches a ROS node that blocks until a dedicated action request is made by the robot,
+## such as 'OpenDoor'.  Once a request is received, the callback function will monitor
+## the machine tool and complete the 'READY' handshake before returning the request result
+## to the dedicated action client.
+## 
+## Dedicated action client data items are specified by a configuration file that must be included with the
+## main program during execution. If this file is not provided, the node will terminate
+## with an error message indicating the need for this file.
+##
+## Command line example:
+##
+##     bridge_server.py -i bridge_server_config.yaml
+##     bridge_server.py -input bridge_server_config.yaml
 
 # Import standard Python modules
 import sys
@@ -47,7 +62,19 @@ import roslib
 import rospy
 import actionlib
 
+## @class GenericActionServer
+## @brief The GenericActionServer
+## will launch a ROS node that blocks until a dedicated action request is made by the robot,
+## such as 'OpenDoor'.  Once a request is received, the callback function will monitor
+## the machine tool and complete the 'READY' handshake before returning the request result
+## to the dedicated action client.
+##
+## The class contains the following methods:
+## setup_topic_data -- sets up class instance variables
+## execute_cb -- triggered by a ROS action client, monitors machine tool response sequence and submits 'READY' handshake
+## xml_callback -- parses xml stream and stores xml into a data queue.
 class GenericActionServer():
+    ## @brief Constructor for a GenericActionServer
     def __init__(self):
         # Initialize ROS generic client node
         rospy.init_node('ActionServer')
@@ -121,22 +148,22 @@ class GenericActionServer():
         xml_thread.daemon = True
         xml_thread.start()
     
+    ## @brief This function captures the topic namespace, type, action goals,
+    ## and action state conversion from ROS to MTConnect as required for
+    ## the ROS action client.  This task completed for each topic specified
+    ## in the configuration file.
+    ## 
+    ## This function then performs a relative import of the topic via the getattr(import_module) function.
+    ## Data is stored in the following class attributes:
+    ## 
+    ##    self.lib_manifests --> used to track which manifests have been loaded
+    ##    self.type_handle   --> used for ROS SimpleActionClient, stores namespace with action messages
+    ##    self.action_list   --> used for ROS SimpleActionClient, stores CNC action request strings
+    ##    self.action_goals  --> dictionary of goal:goal attrib pairs in str:list format
+    ##    self.server_name   --> dictionary of data_item:DataItem pairs in str:str format
+    ##    self._resultDict   --> dictionary of result class instances, i.e. {'MaterialLoad':mtconnect_msgs.msg._MaterialLoadResult.MaterialLoadResult()} 
+    ##    self._as           --> dictionary of ROS action servers referenced by DataItem
     def setup_topic_data(self):
-        """This function captures the topic namespace, type, action goals,
-        and action state conversion from ROS to MTConnect as required for
-        the ROS action client.  This task completed for each topic specified
-        in the configuration file.
-        
-        This function then performs a relative import of the topic
-        via the getattr(import_module) function.  Data is stored in the
-        following class attributes:
-        
-            self.lib_manifests --> used to track which manifests have been loaded
-            self.type_handle   --> used for ROS SimpleActionClient, stores namespace with action messages
-            self.action_list   --> used for ROS SimpleActionClient, stores CNC action request strings
-            self.action_goals  --> data structure for message class instances of the topic type
-        """
-        
         for namespace, action in self.config.items():
             if namespace not in self.msg_parameters: # Only one ROS namespace in config by design
                 # Load package manifest if unique
@@ -178,6 +205,12 @@ class GenericActionServer():
                     self._as[request].start()
         return
     
+    ## @brief Callback function that monitors the machine tool action sequence for 'ACTIVE',
+    ## 'COMPLETE', and 'READY' data item states.  Once the machine tool is completed with the
+    ## requested action and sends the machine tool 'READY' signal, the ROS action server
+    ## returns set_succeeded to the ROS action client that requested the action.
+    ## 
+    ## @param goal: from action client, class instance of the data item action goal, i.e. goal = mtconnect_msgs.msg.OpenDoorGoal()
     def execute_cb(self, goal):
         # If goal is OpenDoor, use the goal defined in the message as your key, access it as goal.__slots__[0]
         action = goal.__slots__[0]
@@ -228,14 +261,18 @@ class GenericActionServer():
         # Extract action attribute
         result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
         
-        # Create code object to set the attribute per the ROS to MTConnect conversion
+        # Set the attribute per the ROS to MTConnect conversion
         setattr(self._resultDict[self.server_name[action]], result_attribute, 'READY')
         
         # Indicate a successful action
         self._as[self.server_name[action]].set_succeeded(self._resultDict[self.server_name[action]])
         rospy.loginfo('In %s Callback -- action succeeded.' % self.server_name[action])
         return
-    
+
+    ## @brief Processes the xml chunk provided by the LongPull class instance and stores the result
+    ## into the XML_queue since the tags have changed.  The queue is used to ensure capture of updated
+    ## tags while the execute_cb function is being executed.
+    ## @param chunk: xml data, read from response.read()
     def xml_callback(self, chunk):
         #rospy.loginfo('*******************In PROCESS_XML callback***************')
         try:

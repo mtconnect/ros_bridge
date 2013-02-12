@@ -60,6 +60,7 @@ import rospy
 ## @brief The BridgePublisher
 ## parses XML data from an HTTP connection and starts a ROS publishing
 ## thread that publishes topic data at 10 hertz.  The class contains the following methods:
+##
 ## setup_topic_data -- utilizes introspection to set up topic instance variables
 ## init_di_dict -- creates hash table of data_item:None pairs
 ## process_xml -- parses xml elements and updates the di_current and di_changed dictionaries

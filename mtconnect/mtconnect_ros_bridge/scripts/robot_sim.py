@@ -1,5 +1,21 @@
 #! /usr/bin/env python
 
+"""
+   Copyright 2013 Southwest Research Institute
+ 
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+   """
+
 # Import standard Python modules
 import sys
 import os
@@ -12,11 +28,12 @@ import urllib2
 import httplib
 import socket
 
+# Import custom ROS-MTConnect function library
+import bridge_library
+
 # Import custom Python modules for MTConnect Adapter interface
 path, file = os.path.split(__file__)
 sys.path.append(os.path.realpath(path) + '/src')
-from data_item import Event, SimpleCondition, Sample, ThreeDSample
-from mtconnect_adapter import Adapter
 from long_pull import LongPull
 
 # Import ROS Python Modules, and ROS Message Namespace
@@ -37,7 +54,8 @@ class RobotSim():
         rospy.init_node('robot_link')
         
         # Check for url connectivity, dwell until system timeout
-        self.check_connectivity(1)
+        bridge_library.check_connectivity((1, 'localhost', 5000))
+        bridge_library.check_connectivity((1, 'localhost', 5001))
         
         # Global variables
         self.XML_CNC_queue = Queue()
@@ -47,16 +65,17 @@ class RobotSim():
         self.cnc_conn = httplib.HTTPConnection('localhost', 5000)
         self.rbt_conn = httplib.HTTPConnection('localhost', 5001)
         self.ns = dict(m = 'urn:mtconnect.org:MTConnectStreams:1.2')
+        self.data_items = {'MaterialLoad' : 'MaterialLoad', 'MaterialUnload' : 'MaterialUnload'}
         
         # Establish CNC XML connection, read in current XML
-        cnc_response = self.xml_get_response(self.cnc_conn, "/cnc/current")
+        cnc_response = bridge_library.xml_get_response(('localhost', 5000, None, self.cnc_conn, "/cnc/current"))
         cnc_body = cnc_response.read()
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(cnc_body)
+        seq, elements = bridge_library.xml_components(cnc_body, self.ns, self.data_items)
         
         # Start a streaming XML connection
-        cnc_response = self.xml_get_response(self.cnc_conn, "/cnc/sample?interval=1000&count=1000&from=" + seq)
+        cnc_response = bridge_library.xml_get_response(('localhost', 5000, None, self.cnc_conn, "/cnc/sample?interval=1000&count=1000&from=" + seq))
         
         # Create CNC XML polling thread
         cnc_lp = LongPull(cnc_response)
@@ -66,14 +85,14 @@ class RobotSim():
         rospy.loginfo('STARTED STREAMING CNC XML THREAD')
         
         # Establish Robot XML connection, read in current XML
-        rbt_response = self.xml_get_response(self.rbt_conn, "/Robot/current")
+        rbt_response = bridge_library.xml_get_response(('localhost', 5001, None, self.rbt_conn, "/Robot/current"))
         rbt_body = rbt_response.read()
         
         # Parse the XML and determine the current sequence and XML Event elements
-        seq, elements = self.xml_components(rbt_body)
+        seq, elements = bridge_library.xml_components(rbt_body, self.ns, self.data_items)
         
         # Start a streaming XML connection
-        rbt_response = self.xml_get_response(self.rbt_conn, "/Robot/sample?interval=1000&count=1000&from=" + seq)
+        rbt_response = bridge_library.xml_get_response(('localhost', 5001, None, self.rbt_conn, "/Robot/sample?interval=1000&count=1000&from=" + seq))
         
         # Create Robot XML polling thread
         rbt_lp = LongPull(rbt_response)
@@ -100,26 +119,7 @@ class RobotSim():
         self.cnc_thread.join()
         self.rbt_thread.join()
         return
-
-    def check_connectivity(self, tout):
-        url_dict = {'cnc' : 'http://localhost:5000/current', 'Robot' : 'http://localhost:5001/current'}
-        current = time.time()
-        time_out = current + 20
-        rospy.loginfo('Checking for URL availability')
-        while time_out > current:
-            try:
-                response = urllib2.urlopen(url_dict['cnc'], timeout = tout)
-                response = urllib2.urlopen(url_dict['Robot'], timeout = tout)
-                rospy.loginfo('Connections available')
-                break
-            except urllib2.URLError as err:
-                current = time.time()
-                pass
-        else:
-            rospy.loginfo('System Time Out: URL Unavailable, check if the MTConnect Agent is running')
-            sys.exit()
-        return
-        
+ 
     def talker(self):
         rospy.loginfo('Starting ROS Robot State Publisher Thread')
         pub1 = rospy.Publisher('RobotStateTopic', mtconnect_msgs.msg.RobotStates)
@@ -240,58 +240,12 @@ class RobotSim():
                 time.sleep(5)
         return
 
-    def xml_get_response(self, conn, req):
-        conn.request("GET", req)
-        response = conn.getresponse()
-        if response.status != 200:
-            rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
-            sys.exit(0)
-        return response
-    
-    def xml_components(self, xml):
-        """ Find all elements in the updated xml.  root.find requires namespaces to be a dictionary.
-        Return sequence and elements to process ROS msgs.
-        """
-        root = ElementTree.fromstring(xml)
-        header = root.find('.//m:Header', namespaces = self.ns)
-        nextSeq = header.attrib['nextSequence']
-        elements = root.findall('.//m:Events/*', namespaces = self.ns)        
-        return nextSeq, elements
-    
-    def robot_init(self):
-        adapter = Adapter(('0.0.0.0', 7900))
-    
-        # Start the adapter
-        rospy.loginfo('Start the Robot Link adapter')
-        adapter.start()
-    
-        open_door_di = Event('open_door')
-        adapter.add_data_item(open_door_di)
-    
-        close_door_di = Event('close_door')
-        adapter.add_data_item(close_door_di)
-    
-        open_chuck_di = Event('open_chuck')
-        adapter.add_data_item(open_chuck_di)
-    
-        close_chuck_di = Event('close_chuck')
-        adapter.add_data_item(close_chuck_di)
-    
-        adapter.begin_gather()
-        open_door_di.set_value('READY')
-        close_door_di.set_value('READY')
-        open_chuck_di.set_value('READY')
-        close_chuck_di.set_value('READY')
-    
-        adapter.complete_gather()
-        return
-
     def cnc_xml_callback(self, chunk):
         #rospy.loginfo('*******************In CNC XML Queue callback***************')
         if self.cnc_capture_xml == True:
             try:
                 self.XML_CNC_queue.put(chunk)
-                rospy.loginfo('PUTTING CNC XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_CNC_queue, self.XML_CNC_queue.qsize()))
+                rospy.loginfo('PUTTING CNC XML INTO QUEUE. NUMBER OF QUEUED OBJECTS %s' % self.XML_CNC_queue.qsize())
                 if self.XML_CNC_queue.qsize() > 1:
                     rospy.loginfo('STORED CNC XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_CNC_queue.qsize())
             except Exception as e:
@@ -306,7 +260,7 @@ class RobotSim():
         if self.rbt_capture_xml == True:
             try:
                 self.XML_RBT_queue.put(chunk)
-                rospy.loginfo('PUTTING ROBOT XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_RBT_queue, self.XML_RBT_queue.qsize()))
+                rospy.loginfo('PUTTING ROBOT XML INTO QUEUE. NUMBER OF QUEUED OBJECTS %s' % self.XML_RBT_queue.qsize())
                 if self.XML_RBT_queue.qsize() > 1:
                     rospy.loginfo('STORED ROBOT XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_RBT_queue.qsize())
             except Exception as e:
