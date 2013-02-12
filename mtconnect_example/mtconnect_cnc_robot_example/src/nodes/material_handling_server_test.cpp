@@ -31,6 +31,9 @@
 #include <ros/ros.h>
 #include <boost/assign/list_inserter.hpp>
 #include <boost/assign/list_of.hpp>
+#include <mtconnect_msgs/RobotSpindle.h>
+#include <mtconnect_msgs/RobotStates.h>
+#include <boost/thread.hpp>
 
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
@@ -55,6 +58,10 @@ typedef std::vector<int> MaterialHandlingSequence;
 
 // defaults
 static const std::string PARAM_ARM_GROUP = "arm_group";
+static const std::string PARAM_UNLOAD_PICKUP_GOAL = "unload_pickup_goal";
+static const std::string PARAM_UNLOAD_PLACE_GOAL = "unload_place_goal";
+static const std::string PARAM_LOAD_PICKUP_GOAL = "load_pickup_goal";
+static const std::string PARAM_LOAD_PLACE_GOAL = "load_place_goal";
 static const std::string PARAM_JOINT_HOME_POSITION = "/joint_home_position";
 static const std::string PARAM_JOINT_WAIT_POSITION = "/joint_wait_position";
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
@@ -66,14 +73,17 @@ static const std::string DEFAULT_CNC_OPEN_DOOR_ACTION = "cnc_open_door_action";
 static const std::string DEFAULT_CNC_CLOSE_DOOR_ACTION = "cnc_close_door_action";
 static const std::string DEFAULT_CNC_OPEN_CHUCK_ACTION = "cnc_open_chuck_action";
 static const std::string DEFAULT_CNC_CLOSE_CHUCK_ACTION = "cnc_close_chuck_action";
+static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
+static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
 static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
 static const double DURATION_LOOP_PAUSE = 2.0f;
+static const double DURATION_TIMER_INTERVAL = 4.0f;
 static const double DURATION_WAIT_SERVER = 2.0f;
 static const double DURATION_PLANNING_TIME = 5.0f;
 static const double DURATION_WAIT_RESULT = 40.0f;
-static const int MAX_WAIT_ATTEMPTS = 10;
+static const int MAX_WAIT_ATTEMPTS = 40;
 
 class SimpleMaterialHandlingServer
 {
@@ -121,8 +131,8 @@ protected:
 	{
 		ros::NodeHandle ph("~");
 		return ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
-				material_load_pickup_goal_.fetchParameters() && material_load_place_goal_.fetchParameters() &&
-				material_unload_pickup_goal_.fetchParameters() && material_unload_place_goal_.fetchParameters() &&
+				material_load_pickup_goal_.fetchParameters(PARAM_LOAD_PICKUP_GOAL) && material_load_place_goal_.fetchParameters(PARAM_LOAD_PLACE_GOAL) &&
+				material_unload_pickup_goal_.fetchParameters(PARAM_UNLOAD_PICKUP_GOAL) && material_unload_place_goal_.fetchParameters(PARAM_UNLOAD_PLACE_GOAL) &&
 				joint_home_pos_.fetchParameters(PARAM_JOINT_HOME_POSITION) && joint_wait_pos_.fetchParameters(PARAM_JOINT_WAIT_POSITION);
 	}
 
@@ -134,7 +144,11 @@ protected:
 		ros::NodeHandle nh;
 		int wait_attempts = 0;
 
-		if(!fetchParameters())
+		if(fetchParameters())
+		{
+			ROS_INFO_STREAM("Read all parameters successfully");
+		}
+		else
 		{
 			ROS_ERROR_STREAM("Failed to read parameters, exiting");
 			return false;
@@ -173,21 +187,56 @@ protected:
 		open_chuck_client_ptr_ =CncOpenChuckClientPtr(new CncOpenChuckClient(DEFAULT_CNC_OPEN_CHUCK_ACTION,true));
 		close_chuck_client_ptr_ =CncCloseChuckClientPtr(new CncCloseChuckClient(DEFAULT_CNC_CLOSE_CHUCK_ACTION,true));
 
-		// waiting for service service
-		while(	(!arm_pickup_client_ptr_->isServerConnected() && !arm_pickup_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
+		// initializing publishers
+		robot_states_pub_ = nh.advertise<mtconnect_msgs::RobotStates>(DEFAULT_ROBOT_STATES_TOPIC,1);
+		robot_spindle_pub_ = nh.advertise<mtconnect_msgs::RobotSpindle>(DEFAULT_ROBOT_SPINDLE_TOPIC,1);
+
+		// initializing timers
+		publish_timer_ = nh.createTimer(ros::Duration(DURATION_TIMER_INTERVAL),
+				&SimpleMaterialHandlingServer::publishTimerCallback,this,false,false);
+
+
+		// waiting for robot related service servers
+		while(	ros::ok() && (
+				(!move_arm_client_ptr_->isServerConnected() && !move_arm_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
+				(!arm_pickup_client_ptr_->isServerConnected() && !arm_pickup_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
 				(!arm_place_client_ptr_->isServerConnected() && !arm_place_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
 				(!open_door_client_ptr_->isServerConnected() && !open_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
 				(!close_door_client_ptr_->isServerConnected() && !close_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
 				(!open_chuck_client_ptr_->isServerConnected() && !open_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
-				(!close_chuck_client_ptr_->isServerConnected() && !close_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) )
+				(!close_chuck_client_ptr_->isServerConnected() && !close_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
+				))
 		{
 			if(wait_attempts++ > MAX_WAIT_ATTEMPTS)
 			{
-				ROS_ERROR_STREAM("One or more action servers were not found, exiting");
+				ROS_ERROR_STREAM("One or more action cnc/robot servers were not found, exiting");
 				return false;
 			}
-			ROS_WARN_STREAM("Waiting for action servers");
+			ROS_WARN_STREAM("Waiting for cnc/robot action servers");
+			ros::Duration(DURATION_WAIT_SERVER).sleep();
 		}
+
+		publish_timer_.start();
+
+
+		// waiting for cnc related service servers
+//		ros::TimerEvent evnt;
+//		while(	ros::ok() && (
+//				(!open_door_client_ptr_->isServerConnected() && !open_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
+//				(!close_door_client_ptr_->isServerConnected() && !close_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
+//				(!open_chuck_client_ptr_->isServerConnected() && !open_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
+//				(!close_chuck_client_ptr_->isServerConnected() && !close_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
+//				))
+//		{
+//			if(wait_attempts++ > MAX_WAIT_ATTEMPTS)
+//			{
+//				ROS_ERROR_STREAM("One or more action cnc servers were not found, exiting");
+//				return false;
+//			}
+//			ROS_WARN_STREAM("Waiting for cnc action servers");
+//			ros::Duration(DURATION_WAIT_SERVER).sleep();
+//			publishTimerCallback(evnt); //(bridge servers won't start until these topics are available
+//		}
 
 		ROS_INFO_STREAM("Found all action servers");
 		return true;
@@ -431,6 +480,17 @@ protected:
 		}
 		return true;
 	}
+
+	void publishTimerCallback(const ros::TimerEvent &evnt)
+	{
+		static mtconnect_msgs::RobotStates rob_state_msg;
+		static mtconnect_msgs::RobotSpindle rob_spindle_msg;
+
+		// publishing
+		robot_states_pub_.publish(rob_state_msg);
+		robot_spindle_pub_.publish(rob_spindle_msg);
+	}
+
 protected:
 
 	// action servers
@@ -445,6 +505,13 @@ protected:
 	CncCloseDoorClientPtr close_door_client_ptr_;
 	CncOpenChuckClientPtr open_chuck_client_ptr_;
 	CncCloseChuckClientPtr close_chuck_client_ptr_;
+
+	// topic publishers (ros bridge components wait for these topics)
+	ros::Publisher robot_states_pub_;
+	ros::Publisher robot_spindle_pub_;
+
+	// timers
+	ros::Timer publish_timer_;
 
 	// arm group, pick, place and joint info members
 	std::string arm_group_;

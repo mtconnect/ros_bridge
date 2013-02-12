@@ -17,12 +17,24 @@
 	<!-- move arm action server and required arm navigation nodes -->
 	<include file="$(find mtconnect_arm_navigation)/launch/mtconnect_arm_navigation.launch"/>
 
-	<!-- move arm action client node -->
-	<!--rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_move_parameters.yaml"/-->
-	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_robotiq_parameters.yaml"/>
+	<!-- move pick place server node -->
 	<remap from="/grasp_action_service" to="/grasp_execution_action"/>
 	<remap from="/move_arm_action" to="/move_manipulator"/>
-	<node pkg="mtconnect_cnc_robot_example" type="move_pick_place_test" name="move_pick_place_test" output="screen">
+	<node pkg="mtconnect_cnc_robot_example" type="move_pick_place_server_node" name="move_pick_place_server" output="screen">
+		<param name="arm_group" value="manipulator"/>
+	</node>
+
+	<!-- material load/unload server node -->
+	<remap from="/move_arm_action" to="/move_manipulator"/>
+	<remap from="/robot_states" to= "/RobotStateTopic"/>
+	<remap from="/robot_spindle" to="/RobotSpindleTopic" />
+	<remap from="/cnc_open_door_action" to= "/OpenDoorClient"/>
+	<remap from="/cnc_close_door_action" to="/CloseDoorClient" />
+	<remap from="/cnc_open_chuck_action" to= "/OpenChuckClient"/>
+	<remap from="/cnc_close_chuck_action" to="/CloseChuckClient" />
+
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/material_handling_server_parameters.yaml"/>
+	<node pkg="mtconnect_cnc_robot_example" type="material_handling_server_test" name="material_handling_server" output="screen">
 		<param name="arm_group" value="manipulator"/>
 	</node>
 
