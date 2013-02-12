@@ -1,31 +1,3 @@
-# MTConnect to ROS Conversion Data File
-#
-# For use with the ROS publisher: bridge_publisher.py
-#
-# The format for the .yaml file:
-# 
-# URL: Port Number
-#
-# ROS Topic Name (arbitrary)
-#     ROS Topic Type Class in relative format: namespace/type
-#         MTConnect Data Item (must match XML tag.attrib['name']
-#             MTConnect Data Item Text to ROS Message CONSTANT conversion
-#
-# User enters MTConnect Data Item text and the conversion between
-# the data item text and the ROS message CONSTANT:
-#
-# XML Data Item Name:
-#     {xml_state1:ROS_CONSTANT1, xml_state2:ROS_CONSTANT2, ...}
-#
-# The ROS publisher will convert this data into the following dictionary:
-# {key_port: val_port, key_topic_name: {keyval_topic_type : {keyval_dataitem : {key_di_name : val_ROS_CONSTANT}}}}
-#
-# For example:
-# {'localhost': 5000, 'CncReponseTopic': {'mtconnect_msgs/CncStatus':
-#     {'open_door': {'ACTIVE': 'ENABLED', 'READY': 'OPEN', 'NOT READY': 'OFF',
-#                    'UNAVAILABLE': 'UNKNOWN', 'COMPLETE': 'TRUE'}}}}
-#----------------------------------------------------------- 
-
 url: 'localhost'
 url_port: 5000
 machine_tool: '/cnc'
@@ -33,22 +5,22 @@ xml_namespace: 'urn:mtconnect.org:MTConnectStreams:1.2'
 
 CncResponseTopic:
     mtconnect_msgs/CncStatus:
-        open_door:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        close_door:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        door_state:
+        OpenDoor:
+            {'ACTIVE':'CLOSED','COMPLETE':'UNKNOWN','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        CloseDoor:
+            {'ACTIVE':'OPEN','COMPLETE':'UNKNOWN','READY':'CLOSED', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        DoorState:
             {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN', 'NOT READY':'UNKNOWN', 'UNAVAILABLE':'UNKNOWN'}
-        open_chuck:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        close_chuck:
-            {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        chuck_state:
+        OpenChuck:
+            {'ACTIVE':'CLOSED','COMPLETE':'UNKNOWN','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        CloseChuck:
+            {'ACTIVE':'OPEN','COMPLETE':'UNKNOWN','READY':'CLOSED', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
+        ChuckState:
             {'OPEN':'OPEN','CLOSED':'CLOSED','UNLATCHED':'UNKNOWN', 'NOT READY':'UNKNOWN', 'UNAVAILABLE':'UNKNOWN'}
 
 CncRequestTopic:
     mtconnect_msgs/CncRequest:
-        material_load:
+        MaterialLoad:
             {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}
-        material_unload:
+        MaterialUnload:
             {'ACTIVE':'ENABLED','COMPLETE':'TRUE','READY':'OPEN', 'NOT READY':'OFF', 'UNAVAILABLE':'UNKNOWN'}

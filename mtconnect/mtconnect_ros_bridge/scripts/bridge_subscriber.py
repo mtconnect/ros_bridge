@@ -16,6 +16,18 @@
    limitations under the License.
    """
 
+## @package bridge_subscriber.py
+## This module launches a ROS node that will subscribe to ROS topics specified in the
+## configuration file and then ports the data to the machine tool adapter.  Topics and
+## topic parameters are specified by a configuration file that must be included with
+## the main program during execution. If this file is not provided, the node will terminate
+## with an error message indicating the need for this file.
+##
+## Command line example:
+##
+##     bridge_subscriber.py -i bridge_subscriber_config.yaml
+##     bridge_subscriber.py -input bridge_subscriber_config.yaml
+
 # Import standard Python modules
 import sys
 import os
@@ -27,8 +39,8 @@ import re
 import time
 from importlib import import_module
 
-# Import custom Python module to read config file
-import read_config_file
+# Import custom ROS-MTConnect function library
+import bridge_library
 
 # Import custom Python modules for MTConnect Adapter interface
 path, file = os.path.split(__file__)
@@ -40,13 +52,23 @@ from mtconnect_adapter import Adapter
 import roslib
 import rospy
 
+## @class BridgeSubscriber
+## @brief The BridgeSubscriber
+## will subscribe to ROS topics specified in the configuration file and then ports the data
+## to the machine tool adapter.  The class contains the following methods:
+##
+## setup_topic_data -- utilizes introspection to set up class instance variables
+## topic_callback -- callback function that captures the attribute values for a ROS topic
+## data_item_conversion -- sets MTConnect adapter value via ROS message CONSTANT value
+## topic_listener -- ROS subscriber function that launches subscribers
 class BridgeSubscriber():
+    ## @brief Constructor for a BridgeSubscriber
     def __init__(self):
         # Initialize the ROS Bridge subscriber node
         rospy.init_node('bridge_subscriber')
         
         # Read configuration file and extract topics and types
-        self.config = read_config_file.obtain_dataMap()
+        self.config = bridge_library.obtain_dataMap()
         self.msg_parameters = ['url', 'adapter_port']
         self.url = self.config[self.msg_parameters[0]]
         self.adapter_port = self.config[self.msg_parameters[1]]
@@ -92,31 +114,17 @@ class BridgeSubscriber():
                 else:
                     rospy.loginfo('ROS Topic %s not available, will try to subscribe in %d seconds' % (topic_name, dwell))
                     time.sleep(dwell)
-
-    def add_agent(self):
-        """Function creates Adapter Events and then adds data items
-        to the Adapter."""
-        
-        for xml_tag in self.data_items:
-            self.di_dict[xml_tag] = Event(xml_tag)
-            self.adapter.add_data_item(self.di_dict[xml_tag])
-            
-            rospy.loginfo('data_item --> %s' % xml_tag)
-        return
-
+    
+    ## @brief This function captures the topic name, type, and member attributes that are required for 
+    ## the ROS subscriber.  This task is completed for each topic specified in the configuration file.
+    ## 
+    ## This function then performs a relative import of the topic via the getattr(import_module) function.
+    ## Data is stored in the following class instance attributes:
+    ## 
+    ##     self.topic_type_list --> used for module import and msg parameters
+    ##     self.member_types    --> member type, not used in msg parameters, future use
+    ##     self.member_names    --> used for ROS subscriber msg parameters 
     def setup_topic_data(self):
-        """This function captures the topic name, type, and member attributes that are required for 
-        the ROS subscriber.  This task is completed for each topic specified in the configuration file.
-        
-        This function then performs a relative import of the topic via the getattr(import_module) function.
-        Data is stored in the following class attributes:
-        
-            self.topic_type_list   --> used for module import and msg parameters
-            self.member_types --> member type, not used in msg parameters, future use
-            self.member_names --> used for ROS subscriber msg parameters
-        
-        """
-            
         for topic, topic_type in self.config.items():
             if topic not in self.msg_parameters:
                 self.topic_name_list.append(topic)
@@ -129,7 +137,7 @@ class BridgeSubscriber():
                 self.data_items = [data_item for data_item in topic_type[type_key].keys()]
         
                 # Add data items to the MTConnect Adapter - must be unique data items
-                self.add_agent()
+                bridge_library.add_event((self.adapter, self.data_items, self.di_dict, False))
                 
                 # Extract package namespace and topic type name
                 tokens = topic_type.keys()[0].split('/')
@@ -152,17 +160,21 @@ class BridgeSubscriber():
                 self.member_names[topic] = type_handle.__slots__
         return
     
+    ## @brief Callback function that captures the attribute values for a ROS topic.
+    ## The topic data is stored in a list of tuples, where each tuple is a
+    ## (attrib_name, attrib_value) pair.  To access the integer value of the attribute
+    ## value, use attrib_value.val.
+    ## 
+    ## All data conversions between ROS and MTConnect are stored in the ROS
+    ## subscriber .yaml file. A separate function handles the ROS to MTConnect
+    ## conversions for generic robot messages.
+    ## @param data: callback ROS message data from the ROS subscriber
+    ## @param cb_data: tuple containing the following parameters:
+    ## @param topic_name: string defining the name of the ROS topic
+    ## @param type_handle: class instance of the ROS topic message i.e. <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
+    ## @param member_set: list of strings defining the attribute members for the message class
+    ## @param msg_text: string of the entire message text (may be eliminated in future revisions)
     def topic_callback(self, data, cb_data):
-        """
-        Callback function that captures the attribute values for a ROS topic.
-        The topic data is stored in a list of tuples, where each tuple is a
-        (attrib_name, attrib_value) pair.  To access the integer value of the attribute
-        value, use attrib_value.val.
-        
-        All data conversions between ROS and MTConnect are stored in the ROS
-        subscriber .yaml file. A separate function handles the ROS to MTConnect
-        conversions for generic robot messages. 
-        """
         self.lock.acquire()
         try:
             (topic_name, type_handle, member_set, msg_text) = cb_data
@@ -208,7 +220,14 @@ class BridgeSubscriber():
         finally:
             self.lock.release()
         return
-
+    
+    ## @brief A conversion function that will convert the ROS message value to the 
+    ## machine tool value.  The conversion dictionary is provided in the configuration file.
+    ## @param topic_name: string defining the name of the ROS topic
+    ## @param type_name: string defining the name of the ROS topic type
+    ## @param msg_data: list of strings defining message attributes
+    ## @param msg_text: string of the entire message text (may be eliminated in future revisions)
+    ## @param constants: list of ROS topic message type CONSTANTS stored as strings
     def data_item_conversion(self, topic_name, type_name, msg_data, msg_text, constants):
         # Set the Robot XML data item via the MTConnect Adapter
         for member_data in msg_data:
@@ -226,17 +245,16 @@ class BridgeSubscriber():
                 rospy.logerr('ROS to MTConnect Mapping failed')
 
             # Set the Robot XML data item
-            self.adapter.begin_gather()
-            self.di_dict[member_data[0]].set_value(adapter_val)
-            self.adapter.complete_gather()
-        return
+            bridge_library.action_cb((self.adapter, self.di_dict, member_data[0], adapter_val))
+        return   
     
-
+    ## @brief Main ROS subscriber function.  A new thread is created for each callback.
+    ## @param data: tuple containing the following parameters:
+    ## @param topic_name: string defining the name of the ROS topic
+    ## @param type_handle: class instance of the ROS topic message i.e. <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
+    ## @param member_set: list of strings defining the message attributes
+    ## @param msg_text: string of the entire message text (may be eliminated in future revisions) 
     def topic_listener(self, data):
-        """Main ROS subscriber function.  A new thread is created for each callback.
-        self.topic_name_list and self.data_items determined from the configuration file.
-        The remaining callback data derived from the setup_topic_data function.
-        """
         # Unpack arguments
         topic_name, type_handle, member_set, msg_text = data
         

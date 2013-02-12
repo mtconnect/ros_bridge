@@ -58,6 +58,7 @@ class MaterialLoadServer():
         # Subscribe to CNC state topic
         self.door_state = None
         self.chuck_state = None
+        self.close_door = None
         
         # Check for CncResponseTopic
         dwell = 2
@@ -88,13 +89,14 @@ class MaterialLoadServer():
         while dwell == True:
             # Current CNC state
             if time.time() - previous > 1.0:
-                rospy.loginfo('CNC State: %s' % [self.door_state, self.chuck_state])
+                rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
                 previous = time.time()
 
-            if self.door_state == 1 and self.chuck_state == 1:
+            if self.door_state == 1 and self.chuck_state == 1 and self.close_door == 1:
                 # Chuck and Door are closed, complete the material load cycle
                 self._result.load_state = 'COMPLETE'
                 dwell = False
+                rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
 
             # Check for timeout
             if time.time() - start > 120.0:
@@ -109,6 +111,7 @@ class MaterialLoadServer():
     def topic_callback(self, msg):
         self.door_state = msg.door_state.val
         self.chuck_state = msg.chuck_state.val
+        self.close_door = msg.close_door.val
         return
     
     def subscriber_thread(self):
