@@ -56,6 +56,7 @@ import rospy
 ## @brief The BridgeSubscriber
 ## will subscribe to ROS topics specified in the configuration file and then ports the data
 ## to the machine tool adapter.  The class contains the following methods:
+##
 ## setup_topic_data -- utilizes introspection to set up class instance variables
 ## topic_callback -- callback function that captures the attribute values for a ROS topic
 ## data_item_conversion -- sets MTConnect adapter value via ROS message CONSTANT value
