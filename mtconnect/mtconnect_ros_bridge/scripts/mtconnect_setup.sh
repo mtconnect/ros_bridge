@@ -19,6 +19,7 @@ TERMINAL2_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL2_NAME; $COMMAND1; exec
 TERMINAL3_NAME="Cnc Simulator"
 WORKING_DIR=$(rosstack find mtconnect)/../simulator
 COMMAND1="ruby cnc_simulator_5001.rb"
+#COMMAND1="ruby cnc_simulator.rb"
 TERMINAL3_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL3_NAME; $COMMAND1; exec bash\""
 
 # Setting up robot simulator terminal arguments
@@ -29,6 +30,7 @@ TERMINAL4_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL4_NAME; $COMMAND1; exec
 
 # Running each agent/simulator in its own terminal
 #gnome-terminal --tab --title="AGENT1" -e "bash -c \" cd $WORKING_DIR; echo Agent 1; $COMMAND1; exec bash\""
+#gnome-terminal --tab --title=$TERMINAL1_NAME -e "$TERMINAL1_CMD" --tab --title=$TERMINAL2_NAME -e "$TERMINAL2_CMD" \
+#--tab --title=$TERMINAL3_NAME -e "$TERMINAL3_CMD" --tab --title=$TERMINAL4_NAME -e "$TERMINAL4_CMD"
 gnome-terminal --tab --title=$TERMINAL1_NAME -e "$TERMINAL1_CMD" --tab --title=$TERMINAL2_NAME -e "$TERMINAL2_CMD" \
---tab --title=$TERMINAL3_NAME -e "$TERMINAL3_CMD" --tab --title=$TERMINAL4_NAME -e "$TERMINAL4_CMD"
-
+--tab --title=$TERMINAL3_NAME -e "$TERMINAL3_CMD"
