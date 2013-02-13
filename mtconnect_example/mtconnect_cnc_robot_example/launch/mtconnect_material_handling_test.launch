@@ -32,6 +32,8 @@
 	<remap from="/cnc_close_door_action" to="/CloseDoorClient" />
 	<remap from="/cnc_open_chuck_action" to= "/OpenChuckClient"/>
 	<remap from="/cnc_close_chuck_action" to="/CloseChuckClient" />
+	<remap from="/material_load_action" to= "/MaterialLoadClient"/>
+	<remap from="/material_unload_action" to="/MaterialUnloadClient" />
 
 	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/material_handling_server_parameters.yaml"/>
 	<node pkg="mtconnect_cnc_robot_example" type="material_handling_server_test" name="material_handling_server" output="screen">
