@@ -233,7 +233,10 @@ class GenericActionClient():
         client.wait_for_result()
         
         # Obtain result
-        result = client.get_result() # result must be a string
+        #result = client.get_result() # result must be a string
+        
+        # Obtain result state
+        result = client.get_state()
         
         # Prints out the result of the executing action
         rospy.loginfo('Returning the result --> %s' % result)
@@ -242,10 +245,13 @@ class GenericActionClient():
         data_item = bridge_library.split_event(name)
         
         # Obtain text string for result -- Simulation Only, Replace with ROS-MTConnect conversion
-        di_result = getattr(result, result.__slots__[0])
+        #di_result = getattr(result, result.__slots__[0])
         
         # Submit converted result to host via MTConnect adapter
-        bridge_library.action_cb((self.adapter, self.di_dict, data_item, di_result))
+        if result == 3: # SUCCEEDED from actionlib_msgs.msg.GoalStatus
+            #bridge_library.action_cb((self.adapter, self.di_dict, data_item, di_result))
+            rospy.loginfo('Sending COMPLETE flag')
+            bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'COMPLETE'))
 
         return
 
