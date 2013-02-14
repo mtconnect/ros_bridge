@@ -75,6 +75,7 @@ static const std::string DEFAULT_CNC_OPEN_CHUCK_ACTION = "cnc_open_chuck_action"
 static const std::string DEFAULT_CNC_CLOSE_CHUCK_ACTION = "cnc_close_chuck_action";
 static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
 static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
+static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
 static const std::string DEFAULT_PATH_PLANNER = "/ompl_planning/plan_kinematic_path";
@@ -139,6 +140,7 @@ protected:
 	bool setup()
 	{
 		using namespace boost::assign;
+		using namespace industrial_msgs;
 		typedef mtconnect_msgs::MaterialHandlingFeedback Feedback;
 
 		ros::NodeHandle nh;
@@ -191,6 +193,13 @@ protected:
 		robot_states_pub_ = nh.advertise<mtconnect_msgs::RobotStates>(DEFAULT_ROBOT_STATES_TOPIC,1);
 		robot_spindle_pub_ = nh.advertise<mtconnect_msgs::RobotSpindle>(DEFAULT_ROBOT_SPINDLE_TOPIC,1);
 
+		// initializing mtconnect robot messages
+		robot_state_msg_.avail.val = TriState::ENABLED;
+		robot_state_msg_.mode.val = RobotMode::AUTO;
+		robot_state_msg_.rexec.val = TriState::HIGH;
+		robot_spindle_msg_.c_unclamp.val = TriState::HIGH;
+		robot_spindle_msg_.s_inter.val = TriState::HIGH;
+
 		// initializing timers
 		publish_timer_ = nh.createTimer(ros::Duration(DURATION_TIMER_INTERVAL),
 				&SimpleMaterialHandlingServer::publishTimerCallback,this,false,false);
@@ -218,26 +227,6 @@ protected:
 
 		publish_timer_.start();
 
-
-		// waiting for cnc related service servers
-//		ros::TimerEvent evnt;
-//		while(	ros::ok() && (
-//				(!open_door_client_ptr_->isServerConnected() && !open_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
-//				(!close_door_client_ptr_->isServerConnected() && !close_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
-//				(!open_chuck_client_ptr_->isServerConnected() && !open_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
-//				(!close_chuck_client_ptr_->isServerConnected() && !close_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
-//				))
-//		{
-//			if(wait_attempts++ > MAX_WAIT_ATTEMPTS)
-//			{
-//				ROS_ERROR_STREAM("One or more action cnc servers were not found, exiting");
-//				return false;
-//			}
-//			ROS_WARN_STREAM("Waiting for cnc action servers");
-//			ros::Duration(DURATION_WAIT_SERVER).sleep();
-//			publishTimerCallback(evnt); //(bridge servers won't start until these topics are available
-//		}
-
 		ROS_INFO_STREAM("Found all action servers");
 		return true;
 	}
@@ -247,16 +236,17 @@ protected:
 		// declaring result
 		MaterialLoadServer::Result res;
 
+		ROS_INFO_STREAM("Received Material Load request");
 		material_load_server_ptr_->acceptNewGoal();
 		if(executeMaterialHandlingTasks(material_load_sequence_))
 		{
 			res.load_state = "Succeeded";
-			material_load_server_ptr_->setAborted(res);
+			material_load_server_ptr_->setSucceeded(res);
 		}
 		else
 		{
 			res.load_state = "Failed";
-			material_load_server_ptr_->setSucceeded(res);
+			material_load_server_ptr_->setAborted(res);
 		}
 	}
 
@@ -266,23 +256,37 @@ protected:
 		MaterialUnloadServer::Result res;
 
 		material_unload_server_ptr_->acceptNewGoal();
-		if(executeMaterialHandlingTasks(material_load_sequence_))
+		ROS_INFO_STREAM("Received Material Unload request");
+		if(executeMaterialHandlingTasks(material_unload_sequence_))
 		{
 			res.unload_state= "Succeeded";
-			material_unload_server_ptr_->setAborted(res);
+			material_unload_server_ptr_->setSucceeded(res);
 		}
 		else
 		{
 			res.unload_state = "Failed";
-			material_unload_server_ptr_->setSucceeded(res);
+			material_unload_server_ptr_->setAborted(res);
 		}
 	}
 
 	bool executeMaterialHandlingTasks(const MaterialHandlingSequence &seq)
 	{
+		// local aliases
 		typedef mtconnect_msgs::MaterialHandlingFeedback Feedback;
 		typedef MaterialHandlingSequence::const_iterator ConstSequenceIterator;
+
+		// strings
 		std::string task_name;
+
+		// action messages
+		mtconnect_msgs::OpenDoorGoal open_door_goal;
+		mtconnect_msgs::CloseDoorGoal close_door_goal;
+		mtconnect_msgs::OpenChuckGoal open_chuck_goal;
+		mtconnect_msgs::CloseChuckGoal close_chuck_goal;
+		open_door_goal.open_door = CNC_ACTION_ACTIVE_FLAG;
+		close_door_goal.close_door = CNC_ACTION_ACTIVE_FLAG;
+		open_chuck_goal.open_chuck = CNC_ACTION_ACTIVE_FLAG;
+		close_chuck_goal.close_chuck = CNC_ACTION_ACTIVE_FLAG;
 
 		for(ConstSequenceIterator i = seq.begin(); i != seq.end(); i++)
 		{
@@ -338,7 +342,7 @@ protected:
 
 				task_name = "OPENNING_DOOR";
 				ROS_INFO_STREAM(task_name <<" task in progress");
-				open_door_client_ptr_->sendGoal(mtconnect_msgs::OpenDoorGoal());
+				open_door_client_ptr_->sendGoal(open_door_goal);
 				if(open_door_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
 				{
 					ROS_INFO_STREAM(task_name <<" task completed");
@@ -354,7 +358,7 @@ protected:
 
 				task_name = "OPENNING_CHUCK";
 				ROS_INFO_STREAM(task_name <<" task in progress");
-				open_chuck_client_ptr_->sendGoal(mtconnect_msgs::OpenChuckGoal());
+				open_chuck_client_ptr_->sendGoal(open_chuck_goal);
 				if(open_chuck_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
 				{
 					ROS_INFO_STREAM(task_name <<" task completed");
@@ -371,7 +375,7 @@ protected:
 
 				task_name = "CLOSING_CHUCK";
 				ROS_INFO_STREAM(task_name <<" task in progress");
-				close_chuck_client_ptr_->sendGoal(mtconnect_msgs::CloseChuckGoal());
+				close_chuck_client_ptr_->sendGoal(close_chuck_goal);
 				if(close_chuck_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
 				{
 					ROS_INFO_STREAM(task_name <<" task completed");
@@ -387,7 +391,7 @@ protected:
 
 				task_name = "CLOSING_DOOR";
 				ROS_INFO_STREAM(task_name <<" task in progress");
-				close_door_client_ptr_->sendGoal(mtconnect_msgs::CloseDoorGoal());
+				close_door_client_ptr_->sendGoal(close_door_goal);
 				if(close_door_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)))
 				{
 					ROS_INFO_STREAM(task_name <<" task completed");
@@ -483,12 +487,13 @@ protected:
 
 	void publishTimerCallback(const ros::TimerEvent &evnt)
 	{
-		static mtconnect_msgs::RobotStates rob_state_msg;
-		static mtconnect_msgs::RobotSpindle rob_spindle_msg;
+		// updating header time stamps
+		robot_state_msg_.header.stamp = ros::Time::now();
+		robot_spindle_msg_.header.stamp = ros::Time::now();
 
 		// publishing
-		robot_states_pub_.publish(rob_state_msg);
-		robot_spindle_pub_.publish(rob_spindle_msg);
+		robot_states_pub_.publish(robot_state_msg_);
+		robot_spindle_pub_.publish(robot_spindle_msg_);
 	}
 
 protected:
@@ -509,6 +514,10 @@ protected:
 	// topic publishers (ros bridge components wait for these topics)
 	ros::Publisher robot_states_pub_;
 	ros::Publisher robot_spindle_pub_;
+
+	// robot state messages
+	mtconnect_msgs::RobotStates robot_state_msg_;
+	mtconnect_msgs::RobotSpindle robot_spindle_msg_;
 
 	// timers
 	ros::Timer publish_timer_;

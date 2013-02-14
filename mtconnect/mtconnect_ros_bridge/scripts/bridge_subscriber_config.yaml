@@ -4,18 +4,18 @@ adapter_port: 7878
 /RobotStateTopic:
     mtconnect_msgs/RobotStates:
         avail:
-            {'TRUE':'AVAILABLE', 'FALSE':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+            {'TRUE':'AVAILABLE', 'FALSE':'NOT_READY', 'UNKNOWN':'UNAVAILABLE'}
         mode:
             {'AUTO':'AUTOMATIC', 'MANUAL':'MANUAL', 'UNKNOWN':'UNAVAILABLE'}
         rexec:
-            {'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+            {'ENABLED':'ACTIVE', 'DISABLED':'NOT_READY', 'UNKNOWN':'UNAVAILABLE'}
 
 /RobotSpindleTopic:
     mtconnect_msgs/RobotSpindle:
         c_unclamp:
-            {'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+            {'ENABLED':'ACTIVE', 'DISABLED':'NOT_READY', 'UNKNOWN':'UNAVAILABLE'}
         s_inter:
-            {'ENABLED':'ACTIVE', 'DISABLED':'NOT READY', 'UNKNOWN':'UNAVAILABLE'}
+            {'ENABLED':'ACTIVE', 'DISABLED':'NOT_READY', 'UNKNOWN':'UNAVAILABLE'}
 
 # TBD ROS Topic for robot joint states
 #/joint_states:
