@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <launch>
 	<!-- arguments -->
-	<arg name="use_setup_script" default="false"/>
+	<arg name="use_setup_script" default="true"/>
 
 	<!-- agents and simulators -->
 	<node if="$(arg use_setup_script)" pkg="mtconnect_ros_bridge" type="mtconnect_setup.sh" name="mtconnect_setup"/>
