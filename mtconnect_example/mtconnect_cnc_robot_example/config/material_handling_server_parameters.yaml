@@ -69,41 +69,8 @@ unload_pickup_goal:
     arm_group: manipulator
     frame_id: world_frame
     tool_name: tcp_frame #tool0
-    retreat_distance: 0.4
+    lift_distance: 0.4
     approach_distance: 0.4
-    approach_direction: # relative to tool coordinate frame
-      x: 0.0
-      y: 0.0
-      z: 1.0
-    grasp_pose: # tool relative to object
-      position:
-        x: 0.0
-        y: 0.0
-        z: 0.0
-      orientation:
-        angle: 1.57
-        axis:
-          x: 0.0
-          y: 1.0
-          z: 0.0
-    place_pose: # final pose of object relative to world frame
-      position:
-        x: 1.8
-        y: 0.40
-        z: 0.8
-      orientation:
-        angle: 0.01
-        axis:
-          x: 0.0
-          y: 0.0
-          z: 1.0
-######### unload place #############
-unload_place_goal:
-    arm_group: manipulator
-    frame_id: world_frame
-    tool_name: tcp_frame # tool0
-    lift_distance: 0.25
-    approach_distance: 0.1
     lift_direction: # relative to tool coordinate frame
       x: 0.0
       y: 0.0
@@ -121,6 +88,39 @@ unload_place_goal:
           z: 0.0
     object_pose: # relative to world frame
       position:
+        x: 1.8
+        y: 0.40
+        z: 0.8
+      orientation:
+        angle: -1.57
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+######### unload place #############
+unload_place_goal:
+    arm_group: manipulator
+    frame_id: world_frame
+    tool_name: tcp_frame # tool0
+    retreat_distance: 0.25
+    approach_distance: 0.1
+    approach_direction: # relative to tool coordinate frame
+      x: 0.0
+      y: 0.0
+      z: 1.0
+    grasp_pose: # tool relative to object
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      orientation:
+        angle: 3.1416
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+    place_pose: # final pose of object relative to world frame
+      position:
         x: 1.0
         y: -0.32
         z: 0.4
@@ -134,27 +134,27 @@ unload_place_goal:
 joint_home_position:
   arm_group: manipulator
   joints:
-    - name: Joint1
+    - name: Joint_1
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint2
+    - name: Joint_2
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint3
+    - name: Joint_3
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint4
+    - name: Joint_4
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint5
+    - name: Joint_5
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint6
+    - name: Joint_6
       position: 0.0
       velocity: 0.0
       effort: 0.0
@@ -162,27 +162,27 @@ joint_home_position:
 joint_wait_position:
   arm_group: manipulator
   joints:
-    - name: Joint1
-      position: 0.0
+    - name: Joint_1
+      position: -0.60
       velocity: 0.0
       effort: 0.0
-    - name: Joint2
-      position: 0.0
+    - name: Joint_2
+      position: -0.15
       velocity: 0.0
       effort: 0.0
-    - name: Joint3
-      position: 0.0
+    - name: Joint_3
+      position: 0.09
       velocity: 0.0
       effort: 0.0
-    - name: Joint4
-      position: 0.0
+    - name: Joint_4
+      position: -2.10
       velocity: 0.0
       effort: 0.0
-    - name: Joint5
-      position: 0.0
+    - name: Joint_5
+      position: 0.46
       velocity: 0.0
       effort: 0.0
-    - name: Joint6
-      position: 0.0
+    - name: Joint_6
+      position: 5.29
       velocity: 0.0
       effort: 0.0
