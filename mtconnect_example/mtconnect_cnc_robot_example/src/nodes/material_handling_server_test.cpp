@@ -89,7 +89,14 @@ static const int MAX_WAIT_ATTEMPTS = 40;
 class SimpleMaterialHandlingServer
 {
 public:
-	SimpleMaterialHandlingServer()
+	SimpleMaterialHandlingServer():
+		material_load_pickup_goal_(),
+		material_unload_pickup_goal_(),
+		material_load_place_goal_(),
+		material_unload_place_goal_(),
+		joint_home_pos_(),
+		joint_wait_pos_()
+
 	{
 
 	}
@@ -114,7 +121,23 @@ public:
 		material_unload_server_ptr_->start();
 
 		// moving the arm home
+		move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints.clear();
+		joint_home_pos_.toJointConstraints(DEFAULT_JOINT_ERROR_TOLERANCE,DEFAULT_JOINT_ERROR_TOLERANCE,
+				move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints);
 
+		move_arm_client_ptr_->sendGoal(move_arm_goal_);
+		if(move_arm_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT)) &&
+				(move_arm_client_ptr_->getResult()->error_code.val == arm_navigation_msgs::ArmNavigationErrorCodes::SUCCESS))
+		{
+			ROS_INFO_STREAM("Move home succeeded, proceeding");
+		}
+		else
+		{
+			ROS_ERROR_STREAM("Move home failed, exiting");
+			return;
+		}
+
+		// spinning node
 		while(ros::ok())
 		{
 			ros::Duration(DURATION_LOOP_PAUSE).sleep();
@@ -157,18 +180,23 @@ protected:
 		}
 
 		// initializing task sequence lists
-		material_load_sequence_ = list_of((int)Feedback::OPENNING_DOOR)((int)Feedback::OPENNING_CHUCK)
-				((int)Feedback::TRANSPORTING_MATERIAL)((int)Feedback::PLACING_MATERIAL)
-				((int)Feedback::CLEARING_WORK_AREA)((int)Feedback::CLOSING_CHUCK)
+		material_load_sequence_ =
+				list_of((int)Feedback::TRANSPORTING_MATERIAL)
+				((int)Feedback::PLACING_MATERIAL)
+				((int)Feedback::CLOSING_CHUCK)
+				((int)Feedback::CLEARING_WORK_AREA)
 				((int)Feedback::CLOSING_DOOR);
 
-		material_unload_sequence_ = list_of((int)Feedback::OPENNING_DOOR)((int)Feedback::OPENNING_CHUCK)
-				((int)Feedback::RETRIEVING_WORKPIECE)((int)Feedback::TRANSPORTING_WORKPIECE)
+		material_unload_sequence_ =
+				list_of((int)Feedback::OPENNING_DOOR)
+				((int)Feedback::OPENNING_CHUCK)
+				((int)Feedback::RETRIEVING_WORKPIECE)
+				((int)Feedback::TRANSPORTING_WORKPIECE)
 				((int)Feedback::CLOSING_CHUCK)((int)Feedback::CLOSING_DOOR);
 
 		// setting up move arm goal
 		move_arm_goal_.motion_plan_request.group_name = arm_group_;
-		move_arm_goal_.motion_plan_request.num_planning_attempts = 2;
+		move_arm_goal_.motion_plan_request.num_planning_attempts = DEFAULT_PATH_PLANNING_ATTEMPTS;
 		move_arm_goal_.planner_service_name = DEFAULT_PATH_PLANNER;
 		move_arm_goal_.motion_plan_request.allowed_planning_time = ros::Duration(DURATION_PLANNING_TIME);
 		move_arm_goal_.motion_plan_request.planner_id = "";
@@ -236,17 +264,19 @@ protected:
 		// declaring result
 		MaterialLoadServer::Result res;
 
-		ROS_INFO_STREAM("Received Material Load request");
-		material_load_server_ptr_->acceptNewGoal();
+		ROS_INFO_STREAM("MATERIAL LOAD request in progress");
+		//material_load_server_ptr_->acceptNewGoal();
 		if(executeMaterialHandlingTasks(material_load_sequence_))
 		{
 			res.load_state = "Succeeded";
 			material_load_server_ptr_->setSucceeded(res);
+			ROS_INFO_STREAM("MATERIAL LOAD request succeeded");
 		}
 		else
 		{
 			res.load_state = "Failed";
 			material_load_server_ptr_->setAborted(res);
+			ROS_ERROR_STREAM("MATERIAL LOAD request failed");
 		}
 	}
 
@@ -255,17 +285,19 @@ protected:
 		// declaring result
 		MaterialUnloadServer::Result res;
 
-		material_unload_server_ptr_->acceptNewGoal();
-		ROS_INFO_STREAM("Received Material Unload request");
+		//material_unload_server_ptr_->acceptNewGoal();
+		ROS_INFO_STREAM("MATERIAL UNLOAD request in progress");
 		if(executeMaterialHandlingTasks(material_unload_sequence_))
 		{
 			res.unload_state= "Succeeded";
 			material_unload_server_ptr_->setSucceeded(res);
+			ROS_INFO_STREAM("MATERIAL UNLOAD request succeeded");
 		}
 		else
 		{
 			res.unload_state = "Failed";
 			material_unload_server_ptr_->setAborted(res);
+			ROS_ERROR_STREAM("MATERIAL UNLOAD request failed");
 		}
 	}
 
@@ -349,7 +381,7 @@ protected:
 				}
 				else
 				{
-					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					ROS_ERROR_STREAM(task_name <<" task failed due to timeout, exiting");
 					return false;
 				}
 				break;
@@ -365,7 +397,7 @@ protected:
 				}
 				else
 				{
-					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					ROS_ERROR_STREAM(task_name <<" task failed due to timeout, exiting");
 					return false;
 				}
 				break;
@@ -382,7 +414,7 @@ protected:
 				}
 				else
 				{
-					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					ROS_ERROR_STREAM(task_name <<" task failed due to timeout, exiting");
 					return false;
 				}
 				break;
@@ -398,7 +430,7 @@ protected:
 				}
 				else
 				{
-					ROS_ERROR_STREAM(task_name <<" task failed, exiting");
+					ROS_ERROR_STREAM(task_name <<" task failed due to timeout, exiting");
 					return false;
 				}
 				break;
