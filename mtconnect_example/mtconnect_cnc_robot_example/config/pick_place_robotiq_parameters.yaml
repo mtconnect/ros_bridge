@@ -48,7 +48,7 @@ place_goal:
         y: 0.0
         z: 0.0
       orientation:
-        angle: 1.57
+        angle: 3.1416
         axis:
           x: 0.0
           y: 1.0
@@ -59,8 +59,8 @@ place_goal:
         y: 0.40
         z: 0.8
       orientation:
-        angle: 0.01
+        angle: -1.57
         axis:
           x: 0.0
-          y: 0.0
-          z: 1.0
+          y: 1.0
+          z: 0.0
