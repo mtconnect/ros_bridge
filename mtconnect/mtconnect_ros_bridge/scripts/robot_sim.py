@@ -199,6 +199,8 @@ class RobotSim():
                 rospy.loginfo('Starting Action Clients required by Material Load')
                 
                 # launch close chuck action client
+                #opendoor.open_door_client()
+                rospy.loginfo('OpenDoor Action Completed')
                 closechuck.close_chuck_client()
                 rospy.loginfo('CloseChuck Action Completed')
                 

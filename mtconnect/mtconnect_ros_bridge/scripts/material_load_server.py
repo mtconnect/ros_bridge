@@ -87,21 +87,24 @@ class MaterialLoadServer():
         previous = time.time()
         dwell = True
         while dwell == True:
-            # Current CNC state
-            if time.time() - previous > 1.0:
-                rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
-                previous = time.time()
-
-            if self.door_state == 1 and self.chuck_state == 1 and self.close_door == 1:
-                # Chuck and Door are closed, complete the material load cycle
-                self._result.load_state = 'COMPLETE'
-                dwell = False
-                rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
-
-            # Check for timeout
-            if time.time() - start > 120.0:
-                rospy.loginfo('Material Load Server Timed Out')
-                sys.exit()
+            try:
+                # Current CNC state
+                if time.time() - previous > 1.0:
+                    rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
+                    previous = time.time()
+    
+                if self.door_state == 1 and self.chuck_state == 1 and self.close_door == 1:
+                    # Chuck and Door are closed, complete the material load cycle
+                    self._result.load_state = 'COMPLETE'
+                    dwell = False
+                    rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
+    
+                # Check for timeout
+                if time.time() - start > 120.0:
+                    rospy.loginfo('Material Load Server Timed Out')
+                    sys.exit()
+            except rospy.ROSInterruptException:
+                rospy.loginfo('program interrupted before completion')
         
         # Indicate a successful action
         self._as.set_succeeded(self._result)

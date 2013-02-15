@@ -167,7 +167,8 @@ def xml_get_response(data):
 ## Function returns:
 ## @return: nextSeq, int, next XML sequence for streaming XML via longpull.py
 ## @return: elements, Python Element object
-## @return: action_goals, dictionary, optional, hash table of xml_tag:goal pairs
+## @return: [optional] action_goals, dictionary of unchanged xml_tag:goal pairs
+## @return: [optional] request_goal, dictionary of updated xml_tag:goal pairs
 def xml_components(xml, ns, tag_list, get_goal = False, action_goals = None):
     # Extract XML Event elements
     root = ElementTree.fromstring(xml)
@@ -184,30 +185,53 @@ def xml_components(xml, ns, tag_list, get_goal = False, action_goals = None):
 
         # Check if a goal must be captured
         if get_goal == True:
-            goal_tag = goals.keys()[0]
-            rospy.loginfo('GOAL-TAG --> %s' % goal_tag)
-            find_goal = root.findall('.//m:' + goal_tag, namespaces = ns)
-            rospy.loginfo('GOAL-ELEMENT --> %s' % find_goal)
-            
-            rospy.loginfo('ACTION --> %s' % tag)
-            
-            if find_goal:
-                rospy.loginfo('GOAL-ELEMENT SET--> %s' % find_goal[0].text)
-                goal_conv = []
-                tokens = find_goal[0].text.split(", ")
-                for item in tokens:
-                    try:
-                        goal_conv.append(float(item))
-                    except ValueError:
-                        goal_conv.append(item)
-                action_goals[tag] = goal_conv
-            else:
-                rospy.loginfo('Action Goals --> %s' % action_goals)
+            request_goal = set_goal(tag, goals, root, ns, action_goals)
 
-    if get_goal == True:
+    if get_goal == True and request_goal is not None:
+        return nextSeq, elements, request_goal
+    elif get_goal == True and request_goal == None:
         return nextSeq, elements, action_goals
     else:
-        return nextSeq, elements 
+        return nextSeq, elements
+
+## @brief set_goal Function documentation
+##
+## This function extracts the machine tool request goal from the Event tag specified in the configuration file.
+## For example, during MaterialLoad the request goal tag is Material which is an Event that stores the material
+## specifications: material type, material length, material diameter.
+##
+## The function takes the following arguments:
+## @param tag: string of the Event tag, i.e. 'MaterialLoad'
+## @param goals: dictionary of the goal (str):goal attributes (list of strings)
+## @param root: XML ElementTree object that converted the xml in string format to an ElementTree object
+## @param ns: dictionary, xml namespace dictionary
+## @param action_goals: dictionary, stored action goals by xml_tag key
+##
+## The function returns:
+## @return: action_goals, dictionary, hash table of xml_tag:goal pairs
+## @return: None type if the action goal tag is not present in the xml
+def set_goal(tag, goals, root, ns, action_goals):
+    goal_tag = goals.keys()[0]
+    find_goal = root.findall('.//m:' + goal_tag, namespaces = ns)
+    #rospy.loginfo('GOAL-TAG --> %s' % goal_tag)
+    #rospy.loginfo('GOAL-ELEMENT --> %s' % find_goal)
+    #rospy.loginfo('ACTION --> %s' % tag)
+    
+    if find_goal:
+        rospy.loginfo('GOAL-ELEMENT SET--> %s' % find_goal[0].text)
+        goal_conv = []
+        tokens = find_goal[0].text.split(", ")
+        for item in tokens:
+            try:
+                goal_conv.append(float(item))
+            except ValueError:
+                goal_conv.append(item)
+        action_goals[tag] = goal_conv
+        rospy.loginfo('Action Goals Set --> %s' % action_goals)
+
+        return action_goals
+    else:
+        return None
 
 ## @brief add_event Function documentation
 ##
@@ -282,3 +306,20 @@ def action_cb(data):
     di_dict[data_item].set_value(state)
     adapter.complete_gather()
     return
+
+## @brief type_check Function documentation
+##
+## This function checks the goal types and converts them to Python
+## standard types.  It then verifies if the goal type matches the type
+## specified in the goal message.
+##
+## This function takes the following arguments:
+## @param goal_type: string, goal_type from goal msg.__slot_types
+## @param request: varies, actual goal value that is a float, int, string, etc.
+## @return boolean: True for a match, False for an error
+def type_check(goal_type, request):
+    type_dict = {'bool': bool, 'int8': int, 'uint8': int,
+                 'int16': int, 'unit16': int, 'int32': int,
+                 'unit32': int, 'int64': long, 'unint64': long,
+                 'float32': float, 'float64': float, 'string': str}
+    return type_dict[goal_type] == type(request)

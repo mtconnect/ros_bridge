@@ -209,11 +209,23 @@ class GenericActionClient():
         goal_handle = getattr(handle, name + 'Goal')
         goal = goal_handle()
         
+        # Check to make sure the action goal has been set
+        if self.action_goals[name] == None:
+            # Ping the current url for the goal Event
+            goal_tag = self.action_list[name].keys()[0]
+            response = bridge_library.xml_get_response((self.url, self.url_port, self.port, self.conn, 
+                                                        self.mtool + "/current?path=//DataItem[@type='" + goal_tag.upper() +"']"))
+            body = response.read()
+            root = ElementTree.fromstring(body)
+
+            # Set the action goals
+            self.action_goals = bridge_library.set_goal(self.action_list[name], root, self.ns, self.action_goals)
+        
         # Check goal source for required attributes
         for attrib, attrib_type, action_goal in zip(goal_handle.__slots__, goal_handle._slot_types, self.action_goals[name]):
-            rospy.loginfo('SLOT --> %s\tTYPE --> %s\tGOAL --> %s' % (attrib, attrib_type, action_goal))
-            if attrib_type != type(action_goal):
+            if bridge_library.type_check(attrib_type, action_goal) == False:
                 rospy.logerr('INCOMPATIBLE GOAL TYPES ROS MSG: %s --> XML: %s' % (attrib_type, type(action_goal)))
+                sys.exit()
         
         # Set the goal attributes from XML data
         try:

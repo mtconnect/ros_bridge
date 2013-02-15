@@ -229,35 +229,38 @@ class GenericActionServer():
         # While loop to poll CNC XML until READY is received for Robot action request
         dwell = True
         while dwell == True:
-            # Obtain XML chunk
-            if not self.XML_queue.empty():
-                chunk = self.XML_queue.get()
-                #rospy.loginfo('XML --> %s' % chunk)
-                
-                # Parse the XML and determine the current sequence and XML Event elements
-                root = ElementTree.fromstring(chunk)
-                token = root.findall('.//m:' + self.server_name[action], namespaces = self.ns)
-                if token:
-                    element = token[0]
-                
-                    if element.text == 'ACTIVE':
-                        # Set accepted back to action client
-                        pass
+            try:
+                # Obtain XML chunk
+                if not self.XML_queue.empty():
+                    chunk = self.XML_queue.get()
                     
-                    # While polling monitor CNC response for COMPLETE, submit READY handshake
-                    elif element.text == 'COMPLETE' and robot_hold == 0:
-                        bridge_library.action_cb((self.adapter, self.di_dict, action, 'READY'))
-                        robot_hold = 1
+                    # Parse the XML and determine the current sequence and XML Event elements
+                    root = ElementTree.fromstring(chunk)
+                    element_list = root.findall('.//m:' + self.server_name[action], namespaces = self.ns)
+                    if len(element_list) > 1:
+                        rospy.loginfo('XML --> %s' % chunk)
+                    if element_list:
+                        # Must iterate -- multiple elements possible for a single tag
+                        for element in element_list:
+                            if element.text == 'ACTIVE':
+                                # Set accepted back to action client
+                                pass
+                            
+                            # While polling monitor CNC response for COMPLETE, submit READY handshake
+                            elif element.text == 'COMPLETE' and robot_hold == 0:
+                                bridge_library.action_cb((self.adapter, self.di_dict, action, 'READY'))
+                                robot_hold = 1
+                            
+                            elif element.text == 'READY' and robot_hold == 1:
+                                dwell = False
+                                self.capture_xml = False
                     
-                    elif element.text == 'READY' and robot_hold == 1:
-                        dwell = False
-                        self.capture_xml = False
-                
-                # Release the queue
-                self.XML_queue.task_done()
+                    # Release the queue
+                    self.XML_queue.task_done()
+            except rospy.ROSInterruptException:
+                rospy.loginfo('program interrupted before completion')
             
         # When response is READY, set server result and communicate as below:
-         
         # Extract action attribute
         result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
         
