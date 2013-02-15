@@ -269,23 +269,16 @@ void MovePickPlaceServer::pickupGoalCallback(PickupGoalHandle gh)
 	object_manipulation_msgs::PickupResult res;
 
 	// comparing goal handles
-	if(pickup_gh_ == gh)
+	if(gh.getGoalStatus().status == GoalState::ACTIVE && pickup_gh_ == gh)
 	{
-		if(gh.getGoalStatus().status == GoalState::ACTIVE)
-		{
-			// goal already being handled, ignoring
-			ROS_WARN_STREAM("Pickup goal is already being processed, ignoring request");
-			return;
-		}
-	}
-	else
-	{
-		// cancel current goal
-		pickupCancelCallback(pickup_gh_);
+		// goal already being handled, ignoring
+		ROS_WARN_STREAM("Pickup goal is already being processed, ignoring request");
+		return;
 	}
 
-	// canceling place goal first
-	placeCancelCallback(place_gh_);
+	// canceling current goals first
+	pickup_gh_.getGoalStatus().status == GoalState::ACTIVE ? pickupCancelCallback(pickup_gh_): (void)NULL ;
+	place_gh_.getGoalStatus().status == GoalState::ACTIVE ? placeCancelCallback(place_gh_) :(void) NULL ;
 
 	// storing goal
 	pickup_gh_ = gh;
@@ -338,22 +331,17 @@ void MovePickPlaceServer::placeGoalCallback(PlaceGoalHandle gh)
 	object_manipulation_msgs::PlaceResult res;
 
 	// comparing handles
-	if(place_gh_ == gh)
+	// comparing goal handles
+	if(gh.getGoalStatus().status == GoalState::ACTIVE && place_gh_ == gh)
 	{
-		if(gh.getGoalStatus().status == GoalState::ACTIVE)
-		{
-			// goal already being handled, ignoring
-			ROS_WARN_STREAM("Pickup goal is already being processed, ignoring request");
-			return;
-		}
-	}
-	else
-	{
-		placeCancelCallback(place_gh_);
+		// goal already being handled, ignoring
+		ROS_WARN_STREAM("Place goal is already being processed, ignoring request");
+		return;
 	}
 
-	// canceling pickup goal first
-	pickupCancelCallback(pickup_gh_);
+	// canceling current goals first
+	pickup_gh_.getGoalStatus().status == GoalState::ACTIVE ? pickupCancelCallback(pickup_gh_): (void)NULL ;
+	place_gh_.getGoalStatus().status == GoalState::ACTIVE ? placeCancelCallback(place_gh_) : (void)NULL ;
 
 	// storing goal
 	place_gh_ = gh;
