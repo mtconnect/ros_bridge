@@ -16,7 +16,7 @@
  */
 
 #include <mtconnect_cnc_robot_example/utilities/utilities.h>
-
+#include <boost/tuple/tuple.hpp>
 using namespace move_arm_utils;
 
 
@@ -241,9 +241,9 @@ bool PickupGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
 	this->lift.direction.header.frame_id = static_cast<std::string>(val["tool_name"]);
 
 	// parsing grasp pose and direction
-	success =  parseVect3(val["lift_direction"],this->lift.direction.vector)
-			&& parsePose(val["grasp_pose"],this->desired_grasps[0].grasp_pose)
-			&& parsePose(val["object_pose"],this->target.potential_models[0].pose.pose);
+	success =  val.hasMember("lift_direction") && parseVect3(val["lift_direction"],this->lift.direction.vector) &&
+			val.hasMember("grasp_pose") && parsePose(val["grasp_pose"],this->desired_grasps[0].grasp_pose) &&
+			val.hasMember("object_pose") && parsePose(val["object_pose"],this->target.potential_models[0].pose.pose);
 
 	if(success)
 	{
@@ -281,8 +281,9 @@ bool PlaceGoalInfo::parseParameters(XmlRpc::XmlRpcValue &val)
 	this->place_locations[0].header.frame_id = static_cast<std::string>(val["frame_id"]);
 	this->approach.direction.header.frame_id = static_cast<std::string>(val["tool_name"]);
 
-	success = parseVect3(val["approach_direction"],this->approach.direction.vector)
-			&& parsePose(val["place_pose"],this->place_locations[0].pose) && parsePose(val["grasp_pose"],this->grasp.grasp_pose);
+	success = val.hasMember("approach_direction") && parseVect3(val["approach_direction"],this->approach.direction.vector) &&
+			val.hasMember("place_pose") && parsePose(val["place_pose"],this->place_locations[0].pose) &&
+			val.hasMember("grasp_pose") && parsePose(val["grasp_pose"],this->grasp.grasp_pose);
 
 	if(success)
 	{
@@ -351,6 +352,19 @@ bool JointStateInfo::parseParameters(XmlRpc::XmlRpcValue &param)
 		return false;
 	}
 
+	// printing results
+	std::stringstream ss;
+	boost::tuples::tuple<std::string,double> joint_val;
+	ss<<"\n\tJoints State:\n";
+	for(std::size_t i = 0; i < name.size(); i++)
+	{
+		joint_val.get<0>() = name[i];
+		joint_val.get<1>() = position[i];
+		ss<<"\t\t[ "<< joint_val.get<0>() <<", "<< joint_val.get<1>() <<" ]\n";
+	}
+
+	ROS_INFO_STREAM(ss.str());
+
 	return true;
 }
 
@@ -362,10 +376,11 @@ void JointStateInfo::toJointConstraints(double tol_above,double tol_below,
 	val.tolerance_below = tol_below;
 	val.weight = 0.0f;
 
-	for(std::size_t i ; i < name.size(); i++)
+	for(std::size_t i  = 0 ; i < name.size(); i++)
 	{
 		val.joint_name = name[i];
 		val.position = position[i];
+		joint_constraints.push_back(val);
 	}
 }
 
