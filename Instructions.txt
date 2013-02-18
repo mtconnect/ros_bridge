@@ -1,0 +1,11 @@
+Instructions to run mtconnect demo
+ -  running agents, cnc simulator and ros bridge nodes
+	terminal a:
+		'roslaunch mtconnect_ros_bridge mtconnect_ros_bridge_components.launch'
+
+ -  running material load/unload server and arm navigation components
+	terminal b :
+		'roslaunch mtconnect_cnc_robot_example mtconnect_material_handling_test.launch' (without visualization)
+	or 
+		'roslaunch mtconnect_cnc_robot_example mtconnect_material_handling_test.launch use_rviz:=true' (with visualization)
+
