@@ -1,4 +1,9 @@
-Instructions to run mtconnect demo
+Instructions to compile and run mtconnect demo
+ -  building mtconnect packages and dependencies (only once)
+	terminal a
+		'rosmake mtconnect_ros_bridge'
+		'rosmake mtconnect_cnc_robot_example'
+
  -  running agents, cnc simulator and ros bridge nodes
 	terminal a:
 		'roslaunch mtconnect_ros_bridge mtconnect_ros_bridge_components.launch'
