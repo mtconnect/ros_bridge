@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find mtconnect_cnc_robot_example)/urdf/mtconnect_irb2400_cnc_environment.xacro'" />
+    <rosparam command="load" ns="robot_description_planning" file="$(find mtconnect_irb2400_arm_navigation)/config/mtconnect_irb2400_planning_description.yaml" />
+    <rosparam command="load" ns="robot_description_collision" file="$(find mtconnect_irb2400_arm_navigation)/config/robot_padding.yaml"/>
+
+</launch>

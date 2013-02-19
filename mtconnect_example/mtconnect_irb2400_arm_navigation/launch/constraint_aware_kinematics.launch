@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<launch>
+    <rosparam command="load" file="$(find mtconnect_irb2400_arm_navigation)/config/kinematic_parameters.yaml"/>
+    <include file="$(find mtconnect_irb2400_arm_navigation)/launch/mtconnect_irb2400_planning_environment.launch" />
+    <node pkg="arm_kinematics_constraint_aware" type="arm_kinematics_constraint_aware" name="mtconnect_irb2400_irb2400_kinematics">
+        <param name="group" type="string" value="irb2400" />
+        <param name="irb2400/root_name" type="string" value="base_link" />
+        <param name="irb2400/tip_name" type="string" value="tcp_frame" />
+        <param name="kinematics_solver" type="string" value="arm_kinematics_constraint_aware/KDLArmKinematicsPlugin" />
+    </node>
+</launch>

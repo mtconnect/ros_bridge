@@ -1,0 +1,7 @@
+<launch>
+    <node pkg="move_arm" type="move_arm_simple_action" name="mtconnect_irb2400_move_irb2400">
+        <param name="group" type="string" value="irb2400" />
+        <remap from="arm_ik" to="mtconnect_irb2400_irb2400_kinematics/get_constraint_aware_ik" />
+        <param name="controller_action_name" type="string" value="irb2400_controller/follow_joint_trajectory" />
+    </node>
+</launch>
