@@ -5,7 +5,7 @@
 	<!-- bringup of arm navigation prerequisites -->
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
 
-	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/joint_definitions.yaml"/>
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/m16ib20/joint_definitions.yaml"/>
 	<node pkg="object_manipulation_tools" type="simulated_robot_controller" name="simulated_robot_controller" output="screen"/>
 
 	<remap from="/joint_trajectory_action" to="/manipulator_controller/follow_joint_trajectory"/>
@@ -19,7 +19,7 @@
 
 	<!-- move arm action client node -->
 	<!--rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_move_parameters.yaml"/-->
-	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/pick_place_robotiq_parameters.yaml"/>
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/m16ib20/pick_place_robotiq_parameters.yaml"/>
 	<remap from="/grasp_action_service" to="/grasp_execution_action"/>
 	<remap from="/move_arm_action" to="/move_manipulator"/>
 	<node pkg="mtconnect_cnc_robot_example" type="move_pick_place_test" name="move_pick_place_test" output="screen">
