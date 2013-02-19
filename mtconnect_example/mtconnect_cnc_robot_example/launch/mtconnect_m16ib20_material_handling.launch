@@ -1,0 +1,47 @@
+<?xml version="1.0" ?>
+<launch>
+	<arg name="use_rviz" default="false"/>
+
+	<!-- bringup of arm navigation prerequisites -->
+	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/m16ib20/joint_definitions.yaml"/>
+	<node pkg="object_manipulation_tools" type="simulated_robot_controller" name="simulated_robot_controller" output="screen"/>
+
+	<remap from="/joint_trajectory_action" to="/m16ib20_controller/follow_joint_trajectory"/>
+	<node pkg="object_manipulation_tools" name="joint_trajectory_action_server" type="joint_trajectory_action" output="screen"/>
+
+	<!-- gripper executer action node -->
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface" output="screen"/>
+	
+	<!-- move arm action server and required arm navigation nodes -->
+	<include file="$(find mtconnect_m16ib20_arm_navigation)/launch/mtconnect_m16ib20_arm_navigation.launch"/>
+
+	<!-- move pick place server node -->
+	<remap from="/grasp_action_service" to="/grasp_execution_action"/>
+	<remap from="/move_arm_action" to="/move_m16ib20"/>
+	<node pkg="mtconnect_cnc_robot_example" type="move_pick_place_server_node" name="move_pick_place_server" output="screen">
+		<param name="arm_group" value="m16ib20"/>
+	</node>
+
+	<!-- material load/unload server node -->
+	<remap from="/move_arm_action" to="/move_m16ib20"/>
+	<remap from="/robot_states" to= "/RobotStateTopic"/>
+	<remap from="/robot_spindle" to="/RobotSpindleTopic" />
+	<remap from="/cnc_open_door_action" to= "/OpenDoorClient"/>
+	<remap from="/cnc_close_door_action" to="/CloseDoorClient" />
+	<remap from="/cnc_open_chuck_action" to= "/OpenChuckClient"/>
+	<remap from="/cnc_close_chuck_action" to="/CloseChuckClient" />
+	<remap from="/material_load_action" to= "/MaterialLoadClient"/>
+	<remap from="/material_unload_action" to="/MaterialUnloadClient" />
+
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/m16ib20/material_handling_server_parameters.yaml"/>
+	<node pkg="mtconnect_cnc_robot_example" type="material_handling_server_test" name="material_handling_server" output="screen">
+		<param name="arm_group" value="m16ib20"/>
+	</node>
+
+	<!-- ros visualization -->
+	<node if="$(arg use_rviz)" pkg="rviz" type="rviz" name="mtconnect_visualization"
+		args="-d $(find mtconnect_cnc_robot_example)/vcg/mtconnect_visualization_conf.vcg"/>
+	
+</launch>
