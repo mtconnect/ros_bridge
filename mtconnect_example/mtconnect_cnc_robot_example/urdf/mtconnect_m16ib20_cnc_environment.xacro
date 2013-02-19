@@ -13,7 +13,7 @@
 	<xacro:property name="window_width" value="0.32"/>
 	<xacro:property name="window_length" value="0.32"/>
 	<xacro:property name="window_frame_thickness" value="0.4"/>
-	<xacro:property name="window_frame_depth" value="0.2"/>
+	<xacro:property name="window_frame_depth" value="1.0"/>
 
 
 	<!-- color definitions -->
@@ -115,7 +115,7 @@
 		<child link="base_link"/>
 	</joint>
 	<joint name="world_to_window" type="fixed">
-		<origin xyz="1.6 0.4 0.8" rpy="0 1.5708 0"/>
+		<origin xyz="2.0 0.4 0.8" rpy="0 1.5708 0"/>
 		<parent link="world_frame"/>
 		<child link="window_frame"/>
 	</joint>

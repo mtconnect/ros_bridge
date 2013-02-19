@@ -1,6 +1,6 @@
 ######### pick move #############
 pickup_goal:
-    arm_group: manipulator
+    arm_group: m16ib20
     frame_id: world_frame
     tool_name: tcp_frame # tool0
     lift_distance: 0.25
@@ -33,7 +33,7 @@ pickup_goal:
           z: 1.0
 ######### place move #############
 place_goal:
-    arm_group: manipulator
+    arm_group: m16ib20
     frame_id: world_frame
     tool_name: tcp_frame #tool0
     retreat_distance: 0.4

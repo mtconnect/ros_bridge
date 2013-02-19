@@ -1,5 +1,5 @@
 cartesian_trajectory:
-  arm_group: manipulator
+  arm_group: m16ib20
   frame_id: world_frame #base_link
   tool_name: tcp_frame #Link_6
   via_points:
