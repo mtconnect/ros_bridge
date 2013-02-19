@@ -163,7 +163,7 @@ joint_wait_position:
   arm_group: irb2400
   joints:
     - name: joint_1
-      position: -0.40
+      position: 0.40
       velocity: 0.0
       effort: 0.0
     - name: joint_2
@@ -171,18 +171,18 @@ joint_wait_position:
       velocity: 0.0
       effort: 0.0
     - name: joint_3
-      position: 0.09
+      position: 0.304
       velocity: 0.0
       effort: 0.0
     - name: joint_4
-      position: 0.0
+      position: 0.53
       velocity: 0.0
       effort: 0.0
     - name: joint_5
-      position: 0.0
+      position: -0.5
       velocity: 0.0
       effort: 0.0
     - name: joint_6
-      position: 0.0
+      position: -0.0
       velocity: 0.0
       effort: 0.0
