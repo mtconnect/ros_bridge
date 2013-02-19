@@ -84,6 +84,7 @@ static const double DURATION_TIMER_INTERVAL = 4.0f;
 static const double DURATION_WAIT_SERVER = 2.0f;
 static const double DURATION_PLANNING_TIME = 5.0f;
 static const double DURATION_WAIT_RESULT = 40.0f;
+static const double DURATION_PATH_COMPLETION = 2.0f;
 static const int MAX_WAIT_ATTEMPTS = 40;
 
 class SimpleMaterialHandlingServer
@@ -200,6 +201,7 @@ protected:
 		move_arm_goal_.planner_service_name = DEFAULT_PATH_PLANNER;
 		move_arm_goal_.motion_plan_request.allowed_planning_time = ros::Duration(DURATION_PLANNING_TIME);
 		move_arm_goal_.motion_plan_request.planner_id = "";
+		move_arm_goal_.motion_plan_request.expected_path_duration = ros::Duration(DURATION_PATH_COMPLETION);
 
 		// initializing service servers
 		material_load_server_ptr_ = MaterialLoadServerPtr(new MaterialLoadServer(nh,DEFAULT_MATERIAL_LOAD_ACTION,
