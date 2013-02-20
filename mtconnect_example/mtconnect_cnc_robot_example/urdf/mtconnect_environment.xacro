@@ -1,0 +1,133 @@
+<?xml version="1.0" ?>
+<robot name="mtconnect" xmlns:xacro="http://ros.org/wiki/xacro">
+	<include filename="$(find fanuc_config)/urdf/M16iB20_macro.xacro"/>
+	<include filename="$(find robotiq_s_model_visualization)/cfg/s-model_mesh_macro.xacro" />
+
+	<!-- instantiating xacros -->
+	<xacro:s-model_mesh prefix=""/>
+	<xacro:M16iB20 prefix=""/>
+
+
+	<!-- parameters -->
+	<xacro:property name="platform_thickness" value="0.1"/>
+	<xacro:property name="window_width" value="0.32"/>
+	<xacro:property name="window_length" value="0.32"/>
+	<xacro:property name="window_frame_thickness" value="0.4"/>
+	<xacro:property name="window_frame_depth" value="0.2"/>
+
+
+	<!-- color definitions -->
+        <material name="blue">
+                <color rgba="0 0 1 1"/>
+        </material>
+	<material name="yellow">
+                        <color rgba="1 1 0 1"/>
+        </material>
+        <material name="orange">
+                <color rgba="1 0.66 0.48 1"/>
+        </material>
+        <material name="red">
+                <color rgba="1 0 0 1"/>
+        </material>
+        <material name="light_blue">
+                <color rgba="0.78 0.94 0.965 1"/>
+        </material>
+
+	<!-- macro list -->
+	<xacro:macro name="window_link_component" params="name parent_link length width depth px py">
+		<link name="${name}">
+			<visual>
+				<origin xyz="${px} ${py} 0" rpy="0 0 0"/>
+				<geometry>
+					<box size="${length} ${width} ${depth}"/>
+				</geometry>
+				<material name="light_blue"/>
+			</visual>
+			<collision>
+				<origin xyz="${px} ${py} 0" rpy="0 0 0"/>
+				<geometry>
+					<box size="${length} ${width} ${depth}"/>
+				</geometry>
+				<material name="red"/>
+			</collision>
+		</link>
+		<joint name="${parent_link}_to_${name}" type="fixed">
+			<origin xyz="0 0 0" rpy="0 0 0"/>
+			<parent link="${parent_link}"/>
+			<child link="${name}"/>
+		</joint>
+	</xacro:macro>
+	<xacro:macro name="window_links" params="w l t d">
+		<!--xacro:property name="l" value="${length}"/>
+		<xacro:property name="w" value="${width}"/>
+		<xacro:property name="t" value="${thickness}"/>
+		<xacro:property name="d" value="${depth}"/-->
+
+
+		<!-- declaring parent link -->
+		<link name="window_frame"/>
+
+		<!-- instantiating links -->
+		<xacro:window_link_component name="top_link" parent_link="window_frame" length="${l + 2*t}" width="${t}" depth="${d}"
+			px="0" py="${(w+t)*0.5}"/>
+		<xacro:window_link_component name="bottom_link" parent_link="window_frame" length="${l + 2*t}" width="${t}" depth="${d}"
+			px="0" py="${(w+t)*-0.5}"/>
+		<xacro:window_link_component name="left_link" parent_link="window_frame" length="${t}" width="${w}" depth="${d}"
+			px="${(l+t)*-0.5}" py="0"/>
+		<xacro:window_link_component name="right_link" parent_link="window_frame" length="${t}" width="${w}" depth="${d}"
+			px="${(l+t)*0.5}" py="0"/>
+
+	</xacro:macro>
+
+	<!-- link definitions -->
+	<link name="world_frame"/>
+	<!--link name="palm"/-->
+	<link name="tcp_frame"/>
+	<link name="robot_platform_link">
+		<visual>
+			<origin xyz="0.0 0.0 -${platform_thickness * 0.5}" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.5 0.5 ${platform_thickness}"/>
+			</geometry>
+			<material name="orange"/>
+		</visual>
+		<collision>
+			<origin xyz="0.0 0.0 -${platform_thickness * 0.5}" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.5 0.5 ${platform_thickness}"/>
+			</geometry>
+			<material name="red"/>
+		</collision>
+	</link>
+	<xacro:window_links w="${window_width}" l="${window_length}" 
+		t="${window_frame_thickness}" d="${window_frame_depth}"/>
+	
+	<!-- joint definitions -->
+	<joint name="world_to_platform_joint" type ="fixed">
+		<origin xyz="0.2 0 2" rpy="3.1417 0 0"/>
+		<parent link="world_frame"/>
+		<child link="robot_platform_link"/>
+	</joint>
+
+	<joint name="platform_to_base_joint" type ="fixed">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="robot_platform_link"/>
+		<child link="base_link"/>
+	</joint>
+	<joint name="world_to_window" type="fixed">
+		<origin xyz="1.6 0.4 0.8" rpy="0 1.5708 0"/>
+		<parent link="world_frame"/>
+		<child link="window_frame"/>
+	</joint>
+	<joint name="tool_to_palm" type="fixed">
+		<origin xyz="0.165 0 0" rpy="0 1.5708 0"/>
+		<parent link="tool0"/>
+		<child link="palm"/>
+	</joint>
+	<joint name="palm_to_tcp" type="fixed">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="palm"/>
+		<child link="tcp_frame"/>
+	</joint>
+	
+</robot>

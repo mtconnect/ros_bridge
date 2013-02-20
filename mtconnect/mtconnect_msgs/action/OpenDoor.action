@@ -1,0 +1,7 @@
+# Define the goal
+string open_door
+---
+# Define the result
+string door_ready
+---
+# Define the feedback

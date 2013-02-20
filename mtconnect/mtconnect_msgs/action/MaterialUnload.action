@@ -1,0 +1,10 @@
+# Define the goal
+string workpiece_type
+float32 workpiece_length
+float32 workpiece_diameter
+---
+# Define the result
+string unload_state
+---
+# Define the feedback
+mtconnect_msgs/MaterialHandlingFeedback feedback

@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<launch>
+	<!-- arguments -->
+	<arg name="use_setup_script" default="true"/>
+
+	<!-- agents and simulators -->
+	<node if="$(arg use_setup_script)" pkg="mtconnect_ros_bridge" type="mtconnect_setup.sh" name="mtconnect_setup"/>
+	
+	<!-- mtconnect ros-bridge components -->
+	<node pkg="mtconnect_ros_bridge" type="bridge_client.py" name="mtconnect_bridge_client" 
+		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_client_config.yaml" output="screen"/>
+
+	<node pkg="mtconnect_ros_bridge" type="bridge_publisher.py" name="mtconnect_bridge_publisher" 
+		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_publisher_config.yaml" output="screen"/>
+
+	<node pkg="mtconnect_ros_bridge" type="bridge_server.py" name="mtconnect_bridge_server" 
+		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_server_config.yaml" output="screen"/>
+
+	<!--remap from="/RobotStateTopic" to="/robot_states"/-->
+	<!--remap from="/RobotSpindleTopic" to="/robot_spindle"/-->
+	<node pkg="mtconnect_ros_bridge" type="bridge_subscriber.py" name="mtconnect_bridge_subscriber" 
+		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_subscriber_config.yaml" output="screen"/>
+</launch>

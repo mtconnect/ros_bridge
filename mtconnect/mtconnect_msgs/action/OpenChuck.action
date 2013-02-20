@@ -1,0 +1,7 @@
+# Define the goal
+string open_chuck
+---
+# Define the result
+string chuck_ready
+---
+# Define the feedback

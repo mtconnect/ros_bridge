@@ -6,3 +6,12 @@ simulator/graph
 simulator/agent
 simulator/.rakeTasks
 mac_robot_sim/Build
+*Action.msg
+*Feedback.msg
+*Goal.msg
+*Result.msg
+*~
+*Action.msg
+*Feedback.msg
+*Result.msg
+*Goal.msg

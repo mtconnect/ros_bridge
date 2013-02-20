@@ -1,0 +1,55 @@
+cartesian_trajectory:
+  arm_group: m16ib20
+  frame_id: world_frame #base_link
+  tool_name: tcp_frame #Link_6
+  via_points:
+    - position:
+        x: 1.2
+        y: 0.24
+        z: 0.4
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 3.1416
+    - position:
+        x: 1.2
+        y: -0.24
+        z: 0.4
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 3.1416
+    - position:
+        x: 1.4
+        y: -0.24
+        z: 0.4
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 3.1416
+    - position:
+        x: 1.4
+        y: 0.24
+        z: 0.4
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 3.1416
+    - position:
+        x: 1.2
+        y: 0.24
+        z: 0.4
+      orientation:
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+        angle: 3.1416

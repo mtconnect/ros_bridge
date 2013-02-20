@@ -1,0 +1,4 @@
+irb2400:
+  max_solver_iterations: 1000
+  max_search_iterations: 40
+  epsilon: 0.00001

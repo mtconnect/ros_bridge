@@ -1,0 +1,13 @@
+url: 'localhost'
+url_port: 5000
+machine_tool: '/cnc'
+xml_namespace: 'urn:mtconnect.org:MTConnectStreams:1.2'
+adapter_port: 7882
+
+mtconnect_msgs:
+    MaterialLoad:
+        Material:
+            {'material_type': None, 'material_length' : None, 'material_diameter' : None}
+    MaterialUnload:
+        Material:
+            {'workpiece_type': None, 'workpiece_length' : None, 'workpiece_diameter' : None}

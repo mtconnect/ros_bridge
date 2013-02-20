@@ -1,0 +1,66 @@
+######### pick move #############
+pickup_goal:
+    arm_group: m16ib20
+    frame_id: world_frame
+    tool_name: tcp_frame # tool0
+    lift_distance: 0.25
+    approach_distance: 0.1
+    lift_direction: # relative to tool coordinate frame
+      x: 0.0
+      y: 0.0
+      z: 1.0
+    grasp_pose: # tool relative to object
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      orientation:
+        angle: 3.1416
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+    object_pose: # relative to world frame
+      position:
+        x: 1.0
+        y: -0.32
+        z: 0.4
+      orientation:
+        angle: 0.01
+        axis:
+          x: 0.0
+          y: 0.0
+          z: 1.0
+######### place move #############
+place_goal:
+    arm_group: m16ib20
+    frame_id: world_frame
+    tool_name: tcp_frame #tool0
+    retreat_distance: 0.4
+    approach_distance: 0.4
+    approach_direction: # relative to tool coordinate frame
+      x: 0.0
+      y: 0.0
+      z: 1.0
+    grasp_pose: # tool relative to object
+      position:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      orientation:
+        angle: 3.1416
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
+    place_pose: # final pose of object relative to world frame
+      position:
+        x: 1.8
+        y: 0.40
+        z: 0.8
+      orientation:
+        angle: -1.57
+        axis:
+          x: 0.0
+          y: 1.0
+          z: 0.0
