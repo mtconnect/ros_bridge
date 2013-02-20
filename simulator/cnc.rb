@@ -27,7 +27,7 @@ module Cnc
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door, :cycle_time,
-                  :robot_execution
+                  :robot_execution, :robot_availability
     attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
                 :material_load, :material_unload, :link, :exec, :material, :system
   
@@ -143,18 +143,19 @@ module Cnc
       if @faults.empty? and @mode.value == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
           @robot_material_load == 'READY' and @robot_material_unload == 'READY' and
-          @robot_execution == 'ACTIVE' and @system.normal?
+          @robot_execution == 'ACTIVE' and @system.normal? and @robot_availability == 'AVAILABLE'
         puts "Becomming operational"
         @statemachine.make_operational
       else
         puts "Still not ready"
         puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
         puts "  Mode is not AUTOMATIC: #{@mode.vlaue}" unless @mode.value == 'AUTOMATIC'
-        puts "  Robot Material Load is not READY: #{@robot_material_load}" unless @robot_material_load == 'READY'
+        puts "  Robot Material Load is not READY: #@robot_material_load" unless @robot_material_load == 'READY'
         puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
-        puts "  Robot material unload is not READY: #{@robot_material_unload}" unless @robot_material_unload == 'READY'
+        puts "  Robot material unload is not READY: #@robot_material_unload" unless @robot_material_unload == 'READY'
         puts "  System condition is not normal" unless @system.normal?
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
+        puts "  Robot is not available: #@robot_availability" unless @robot_availability == 'AVAILABLE'
         @statemachine.still_not_ready
       end
     end
