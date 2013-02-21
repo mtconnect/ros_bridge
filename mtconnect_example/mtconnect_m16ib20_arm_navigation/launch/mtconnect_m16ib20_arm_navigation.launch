@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<launch>
+    <arg name="use_chomp" default="false"/>
+
+    <include file="$(find mtconnect_m16ib20_arm_navigation)/launch/mtconnect_m16ib20_planning_environment.launch" />
+    <include file="$(find planning_environment)/launch/environment_server.launch">
+        <arg name="use_monitor" value="true" />
+        <arg name="use_collision_map" value="false" />
+    </include>
+
+    <remap from="/ompl_planning/plan_kinematic_path" to="/path_planning/plan_kinematic_path"/>    
+    <remap from="/chomp_planner_longrange/plan_path" to="/path_planning/plan_kinematic_path"/>
+    <include unless="$(arg use_chomp)" file="$(find mtconnect_m16ib20_arm_navigation)/launch/ompl_planning.launch" />
+    <include if="$(arg use_chomp)" file="$(find mtconnect_m16ib20_arm_navigation)/launch/chomp_planning.launch"/>
+
+    <include file="$(find mtconnect_m16ib20_arm_navigation)/launch/constraint_aware_kinematics.launch" />    
+    <include file="$(find mtconnect_m16ib20_arm_navigation)/launch/trajectory_filter_server.launch" />
+    <include file="$(find mtconnect_m16ib20_arm_navigation)/launch/move_groups.launch" />
+    
+</launch>

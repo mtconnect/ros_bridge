@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find mtconnect_m16ib20_arm_navigation)/launch/mtconnect_m16ib20_planning_environment.launch" />    
+    <node pkg="arm_kinematics_constraint_aware" type="arm_kinematics_constraint_aware" name="mtconnect_m16ib20_m16ib20_kinematics">
+	<rosparam command="load" file="$(find mtconnect_m16ib20_arm_navigation)/config/kinematic_parameters.yaml"/>
+        <param name="group" type="string" value="m16ib20" />
+        <param name="m16ib20/root_name" type="string" value="base_link" />
+        <param name="m16ib20/tip_name" type="string" value="tcp_frame" />
+        <param name="kinematics_solver" type="string" value="arm_kinematics_constraint_aware/KDLArmKinematicsPlugin" />
+    </node>
+</launch>
