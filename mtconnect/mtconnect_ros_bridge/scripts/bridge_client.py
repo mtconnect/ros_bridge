@@ -93,8 +93,7 @@ class GenericActionClient():
         self.lib_manifests = []
         self.type_handle = None
         self.action_list = {}
-        self.action_goals = {}            
-        self.action_conv = []
+        self.action_goals = {}
         self.package = None
         self.xml_goal = None
         self.di_dict = {} # XML data item dictionary to store MTConnect Adapter Events
