@@ -134,27 +134,27 @@ unload_place_goal:
 joint_home_position:
   arm_group: m16ib20
   joints:
-    - name: Joint_1
+    - name: joint_1
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint_2
+    - name: joint_2
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint_3
+    - name: joint_3
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint_4
+    - name: joint_4
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint_5
+    - name: joint_5
       position: 0.0
       velocity: 0.0
       effort: 0.0
-    - name: Joint_6
+    - name: joint_6
       position: 0.0
       velocity: 0.0
       effort: 0.0
@@ -162,27 +162,27 @@ joint_home_position:
 joint_wait_position:
   arm_group: m16ib20
   joints:
-    - name: Joint_1
+    - name: joint_1
       position: -0.60
       velocity: 0.0
       effort: 0.0
-    - name: Joint_2
+    - name: joint_2
       position: -0.15
       velocity: 0.0
       effort: 0.0
-    - name: Joint_3
+    - name: joint_3
       position: 0.09
       velocity: 0.0
       effort: 0.0
-    - name: Joint_4
+    - name: joint_4
       position: -2.10
       velocity: 0.0
       effort: 0.0
-    - name: Joint_5
+    - name: joint_5
       position: 0.46
       velocity: 0.0
       effort: 0.0
-    - name: Joint_6
+    - name: joint_6
       position: 5.29
       velocity: 0.0
       effort: 0.0

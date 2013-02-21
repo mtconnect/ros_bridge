@@ -23,7 +23,7 @@ pickup_goal:
     object_pose: # relative to world frame
       position:
         x: 1.0
-        y: -0.32
+        y: -0.40
         z: 0.4
       orientation:
         angle: 0.01

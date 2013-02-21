@@ -1,7 +1,7 @@
 cartesian_trajectory:
   arm_group: m16ib20
   frame_id: world_frame #base_link
-  tool_name: tcp_frame #Link_6
+  tool_name: tcp_frame #link_6
   via_points:
     - position:
         x: 1.2
