@@ -33,6 +33,7 @@ describe "Cnc" do
     end
 
     it 'should become ready when the link is enabled, all interfaces are ready, and the robot and machine tool are in automatic' do
+      @cnc.event('Availability', 'AVAILABLE')
       @cnc.event('ControllerMode', 'AUTOMATIC')
       @cnc.event('Execution', 'ACTIVE')
       @cnc.event('MaterialLoad', 'READY')
@@ -47,6 +48,7 @@ describe "Cnc" do
 
     context "when loading material" do
       before(:each) do
+        @cnc.event('Availability', 'AVAILABLE')
         @cnc.event('ControllerMode', 'AUTOMATIC')
         @cnc.event('Execution', 'ACTIVE')
         @cnc.event('MaterialLoad', 'READY')
