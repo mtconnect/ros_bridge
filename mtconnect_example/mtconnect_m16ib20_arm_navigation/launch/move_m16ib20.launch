@@ -1,7 +1,0 @@
-<launch>
-    <node pkg="move_arm" type="move_arm_simple_action" name="mtconnect_m16ib20_move_m16ib20">
-        <param name="group" type="string" value="m16ib20" />
-        <remap from="arm_ik" to="mtconnect_m16ib20_m16ib20_kinematics/get_constraint_aware_ik" />
-        <param name="controller_action_name" type="string" value="m16ib20_controller/follow_joint_trajectory" />
-    </node>
-</launch>

@@ -1,3 +1,0 @@
-<launch>
-    <include file="$(find mtconnect_m16ib20_arm_navigation)/launch/move_m16ib20.launch" />
-</launch>
