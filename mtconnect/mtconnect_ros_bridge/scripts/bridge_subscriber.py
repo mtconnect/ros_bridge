@@ -16,18 +16,6 @@
    limitations under the License.
    """
 
-## @package bridge_subscriber.py
-## This module launches a ROS node that will subscribe to ROS topics specified in the
-## configuration file and then ports the data to the machine tool adapter.  Topics and
-## topic parameters are specified by a configuration file that must be included with
-## the main program during execution. If this file is not provided, the node will terminate
-## with an error message indicating the need for this file.
-##
-## Command line example:
-##
-##     bridge_subscriber.py -i bridge_subscriber_config.yaml
-##     bridge_subscriber.py -input bridge_subscriber_config.yaml
-
 # Import standard Python modules
 import sys
 import os
@@ -52,15 +40,25 @@ from mtconnect_adapter import Adapter
 import roslib
 import rospy
 
+
 ## @class BridgeSubscriber
 ## @brief The BridgeSubscriber
-## will subscribe to ROS topics specified in the configuration file and then ports the data
-## to the machine tool adapter.  The class contains the following methods:
+## will subscribe to ROS topics specified in the configuration file and then port the data
+## to the machine tool adapter.  Topics and topic parameters are specified by a configuration
+## file that must be included with the main program during execution. If this file is not
+## provided, the node will terminate with an error message indicating the need for this file.
 ##
-## setup_topic_data -- utilizes introspection to set up class instance variables
-## topic_callback -- callback function that captures the attribute values for a ROS topic
-## data_item_conversion -- sets MTConnect adapter value via ROS message CONSTANT value
-## topic_listener -- ROS subscriber function that launches subscribers
+## Command line example:
+##
+##     bridge_subscriber.py -i bridge_subscriber_config.yaml
+##     bridge_subscriber.py -input bridge_subscriber_config.yaml
+##
+## The class contains the following methods:
+##
+## setup_topic_data -- utilizes introspection to set up class instance variables.
+## topic_callback -- callback function that captures the attribute values for a ROS topic.
+## data_item_conversion -- sets MTConnect adapter value via ROS message CONSTANT value.
+## topic_listener -- ROS subscriber function that launches subscribers.
 class BridgeSubscriber():
     ## @brief Constructor for a BridgeSubscriber
     def __init__(self):
@@ -121,9 +119,9 @@ class BridgeSubscriber():
     ## This function then performs a relative import of the topic via the getattr(import_module) function.
     ## Data is stored in the following class instance attributes:
     ## 
-    ##     self.topic_type_list --> used for module import and msg parameters
-    ##     self.member_types    --> member type, not used in msg parameters, future use
-    ##     self.member_names    --> used for ROS subscriber msg parameters 
+    ##     self.topic_type_list --> used for module import and msg parameters.
+    ##     self.member_types    --> member type, not used in msg parameters, future use.
+    ##     self.member_names    --> used for ROS subscriber msg parameters.
     def setup_topic_data(self):
         for topic, topic_type in self.config.items():
             if topic not in self.msg_parameters:
@@ -139,20 +137,20 @@ class BridgeSubscriber():
                 # Add data items to the MTConnect Adapter - must be unique data items
                 bridge_library.add_event((self.adapter, self.data_items, self.di_dict, False))
                 
-                # Extract package namespace and topic type name
+                # Extract package name and topic type name
                 tokens = topic_type.keys()[0].split('/')
-                namespace = tokens[0]
+                package = tokens[0]
                 type_name = tokens[1]
                 
                 # Load package manifest if unique
-                if namespace not in self.lib_manifests:
-                    roslib.load_manifest(namespace)
-                    self.lib_manifests.append(namespace)
+                if package not in self.lib_manifests:
+                    roslib.load_manifest(package)
+                    self.lib_manifests.append(package)
                 
                 # Import module and create topic type class,
                 #    i.e. append <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
-                rospy.loginfo('Class Instance --> ' + namespace + '.msg.' + type_name)
-                type_handle = getattr(import_module(namespace + '.msg'), type_name)
+                rospy.loginfo('Class Instance --> ' + package + '.msg.' + type_name)
+                type_handle = getattr(import_module(package + '.msg'), type_name)
 
                 self.topic_type_list[topic] = type_handle
                 self.msg_text[topic] = type_handle._full_text
@@ -166,7 +164,7 @@ class BridgeSubscriber():
     ## value, use attrib_value.val.
     ## 
     ## All data conversions between ROS and MTConnect are stored in the ROS
-    ## subscriber .yaml file. A separate function handles the ROS to MTConnect
+    ## subscriber YAML file. A separate function handles the ROS to MTConnect
     ## conversions for generic robot messages.
     ## @param data: callback ROS message data from the ROS subscriber
     ## @param cb_data: tuple containing the following parameters:
@@ -184,11 +182,10 @@ class BridgeSubscriber():
             dout = {val:val for val in member_set}
 
             # Iterate through data items and capture message data
-            #rospy.loginfo('Message on %s for %s' % (topic_name, rospy.get_name()))
             msg_data = []
             msg_constants = {}
             for dataitem in member_set:
-                # Capture attribute for namespace/Topic Type --> industrial_msgs/TriState.avail
+                # Capture attribute for package/message type --> industrial_msgs/TriState.avail
                 attrib_handle = getattr(type_handle(), dataitem)
                 
                 if 'header' not in dataitem:
@@ -210,7 +207,6 @@ class BridgeSubscriber():
                         if attrib.isupper():
                             if getattr(attrib_handle, attrib) == item_value:
                                 msg_constants[dataitem].append(attrib)
-                    #rospy.loginfo('MESSAGE CONSTANTS --> %s\tVAL --> %s' % (msg_constants, item_value))
             
             # Execute the ROS to MTConnet conversion function
             self.data_item_conversion(topic_name, type_name, msg_data, msg_text, msg_constants)

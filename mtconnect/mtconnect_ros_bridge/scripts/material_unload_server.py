@@ -54,6 +54,7 @@ class MaterialUnloadServer():
         self._as = actionlib.SimpleActionServer('MaterialUnloadClient', mtconnect_msgs.msg.MaterialUnloadAction, self.execute_cb, False)
         self._as.start()
         self._as.accept_new_goal()
+        self.counter = 1
         
         # Subscribe to CNC state topic
         self.door_state = None
@@ -98,6 +99,8 @@ class MaterialUnloadServer():
                     self._result.unload_state = 'COMPLETE'
                     dwell = False
                     rospy.loginfo('CNC States [door_state, chuck_state, open_chuck]: %s' % [self.door_state, self.chuck_state, self.open_chuck])
+                    rospy.loginfo('CYCLE NUMBER --> %d' % self.counter)
+                    self.counter += 1
     
                 # Check for timeout
                 if time.time() - start > 120.0:

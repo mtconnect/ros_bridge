@@ -16,21 +16,6 @@
    limitations under the License.
    """
 
-## @package bridge_server.py
-## This module launches a ROS node that blocks until a dedicated action request is made by the robot,
-## such as 'OpenDoor'.  Once a request is received, the callback function will monitor
-## the machine tool and complete the 'READY' handshake before returning the request result
-## to the dedicated action client.
-## 
-## Dedicated action client data items are specified by a configuration file that must be included with the
-## main program during execution. If this file is not provided, the node will terminate
-## with an error message indicating the need for this file.
-##
-## Command line example:
-##
-##     bridge_server.py -i bridge_server_config.yaml
-##     bridge_server.py -input bridge_server_config.yaml
-
 # Import standard Python modules
 import sys
 import os
@@ -69,9 +54,18 @@ import actionlib
 ## the machine tool and complete the 'READY' handshake before returning the request result
 ## to the dedicated action client.
 ##
+## Dedicated action client data items are specified by a configuration file that must be included with the
+## main program during execution. If this file is not provided, the node will terminate
+## with an error message indicating the need for this file.
+##
+## Command line example:
+##
+##     bridge_server.py -i bridge_server_config.yaml
+##     bridge_server.py -input bridge_server_config.yaml
+##
 ## The class contains the following methods:
-## setup_topic_data -- sets up class instance variables
-## execute_cb -- triggered by a ROS action client, monitors machine tool response sequence and submits 'READY' handshake
+## setup_topic_data -- sets up class instance variables.
+## execute_cb -- triggered by a ROS action client, monitors machine tool response sequence and submits 'READY' handshake.
 ## xml_callback -- parses xml stream and stores xml into a data queue.
 class GenericActionServer():
     ## @brief Constructor for a GenericActionServer
@@ -98,8 +92,6 @@ class GenericActionServer():
         self.lib_manifests = []
         self.type_handle = None
         self.action_list = {}
-        self.action_goals = {}
-        self.action_conv = []
         self.capture_xml = False
         self.di_dict = {} # XML data item dictionary to store MTConnect Adapter Events
         
@@ -148,44 +140,33 @@ class GenericActionServer():
         xml_thread.daemon = True
         xml_thread.start()
     
-    ## @brief This function captures the topic namespace, type, action goals,
-    ## and action state conversion from ROS to MTConnect as required for
-    ## the ROS action client.  This task completed for each topic specified
-    ## in the configuration file.
+    ## @brief This function imports the topic package and creates an action server for each
+    ## package specified in the configuration file.
     ## 
-    ## This function then performs a relative import of the topic via the getattr(import_module) function.
     ## Data is stored in the following class attributes:
     ## 
     ##    self.lib_manifests --> used to track which manifests have been loaded
-    ##    self.type_handle   --> used for ROS SimpleActionClient, stores namespace with action messages
+    ##    self.type_handle   --> used for ROS SimpleActionClient, stores package name with action messages
     ##    self.action_list   --> used for ROS SimpleActionClient, stores CNC action request strings
-    ##    self.action_goals  --> dictionary of goal:goal attrib pairs in str:list format
     ##    self.server_name   --> dictionary of data_item:DataItem pairs in str:str format
     ##    self._resultDict   --> dictionary of result class instances, i.e. {'MaterialLoad':mtconnect_msgs.msg._MaterialLoadResult.MaterialLoadResult()} 
     ##    self._as           --> dictionary of ROS action servers referenced by DataItem
     def setup_topic_data(self):
-        for namespace, action in self.config.items():
-            if namespace not in self.msg_parameters: # Only one ROS namespace in config by design
+        for package, action in self.config.items():
+            if package not in self.msg_parameters: # Only one ROS package in config by design
                 # Load package manifest if unique
-                if namespace not in self.lib_manifests:
-                    roslib.load_manifest(namespace)
-                    self.lib_manifests.append(namespace)
+                if package not in self.lib_manifests:
+                    roslib.load_manifest(package)
+                    self.lib_manifests.append(package)
 
                 # Import module
-                rospy.loginfo('Importing --> ' + namespace + '.msg')
-                self.type_handle = import_module(namespace + '.msg')
+                rospy.loginfo('Importing --> ' + package + '.msg')
+                self.type_handle = import_module(package + '.msg')
                 
-                # Iterate through requests and create action call-backs and action result class instances
-                for request in action.keys():
+                # Iterate through requests and create action result class instances and action servers
+                for request in action:
                     # Capture action name for action client callback reference
                     self.action_list[request] = request
-                    
-                    # Capture ROS Action parameters
-                    goal_key = self.config[namespace][request].keys()[0]
-                    self.action_goals[request] = self.config[namespace][request][goal_key].keys()
-                    
-                    # Capture ROS to MTConnect state conversion dictionary
-                    #self.action_conv[request] = self.config[namespace][request]['conversion']
                     
                     # Store the ROS server name in a hash table
                     di_conv = bridge_library.split_event(request)
@@ -281,7 +262,6 @@ class GenericActionServer():
         try:
             if self.capture_xml == True:
                 self.XML_queue.put(chunk)
-                #rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
                 if self.XML_queue.qsize() > 1:
                     rospy.loginfo('STORED XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
         except Exception as e:

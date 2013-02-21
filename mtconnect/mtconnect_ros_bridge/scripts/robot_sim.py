@@ -36,7 +36,7 @@ path, file = os.path.split(__file__)
 sys.path.append(os.path.realpath(path) + '/src')
 from long_pull import LongPull
 
-# Import ROS Python Modules, and ROS Message Namespace
+# Import ROS Python Modules, and ROS mtconnect_msgs package
 import roslib
 roslib.load_manifest('mtconnect_msgs')
 import rospy
@@ -200,7 +200,7 @@ class RobotSim():
                 
                 # launch close chuck action client
                 #opendoor.open_door_client()
-                rospy.loginfo('OpenDoor Action Completed')
+                #rospy.loginfo('OpenDoor Action Completed')
                 closechuck.close_chuck_client()
                 rospy.loginfo('CloseChuck Action Completed')
                 

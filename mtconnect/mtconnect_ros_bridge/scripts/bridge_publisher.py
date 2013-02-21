@@ -16,18 +16,6 @@
    limitations under the License.
    """
 
-## @package bridge_publisher.py
-## This module launches a ROS node that will read the Event data from the machine tool
-## and then publishes the data as a ROS topic.  Topics and topic parameters are specified
-## by a configuration file that must be included with the main program during execution.
-## If this file is not provided, the node will terminate with an error message indicating
-## the need for this file.
-##
-## Command line example:
-##
-##     bridge_publisher.py -i bridge_publisher_config.yaml
-##     bridge_publisher.py -input bridge_publisher_config.yaml
-
 # Import standard Python modules
 import sys
 import os
@@ -59,14 +47,24 @@ import rospy
 ## @class BridgePublisher
 ## @brief The BridgePublisher
 ## parses XML data from an HTTP connection and starts a ROS publishing
-## thread that publishes topic data at 10 hertz.  The class contains the following methods:
+## thread that publishes topic data at 10 hertz.  Topics and topic parameters are specified
+## by a configuration file that must be included with the main program during execution.
+## If this file is not provided, the node will terminate with an error message indicating
+## the need for this file.
 ##
-## setup_topic_data -- utilizes introspection to set up topic instance variables
-## init_di_dict -- creates hash table of data_item:None pairs
-## process_xml -- parses xml elements and updates the di_current and di_changed dictionaries
-## topic_publisher -- gets and sets attributes for a ROS message. Publishes ROS message
-## xml_callback -- callback function invoked by longpull, executes process_xml function and stores copy of di_changed into XML_queue
-## ros_publisher -- function that uses a Timer thread to publish ROS topic.  Extracts data from XML_queue and executes topic_publisher
+## Command line example:
+##
+##     bridge_publisher.py -i bridge_publisher_config.yaml
+##     bridge_publisher.py -input bridge_publisher_config.yaml
+##
+## The class contains the following methods:
+##
+## setup_topic_data -- utilizes introspection to set up topic instance variables.
+## init_di_dict -- creates hash table of data_item:None pairs.
+## process_xml -- parses xml elements and updates the di_current and di_changed dictionaries.
+## topic_publisher -- gets and sets attributes for a ROS message. Publishes ROS message.
+## xml_callback -- callback function invoked by longpull, executes process_xml function and stores copy of di_changed into XML_queue.
+## ros_publisher -- function that uses a Timer thread to publish ROS topic.  Extracts data from XML_queue and executes topic_publisher.
 class BridgePublisher():
     ## @brief Constructor for a BridgePublisher
     def __init__(self):
@@ -120,6 +118,7 @@ class BridgePublisher():
         for di in self.di_current.keys():
             name = bridge_library.split_event(di)
             for e in elements:
+                rospy.loginfo('Element %s --> %s' % (e.tag, e.text))
                 if name == e.attrib['name']:
                     self.di_current[di] = e.text
         
@@ -150,30 +149,30 @@ class BridgePublisher():
     ## via the getattr(import_module) function.  Data is stored in the
     ## following class attributes:
     ##    
-    ##     self.data_items   --> used for ROS data structure tracking, stores list of data items for each topic
-    ##     self.pub          --> used to setup ROS topic publishers
-    ##     self.msg          --> data structure for msg class instances of the topic type
-    ##     self.topic_name_list  --> used for configuration file key reference
-    ##     self.topic_type_list  --> used for module import and config file key reference
+    ##     self.data_items   --> used for ROS data structure tracking, stores list of data items for each topic.
+    ##     self.pub          --> used to setup ROS topic publishers.
+    ##     self.msg          --> data structure for msg class instances of the topic type.
+    ##     self.topic_name_list  --> used for configuration file key reference.
+    ##     self.topic_type_list  --> used for module import and config file key reference.
     def setup_topic_data(self):
         for topic_name, type_name in self.config.items():
             if topic_name not in self.msg_parameters:
                 # TOPIC --> topic name, such as 'chatter'
-                # TOPIC TYPE --> message namespace and name, such as mtconnect_msgs/CncStatus
+                # TOPIC TYPE --> ROS package and message type, such as mtconnect_msgs/CncStatus
                 tn = type_name.keys()[0]
                 tokens = tn.split('/')
-                namespace = tokens[0]
+                package = tokens[0]
                 topic_type_name = tokens[1]
                 
                 # Load package manifest if unique
-                if tokens[0] not in self.lib_manifests:
-                    roslib.load_manifest(tokens[0])
-                    self.lib_manifests.append(tokens[0])
+                if package not in self.lib_manifests:
+                    roslib.load_manifest(package)
+                    self.lib_manifests.append(package)
     
                 # Import module and create topic type class,
                 #    i.e. append <class 'mtconnect_msgs.msg._RobotStates.RobotStates'>
-                rospy.loginfo('Class Instance --> ' + namespace + '.msg.' + topic_type_name)
-                type_handle = getattr(import_module(namespace + '.msg'), topic_type_name)
+                rospy.loginfo('Class Instance --> ' + package + '.msg.' + topic_type_name)
+                type_handle = getattr(import_module(package + '.msg'), topic_type_name)
                 
                 # Append list of data items specified in the ROS topic message
                 self.data_items.append(self.config[topic_name][type_name.keys()[0]].keys())
@@ -215,6 +214,7 @@ class BridgePublisher():
         di_list = [di_val for di_list in self.data_items for di_val in di_list]
         
         if elements:
+            rospy.loginfo('***********XML -->*************\n%s' % xml)
             for e in elements:
                 for d_item in di_list:
                     if e.attrib['name'] == bridge_library.split_event(d_item):

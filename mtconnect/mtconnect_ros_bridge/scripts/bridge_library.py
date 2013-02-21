@@ -18,9 +18,9 @@
 
 ## @package bridge_library.py
 ## This module contains functions utilized by the MTConnect to ROS bridge nodes.
-## Currently, this module is a container for HTTP connectivity verification,
-## XML parsing, importing configuration files for the ROS nodes, and several
-## MTConnect Adapter related functions.
+## Currently, this module contains methods for HTTP connectivity verification,
+## XML parsing, importing configuration files, and several MTConnect Adapter
+## related functions.
 
 # Import standard Python modules
 import sys
@@ -45,15 +45,11 @@ import rospy
 ## This function utilizes python option parser to determine the option filename.
 ## Once the file name is obtained, the .yaml file contents are stored in a dictionary.
 ## Program terminates if the option file is not available, or if it is in an
-## incorrect .yaml format.
+## incorrect YAML format.
 ## 
 ## This function does not take any arguments.
 ##
 ## @return: dataMap, dictionary of node parameters
-## 
-## Command line example:
-##
-##     bridge_publisher.py -i bridge_publisher_config.yaml
 def obtain_dataMap():
     ## @brief determine_config_file_name Function documentation
     ##
@@ -153,16 +149,16 @@ def xml_get_response(data):
 ##
 ## This function finds all elements in the updated XML.  If an action goal is required,
 ## the string acquired from the XML is parsed and returned with the appropriate type.
-## For example, if the goal is "'ALUMINUM 6061-T6', 5.00, 2", the function will
-## convert this string into the following list ['ALUMINUN 6061-T6', 5.00, 2.50] which contains
+## For example, if the goal is "'ALUMINUM 6061-T6', 5.00, 2.50", the function will
+## convert this string into the following list ['ALUMINUM 6061-T6', 5.00, 2.50] which contains
 ## the following types: [str, float, float]
 ##
 ## This function takes the following arguments:
-## @param xml: xml data, read from response.read()
+## @param xml: XML data, read from response.read()
 ## @param ns: dictionary, xml namespace dictionary
 ## @param tag_list: dictionary, xml tag stored as tag:goal or tag:tag pairs
 ## @param get_goal: boolean, optional parameter, used when a action goal is required
-## @param action_goals: dictionary, optional parameter, stored action goals by xml_tag key
+## @param action_goals: dictionary, optional parameter, stored action goals by XML tag key
 ##
 ## Function returns:
 ## @return: nextSeq, int, next XML sequence for streaming XML via longpull.py
@@ -179,9 +175,11 @@ def xml_components(xml, ns, tag_list, get_goal = False, action_goals = None):
     find_goal = None
     
     for tag, goals in tag_list.items():
-        find_action = root.findall('.//m:' + tag, namespaces = ns)
-        if find_action: # Element list is not empty
-            elements.append(find_action[0])
+        # Create a list of XML elements
+        element_list = root.findall('.//m:' + tag, namespaces = ns)
+        if element_list: # Element list is not empty
+            for e in element_list:
+                elements.append(e)
 
         # Check if a goal must be captured
         if get_goal == True:
@@ -203,19 +201,16 @@ def xml_components(xml, ns, tag_list, get_goal = False, action_goals = None):
 ## The function takes the following arguments:
 ## @param tag: string of the Event tag, i.e. 'MaterialLoad'
 ## @param goals: dictionary of the goal (str):goal attributes (list of strings)
-## @param root: XML ElementTree object that converted the xml in string format to an ElementTree object
-## @param ns: dictionary, xml namespace dictionary
-## @param action_goals: dictionary, stored action goals by xml_tag key
+## @param root: XML ElementTree object that converted the XML chunk in string format to an ElementTree object
+## @param ns: dictionary, XML namespace dictionary
+## @param action_goals: dictionary, stored action goals by XML tag key
 ##
 ## The function returns:
-## @return: action_goals, dictionary, hash table of xml_tag:goal pairs
-## @return: None type if the action goal tag is not present in the xml
+## @return: action_goals, dictionary, hash table of XML tag:goal pairs
+## @return: None type if the action goal tag is not present in the XML
 def set_goal(tag, goals, root, ns, action_goals):
     goal_tag = goals.keys()[0]
     find_goal = root.findall('.//m:' + goal_tag, namespaces = ns)
-    #rospy.loginfo('GOAL-TAG --> %s' % goal_tag)
-    #rospy.loginfo('GOAL-ELEMENT --> %s' % find_goal)
-    #rospy.loginfo('ACTION --> %s' % tag)
     
     if find_goal:
         rospy.loginfo('GOAL-ELEMENT SET--> %s' % find_goal[0].text)
@@ -236,14 +231,14 @@ def set_goal(tag, goals, root, ns, action_goals):
 ## @brief add_event Function documentation
 ##
 ## This function creates instances of the Adapter Event class for
-## each of the xml_tags provided to the function.
+## each of the XML tags provided to the function.
 ##
 ## This function takes the following arguments:
 ## @param data: data is a tuple containing the following parameters:
 ##
 ## @param adapter: Adapter class object
-## @param tag_list: list of xml_tags culled from node configuration file
-## @param di_dict: dictionary {string:string}, stored Adapter Event class instances for each xml_tag
+## @param tag_list: list of XML tags culled from node configuration file
+## @param di_dict: dictionary {string:string}, stored Adapter Event class instances for each XML tag
 ## @param init: boolean, user specified boolean to determine if the Adapter Events must be initialized  
 def add_event(data):
     # Unpack function arguments
@@ -287,13 +282,13 @@ def split_event(xml_tag):
 ## @brief action_cb Function documentation
 ##
 ## This function sets the value of an Adapter Event.  It is used to port
-## xml_tag changes back to machine tool.
+## XML tag changes back to machine tool.
 ##
 ## This function takes the following arguments:
 ## @param data: data is a tuple containing the following parameters:
 ##
 ## @param adapter: Adapter class object
-## @param di_dict: dictionary {string:string}, stored Adapter Event class instances for each xml_tag
+## @param di_dict: dictionary {string:string}, stored Adapter Event class instances for each XML tag
 ## @param data_item: string, data item used to locate the Adapter Event
 ## @param state: string, Event will be changed to this value
 def action_cb(data):
