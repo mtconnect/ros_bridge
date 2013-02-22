@@ -27,13 +27,13 @@ module Cnc
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door, :cycle_time,
-                  :robot_execution, :robot_availability
+                  :robot_execution, :robot_availability, :load_time_limit, :unload_time_limit
     attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
                 :material_load, :material_unload, :link, :exec, :material, :system
   
     def initialize(port = 7879)
       super(port)
-      
+
       @adapter.data_items << (@availability = DataItem.new('avail'))
 
       @adapter.data_items << (@material_load = DataItem.new('material_load'))
@@ -79,6 +79,11 @@ module Cnc
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
 
       @cycle_time = 5
+      @load_timer, @unload_timer = nil
+      @load_time_limit = 5 * 60
+      @unload_time_limit = 5 * 60
+
+
 
       create_statemachine
     end
@@ -226,6 +231,31 @@ module Cnc
       end
     end
 
+    def start_load_active_timer
+      @load_timer = Thread.new do
+        sleep @load_time_limit
+        @statemachine.material_load_timeout
+      end
+    end
+
+    def stop_load_active_timer
+      @load_timer.kill if @load_timer
+      @load_timer = nil
+    end
+
+
+    def start_unload_active_timer
+      @unload_timer = Thread.new do
+        sleep @unload_time_limit
+        @statemachine.material_unload_timeout
+      end
+    end
+
+    def stop_unload_active_timer
+      @unload_timer.kill if @unload_timer
+      @unload_timer = nil
+    end
+
     def material_load_ready
       @adapter.gather do
         @material_load.value = 'READY'
@@ -339,11 +369,12 @@ module Cnc
 
               state :material_load do
                 on_entry :material_load_active
-                event :robot_material_load_active, :material_load
-                event :robot_material_load_complete, :cycle_start
+                event :robot_material_load_active, :material_load, :start_load_active_timer
+                event :robot_material_load_complete, :cycle_start, :stop_load_active_timer
                 event :robot_material_load_fail, :material_load_failed
                 event :robot_material_load_not_ready, :activated, :reset_history
                 event :robot_material_unload_ready, :material_load
+                event :material_load_timeout, :material_load_failed
                 default :material_load
               end
 
@@ -356,11 +387,12 @@ module Cnc
 
               state :material_unload do
                 on_entry :material_unload_active
-                event :robot_material_unload_active, :material_unload
-                event :robot_material_unload_complete, :ready
+                event :robot_material_unload_active, :material_unload, :start_unload_active_timer
+                event :robot_material_unload_complete, :ready, :stop_unload_active_timer
                 event :robot_material_unload_not_ready, :activated, :reset_history
                 event :robot_material_unload_fail, :material_unload_failed
                 event :robot_material_unload_ready, :material_unload
+                event :material_unload_timeout, :material_unload_failed
                 default :material_unload
               end
 
