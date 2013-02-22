@@ -369,6 +369,7 @@ module Cnc
 
               state :material_load do
                 on_entry :material_load_active
+
                 event :robot_material_load_active, :material_load, :start_load_active_timer
                 event :robot_material_load_complete, :cycle_start, :stop_load_active_timer
                 event :robot_material_load_fail, :material_load_failed
@@ -387,6 +388,7 @@ module Cnc
 
               state :material_unload do
                 on_entry :material_unload_active
+
                 event :robot_material_unload_active, :material_unload, :start_unload_active_timer
                 event :robot_material_unload_complete, :ready, :stop_unload_active_timer
                 event :robot_material_unload_not_ready, :activated, :reset_history
@@ -438,7 +440,8 @@ if $0 == __FILE__
   end
   dir = File.dirname(__FILE__) + '/graph'
   Dir.mkdir dir unless File.exist?(dir)
-  Cnc.cnc.to_dot(:output => 'graph')
+  context = Cnc::CncContext.new
+  context.statemachine.to_dot(:output => 'graph')
   Dir.chdir('graph') do
     system('dot -Tpng -o main.png main.dot')
     Dir['*.dot'].each do |f|

@@ -278,6 +278,7 @@ describe "Cnc" do
         sleep 1.2
 
         @cnc.statemachine.state.should == :material_load_failed
+        @cnc.material_load.value.should == 'FAIL'
       end
 
       it "should fail if the unload active does not complete in a certain amount of time" do
@@ -303,6 +304,7 @@ describe "Cnc" do
         sleep 1.2
 
         @cnc.statemachine.state.should == :material_unload_failed
+        @cnc.material_unload.value.should == 'FAIL'
       end
 
     end
