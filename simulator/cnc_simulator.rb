@@ -22,7 +22,7 @@ context = Cnc::CncContext.new
 context.statemachine.tracer = STDOUT
 context.start
 
-streamer = MTConnect::Streamer.new('http://localhost:5000/Robot')
+streamer = MTConnect::Streamer.new(ARGV[0] || 'http://localhost:5000/Robot')
 thread = streamer.start do |name, value, code = nil, text = nil|
   begin
     context.event(name, value, code, text)
