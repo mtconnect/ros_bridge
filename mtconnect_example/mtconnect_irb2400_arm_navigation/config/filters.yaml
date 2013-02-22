@@ -1,0 +1,15 @@
+service_type: FilterJointTrajectoryWithConstraints
+filter_chain:
+  -
+    name: unnormalize_trajectory
+    type: UnNormalizeFilterJointTrajectoryWithConstraints
+  -
+    name: cubic_spline_short_cutter_smoother
+    type: CubicSplineShortCutterFilterJointTrajectoryWithConstraints
+    params: {discretization: 0.01}
+  -
+    name: n_point_filter
+    type: NPointFilterJointTrajectoryWithConstraints
+    params: {n_points: 75}
+
+
