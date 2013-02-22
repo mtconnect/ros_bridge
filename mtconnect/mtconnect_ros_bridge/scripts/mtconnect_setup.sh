@@ -1,18 +1,22 @@
 #!/bin/sh
 
+
+# Testing environment variables
+echo ${MTCONNECT_AGENT_DIR?Error \$MTCONNECT_AGENT_DIR is not defined, did you export it from your .bashrc file.}
+
 ############################### Running agents ######################################
 # Setting up agent 1 terminal arguments
 TERMINAL1_NAME="Agent_CNC"
 WORKING_DIR=$(rosstack find mtconnect)/../simulator
 FILE1_PATH=$(rosstack find mtconnect)/../simulator/agent_cnc.cfg
-COMMAND1="~/agent_build/agent/agent debug $FILE1_PATH"
+COMMAND1="$MTCONNECT_AGENT_DIR/agent debug $FILE1_PATH"
 TERMINAL1_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL1_NAME; $COMMAND1; exec bash\""
 
 # Setting up agent 2 terminal arguments
 TERMINAL2_NAME="Agent_ROBOT"
 WORKING_DIR=$(rospack find mtconnect_ros_bridge)/scripts
 FILE1_PATH=$WORKING_DIR/agent_robot.cfg
-COMMAND1="~/agent_build/agent/agent debug $FILE1_PATH"
+COMMAND1="$MTCONNECT_AGENT_DIR/agent debug $FILE1_PATH"
 TERMINAL2_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL2_NAME; $COMMAND1; exec bash\""
 
 # Setting up cnc simulator terminal arguments

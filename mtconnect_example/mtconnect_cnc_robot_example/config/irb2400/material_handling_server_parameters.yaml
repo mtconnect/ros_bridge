@@ -122,7 +122,7 @@ unload_place_goal:
     place_pose: # final pose of object relative to world frame
       position:
         x: 1.0
-        y: -0.32
+        y: 0.32
         z: 0.4
       orientation:
         angle: 0.01
