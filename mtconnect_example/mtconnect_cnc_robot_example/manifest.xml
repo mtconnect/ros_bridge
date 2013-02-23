@@ -23,6 +23,7 @@
   <depend package="industrial_robot_client"/>
   <depend package="industrial_robot_simulator"/>
   <depend package="industrial_trajectory_filters"/>
+  <depend package="abb_common"/>
 
 </package>
 
