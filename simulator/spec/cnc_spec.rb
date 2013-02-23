@@ -272,6 +272,41 @@ describe "Cnc" do
         @cnc.material_unload.value.should == 'ACTIVE'
       end
 
+      it "should fail if the load active does not complete in a certain amount of time" do
+        @cnc.load_time_limit = 1
+        @cnc.event('MaterialLoad', 'ACTIVE')
+        sleep 1.2
+
+        @cnc.statemachine.state.should == :material_load_failed
+        @cnc.material_load.value.should == 'FAIL'
+      end
+
+      it "should fail if the unload active does not complete in a certain amount of time" do
+        @cnc.unload_time_limit = 1
+
+        @cnc.event('MaterialLoad', 'ACTIVE')
+        @cnc.event('CloseDoor', 'ACTIVE')
+        @cnc.event('CloseChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.chuck_state.value.should == 'CLOSED'
+        @cnc.event('CloseDoor', 'READY')
+        @cnc.event('CloseChuck', 'READY')
+
+        @cnc.event('MaterialLoad', 'COMPLETE')
+        @cnc.event('MaterialLoad', 'READY')
+
+        @cnc.statemachine.state.should == :cycle_start
+        sleep 1.2
+        @cnc.statemachine.state.should == :material_unload
+
+        @cnc.event('MaterialUnload', 'ACTIVE')
+        sleep 1.2
+
+        @cnc.statemachine.state.should == :material_unload_failed
+        @cnc.material_unload.value.should == 'FAIL'
+      end
+
     end
   end
 end

@@ -22,8 +22,7 @@ TERMINAL2_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL2_NAME; $COMMAND1; exec
 # Setting up cnc simulator terminal arguments
 TERMINAL3_NAME="Cnc Simulator"
 WORKING_DIR=$(rosstack find mtconnect)/../simulator
-COMMAND1="ruby cnc_simulator_5001.rb"
-#COMMAND1="ruby cnc_simulator.rb"
+COMMAND1="ruby cnc_simulator.rb http://localhost:5001/Robot"
 TERMINAL3_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL3_NAME; $COMMAND1; exec bash\""
 
 # Setting up robot simulator terminal arguments

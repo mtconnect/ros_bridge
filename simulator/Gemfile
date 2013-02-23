@@ -2,3 +2,8 @@
 source "https://rubygems.org"
 
 gem "statemachine", '~> 2.0.1'
+
+# For testing
+gem 'rspec-core', :group => :test
+gem 'rspec-mocks', :group => :test
+gem 'rspec-expectations', :group => :test

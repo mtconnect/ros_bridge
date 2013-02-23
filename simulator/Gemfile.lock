@@ -1,10 +1,18 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    diff-lcs (1.1.3)
+    rspec-core (2.12.2)
+    rspec-expectations (2.12.1)
+      diff-lcs (~> 1.1.3)
+    rspec-mocks (2.12.1)
     statemachine (2.0.1)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  rspec-core
+  rspec-expectations
+  rspec-mocks
   statemachine (~> 2.0.1)
