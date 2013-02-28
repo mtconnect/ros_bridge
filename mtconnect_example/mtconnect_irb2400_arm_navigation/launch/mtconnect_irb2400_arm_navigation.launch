@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <launch>
     <include file="$(find mtconnect_irb2400_arm_navigation)/launch/mtconnect_irb2400_planning_environment.launch" />
-    <include file="$(find planning_environment)/launch/environment_server.launch">
+    <include file="$(find mtconnect_irb2400_arm_navigation)/launch/environment_server.launch">
         <arg name="use_monitor" value="true" />
         <arg name="use_collision_map" value="false" />
     </include>
