@@ -1,24 +1,29 @@
 service_type: FilterJointTrajectoryWithConstraints
 filter_chain:
+  -
+    name: normalize_trajectory
+    type: NormalizeFilterJointTrajectoryWithConstraints
 #  -
 #    name: unnormalize_trajectory
 #    type: UnNormalizeFilterJointTrajectoryWithConstraints
   -
-    name: normalize_trajectory
-    type: NormalizeFilterJointTrajectoryWithConstraints
-  -
-    name: cubic_spline_short_cutter_smoother
-    type: CubicSplineShortCutterFilterJointTrajectoryWithConstraints
-    params: {discretization: 0.01}
+    name: parabolic_smoother
+    type: IterativeParabolicSmootherFilterJointTrajectoryWithConstraints
+# Cubic spline shortcutter would fail for fast moves (i.e. low number of
+# points.  It would get the dreaded out of 32 bit range duration error
+#  -
+#    name: cubic_spline_short_cutter_smoother
+#    type: CubicSplineShortCutterFilterJointTrajectoryWithConstraints
+#    params: {discretization: 0.01}
 # Uniformly sample motion (creates smooth motion on controller)
   -
     name: uniform_sample_filter
     type: IndustrialUniformSampleFilterJointTrajectoryWithConstraints
-    params: {sample_duration: 0.050}
+    params: {sample_duration: 0.005}
 # Limit the number of points sent to the controller
   -
     name: n_point_filter
     type: IndustrialNPointFilterJointTrajectoryWithConstraints
-    params: {n_points: 75}
+    params: {n_points: 2}
 
 
