@@ -1,12 +1,21 @@
 service_type: FilterJointTrajectoryWithConstraints
 filter_chain:
+#  -
+#    name: unnormalize_trajectory
+#    type: UnNormalizeFilterJointTrajectoryWithConstraints
   -
-    name: unnormalize_trajectory
-    type: UnNormalizeFilterJointTrajectoryWithConstraints
+    name: normalize_trajectory
+    type: NormalizeFilterJointTrajectoryWithConstraints
   -
     name: cubic_spline_short_cutter_smoother
     type: CubicSplineShortCutterFilterJointTrajectoryWithConstraints
     params: {discretization: 0.01}
+# Uniformly sample motion (creates smooth motion on controller)
+  -
+    name: uniform_sample_filter
+    type: IndustrialUniformSampleFilterJointTrajectoryWithConstraints
+    params: {sample_duration: 0.050}
+# Limit the number of points sent to the controller
   -
     name: n_point_filter
     type: IndustrialNPointFilterJointTrajectoryWithConstraints
