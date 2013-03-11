@@ -1,7 +1,7 @@
 # A sample Gemfile
 source "https://rubygems.org"
 
-gem "statemachine", '~> 2.0.1'
+gem "statemachine", '~> 2.2.0'
 
 # For testing
 gem 'rspec-core', :group => :test
