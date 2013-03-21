@@ -66,7 +66,10 @@ int main(int argc,char** argv)
 	m->process_event(events::robot_move_completed(task_list[4]));
 	m->process_event(events::robot_move_completed(task_list[8]));
 
-	m->execute_queued_events();// this causes an e
+	//m->execute_queued_events();// this causes the following error
+/*	terminate called after throwing an instance of
+ * 'boost::exception_detail::clone_impl<boost::exception_detail::error_info_injector<boost::bad_function_call> >'
+	  what():  call to empty boost::function*/
 
 	std::cout<< "Attempting to restart Material Load submachine after fault"<<std::endl;
 	m->process_event(events::material_load_requested());

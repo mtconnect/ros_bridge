@@ -13,82 +13,118 @@
 #include <mtconnect_cnc_robot_example/state_machine/event_handler_interface.h>
 #include <mtconnect_cnc_robot_example/state_machine/state_machine_definitions.h>
 #include <mtconnect_cnc_robot_example/state_machine/material_handling_submachine.h>
+#include <mtconnect_cnc_robot_example/state_machine/basic_state_machine.h>
 using namespace mtconnect_cnc_robot_example::state_machine;
 using namespace mtconnect_cnc_robot_example::state_machine::submachines;
 
 int main(int argc,char** argv)
 {
-//	BasicStateMachine sm;
-//	sm.start();
-//
-//	sm.process_event(events::startup_completed()); // Should enter Ready Submachine
-//
-//	// Enter Fault Submachine
-//	sm.process_event(events::robot_fault_detected());
-//	sm.process_event(events::cnc_fault_detected());
-//	sm.process_event(events::cnc_fault_cleared());
-//	sm.process_event(events::robot_fault_cleared());  // should exit Fault Submachine
-//
-//	// Enter Ready Submachine
-//	sm.process_event(events::cnc_reset_requested());
-//	sm.process_event(events::cnc_reset_completed());
-//	sm.process_event(events::robot_reset_completed()); // should exit Ready Submachine
-//
-//	// Enter Operational Submachine
-//	sm.process_event(events::robot_pickup_material());
-//	sm.process_event(events::robot_move_completed()); // back in RobotWaiting
-//
-//	sm.process_event(events::robot_approach_cnc());
-//	sm.process_event(events::robot_move_completed()); // back in RobotWaiting
-//
-//	sm.process_event(events::robot_enter_cnc());
-//	sm.process_event(events::robot_move_completed()); // back in RobotWaiting
-//
-//	sm.process_event(events::robot_exit_cnc());
-//	sm.process_event(events::robot_move_completed()); // back in RobotWaiting
-//
-//	sm.process_event(events::cnc_action_requested(cnc_action_requested::CLOSE_CHUCK));
-//	sm.process_event(events::cnc_action_completed(cnc_action_requested::CLOSE_CHUCK)); // back in RobotWaiting
-//
-//	// Enter Fault Submachine
-//	sm.process_event(events::robot_fault_detected());
-//	sm.process_event(events::robot_fault_cleared()); // back in RobotWaiting
-
-	std::cout<<"Starting State Machine tests"<<std::endl;
 	EventHandlerInterface::Ptr event_handler_ptr = EventHandlerInterface::Ptr(new EventHandlerInterface());
+	BasicStateMachinePtr b = BasicStateMachinePtr(new BasicStateMachine());
+	b->set_event_handler(event_handler_ptr);
 
-	// states instances
-	BaseState::Ptr robot_fault_ptr = BaseState::Ptr(new RobotFault(event_handler_ptr));
-	BaseState::Ptr cnc_fault_ptr = BaseState::Ptr(new CncFault(event_handler_ptr));
-	BaseState::Ptr gripper_fault_ptr = BaseState::Ptr(new GripperFault(event_handler_ptr));
+	// creating material load task list
+	std::vector<int> task_list = list_of((int)ROBOT_MOVE_HOME)
+			((int)CNC_OPEN_DOOR)//1
+			((int)CNC_OPEN_CHUCK)//2
+			((int)ROBOT_PICKUP_MATERIAL)//3
+			((int)ROBOT_APPROACH_CNC)//4
+			((int)ROBOT_ENTER_CNC)//5
+			((int)ROBOT_MOVE_TO_CHUCK)//6
+			((int)CNC_CLOSE_CHUCK)//7
+			((int)GRIPPER_OPEN)//8
+			((int)ROBOT_RETREAT_FROM_CHUCK)//9
+			((int)ROBOT_EXIT_CNC)//10
+			((int)CNC_CLOSE_DOOR);
 
-	// submachine instances
-	FaultPtr f = FaultPtr(new Fault());
-	ReadyPtr r = ReadyPtr(new Ready());
-	StartupPtr s = StartupPtr(new Startup());
+	std::cout<<"Starting Basic State Machine test"<<std::endl;
 
-	std::cout<<"Starting Fault Submachine test"<<std::endl;
+	b->start();
+	b->process_event(events::startup_completed()); // should go into Ready sub-machine PeripheralsReset state
 
-	f->set_states(boost::msm::back::states_ << static_cast<GripperFault& >(*gripper_fault_ptr) <<
-			static_cast<CncFault& >(*cnc_fault_ptr) <<
-			static_cast<RobotFault& >(*robot_fault_ptr));
+	std::cout<<"Transition from Startup to Ready sub-machine"<<std::endl;
 
-	f->set_event_handler(event_handler_ptr);
+	// Ready sub-machine
+	b->process_event(events::peripherals_reset_completed()); // should go into CncReset State
+	b->process_event(events::cnc_reset_completed()); // should go into RobotReset State
+	b->process_event(events::robot_reset_completed()); // should exit out of Ready sub machine and into Operational sub-machine
 
-	f->start();
-	f->process_event(events::cnc_fault_detected());
-	f->process_event(events::cnc_fault_cleared());
+	std::cout<<"Transition from Ready to Operational sub-machine"<<std::endl;
 
-	std::cout<<"Starting Ready Submachine test"<<std::endl;
+	//Operational sub-machine (positive cases)
+	b->process_event(events::material_load_requested()); // should go into MaterialLoad sub-machine
 
-	r->set_event_handler(event_handler_ptr);
+	std::cout<<"Internal transition from Operational to Operational->MaterialLoad sub-machine"<<std::endl;
 
-	r->start();
-	r->process_event(events::cnc_reset_requested());
-	r->process_event(events::cnc_reset_completed());
-	r->process_event(events::peripherals_reset_completed());
-	r->process_event(events::peripherals_reset_requested());
-	r->process_event(events::peripherals_reset_completed());
+	// Operational -> MaterialLoad sub-machine
+	b->process_event(events::robot_move_completed(task_list[0])); // robot task 1 completed
+	b->process_event(events::cnc_action_completed(task_list[1]));
+	b->process_event(events::cnc_action_completed(task_list[2]));
+	b->process_event(events::robot_move_completed(task_list[3]));
+	b->process_event(events::robot_move_completed(task_list[4]));
+	b->process_event(events::robot_move_completed(task_list[5]));
+	b->process_event(events::robot_move_completed(task_list[6]));
+	b->process_event(events::cnc_action_completed(task_list[7]));
+	b->process_event(events::gripper_action_completed(task_list[8]));
+	b->process_event(events::robot_move_completed(task_list[9]));
+	b->process_event(events::robot_move_completed(task_list[10]));
+	b->process_event(events::cnc_action_completed(task_list[11]));// should exit MaterialLoad sub-machine
+																  // and into Operational->RobotWaiting
+
+	std::cout<<"External transition from Operational->MaterialLoad to Operational sub-machine"<<std::endl;
+
+	//Operational sub-machine
+	b->process_event(events::material_load_requested()); // should go into MaterialLoad sub-machine
+
+	// Operational -> MaterialLoad sub-machine (will cause fault on task 5)
+	b->process_event(events::robot_move_completed(task_list[0])); // robot task 1 completed
+	b->process_event(events::cnc_action_completed(task_list[1]));
+	b->process_event(events::cnc_action_completed(task_list[2]));
+	b->process_event(events::robot_move_completed(task_list[3]));
+	b->process_event(events::robot_move_completed(task_list[4]));
+	b->process_event(events::robot_move_completed(task_list[8])); // shoudl exit out of MaterialLoad sub-machine
+																  // and into Operation sub-machine
+
+
+	// Operational (should forward robot, cnc or gripper fault event and enter Fault sub-machine
+
+	std::cout<<"Transition from Operational to Fault sub-machine"<<std::endl;
+
+	//Fault sub-machine
+	b->process_event(events::cnc_fault_detected()); // forcing cnc fault
+	b->process_event(events::cnc_fault_cleared()); // should go back to RobotFault
+	b->process_event(events::robot_fault_cleared()); // should exit out of Fault sub-machine
+													 // and enter Ready sub-machine
+
+	std::cout<<"Transition from Fault to Ready sub-machine"<<std::endl;
+
+	// Ready sub-machine
+	b->process_event(events::peripherals_reset_completed()); // should go into CncReset State
+	b->process_event(events::cnc_reset_completed()); // should go into RobotReset State
+	b->process_event(events::cnc_fault_detected()); // should exit out of Ready sub machine and enter Fault sub-machine
+
+	std::cout<<"Transition from Ready to Fault sub-machine"<<std::endl;
+
+	//Fault sub-machine
+	b->process_event(events::cnc_fault_cleared()); // should go back to RobotFault
+	b->process_event(events::gripper_fault_detected()); // should go into GripperFault
+	b->process_event(events::gripper_fault_cleared()); // should go back to RobotFault
+	b->process_event(events::robot_fault_cleared()); // should exit out of Fault sub-machine
+													 // and enter Ready sub-machine
+
+	std::cout<<"Transition from Fault to Ready sub-machine"<<std::endl;
+
+	// Ready sub-machine (completing all reset operations and go to Operational submachine
+	b->process_event(events::peripherals_reset_completed()); // should go into CncReset State
+	b->process_event(events::cnc_reset_completed()); // should go into RobotReset State
+	b->process_event(events::robot_reset_completed()); // should exit out of Ready sub machine and into Operational sub-machine
+
+	std::cout<<"External transition from Ready to Operational sub-machine"<<std::endl;
+
+
+
+
+
 
 	return 0;
 }
