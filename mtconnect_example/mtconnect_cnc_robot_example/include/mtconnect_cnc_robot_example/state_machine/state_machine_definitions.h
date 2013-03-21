@@ -92,14 +92,14 @@ namespace mtconnect_cnc_robot_example
 				template <typename Event, typename FSM>
 					void on_entry(Event const &evnt , FSM &sm)
 				{
-					//std::cout<< indenting_str_ <<"Entering "<<name_<<" sub-machine\n";
+					std::cout<< indenting_str_ <<"Entering "<<name_<<" sub-machine\n";
 				}
 
 				// on exit msm method
 				template <typename Event, typename FSM>
 					void on_exit(Event const &evnt , FSM &sm)
 				{
-					//std::cout<< indenting_str_ <<"Leaving "<<name_<<" sub-machine\n";
+					std::cout<< indenting_str_ <<"Leaving "<<name_<<" sub-machine\n";
 				}
 
 				struct transition_table : boost::mpl::vector<
@@ -146,11 +146,11 @@ namespace mtconnect_cnc_robot_example
 					{
 						std::cout<<indenting_str_ << name_<<" sub-machine passing event handler to states\n";
 
-						state_ptr = static_cast<BaseState*>(ref.get_state<RobotReady *>());
+						state_ptr = static_cast<BaseState*>(ref.get_state<RobotReset *>());
 						state_ptr->set_event_handler(p);
-						state_ptr = static_cast<BaseState*>(ref.get_state<CncReady *>());
+						state_ptr = static_cast<BaseState*>(ref.get_state<CncReset *>());
 						state_ptr->set_event_handler(p);
-						state_ptr = static_cast<BaseState*>(ref.get_state<PeripheralsReady*>());
+						state_ptr = static_cast<BaseState*>(ref.get_state<PeripheralsReset*>());
 						state_ptr->set_event_handler(p);
 
 					}
@@ -163,6 +163,7 @@ namespace mtconnect_cnc_robot_example
 					void on_entry(Event const &evnt , FSM &sm)
 				{
 					std::cout<< indenting_str_ <<"Entering "<<name_<<" sub-machine\n";
+					sm.process_event(peripherals_reset_requested());
 				}
 
 				// on exit msm method
@@ -178,29 +179,59 @@ namespace mtconnect_cnc_robot_example
 				{
 		        	states::BaseState* st =  static_cast<states::BaseState*>( sm.get_state_by_id(state));
 
-					std::cout << "no transition from state "<< st->name_ << "( id "<<state<<")"
+					std::cout << "no transition supported from state "<< st->name_ << "( id "<<state<<")"
 							<< " on event " << typeid(e).name()<< std::endl;
 				}
 
+		        // event handlers
+				void handle_event(cnc_reset_completed const &evnt)
+				{
+					static_cast<BackendType& >(*this).process_event(robot_reset_requested());
+				}
+
+				void handle_event(peripherals_reset_completed const &evnt)
+				{
+					static_cast<BackendType& >(*this).process_event(cnc_reset_requested());
+				}
+
+				void handle_event(robot_reset_completed const &evnt)
+				{
+					// 	next event should exit this submachine
+					//std::cout<<indenting_str_<<name_<<" processing event "<<typeid(all_devices_ready).name()<<std::endl;
+					static_cast<BackendType& >(*this).process_event(all_devices_ready());
+				}
+
 				// initial state declaration
-				typedef states::RobotReady initial_state;
+				typedef states::EntryState initial_state;
 
 				// initial event
 				typedef events::empty_event initial_event;
+
+				// pseudo exit state
+				struct Exit : public boost::msm::front::exit_pseudo_state<all_devices_ready>{};
+				struct ExitRobotFault : public boost::msm::front::exit_pseudo_state<robot_fault_detected>{};
+				struct ExitCncFault : public boost::msm::front::exit_pseudo_state<cnc_fault_detected>{};
+				struct ExitGripperFault : public boost::msm::front::exit_pseudo_state<gripper_fault_detected>{};
 
 				// transition tablesub_machines::Fault_
 				typedef Ready_ p;
 
 				// the 'transition_table' nested struct is required
 				struct transition_table : boost::mpl::vector<
-				 //    Start          Event                     Next                   Action				         Guard
-				//  +----------------+-------------------------+----------------------+-----------------------------+----------------------------+
-				_row < RobotReady    , cnc_reset_requested     , CncReady                    												>,
-				_row < RobotReady    , peripherals_reset_requested , PeripheralsReady                  										>,
-				//  +----------------+-------------------------+----------------------+-----------------------------+----------------------------+
-				_row < CncReady      , cnc_reset_completed      , RobotReady                   												>,
-				_row < PeripheralsReady, peripherals_reset_completed  , RobotReady                  										>
-				//  +----------------+-------------------------+----------------------+-----------------------------+----------------------------+
+				 //    Start          	 Event                     		 Next                   Action				          Guard
+				//  +-------------------+-------------------------------+----------------------+-----------------------------+----------------------+
+				_row < EntryState    	, robot_reset_requested    		, RobotReset                    											>,
+				_row < EntryState    	, cnc_reset_requested      		, CncReset                    												>,
+				_row < EntryState    	, peripherals_reset_requested  	, PeripheralsReset                  										>,
+				_row < EntryState    	, all_devices_ready  			, Exit				                  										>,
+				//  +-------------------+-------------------------------+----------------------+-----------------------------+----------------------+
+				a_row < RobotReset    	, robot_reset_completed      	, EntryState           , &p::handle_event									>,
+				a_row < CncReset      	, cnc_reset_completed      		, EntryState           , &p::handle_event									>,
+				a_row < PeripheralsReset, peripherals_reset_completed  	, EntryState           , &p::handle_event 									>,
+				//  +-------------------+-------------------------------+----------------------+-----------------------------+----------------------+
+				_row < EntryState    	, robot_fault_detected  		, ExitRobotFault	                  										>,
+				_row < EntryState    	, cnc_fault_detected  			, ExitCncFault		                  										>,
+				_row < EntryState    	, gripper_fault_detected  		, ExitGripperFault	                  										>
 				>{};
 
 			};
@@ -256,7 +287,7 @@ namespace mtconnect_cnc_robot_example
 				{
 					std::cout<<indenting_str_ <<
 							"Entering "<<name_<<" sub-machine\n";
-					//sm.process_event(evnt);
+					sm.process_event(evnt);
 				}
 
 				// on exit msm method
@@ -286,11 +317,14 @@ namespace mtconnect_cnc_robot_example
 				// transition table
 				typedef Fault_ p;
 
+				// pseudo exit state
+				struct Exit : public boost::msm::front::exit_pseudo_state<robot_fault_cleared> {};
+
 				// the 'transition_table' nested struct is required
 				struct transition_table : boost::mpl::vector<
 				 //    Start          Event                     Next                   Action				         Guard
 				//  +----------------+-------------------------+----------------------+-----------------------------+----------------------------+
-				_row < EntryState     , empty_event    			, EntryState                   												>,
+				_row < EntryState     , empty_event    			, EntryState                   													>,
 				_row < EntryState     , robot_fault_detected    , RobotFault                    												>,
 				_row < EntryState     , cnc_fault_detected      , CncFault                    													>,
 				_row < EntryState     , gripper_fault_detected  , GripperFault                  												>,
@@ -298,6 +332,7 @@ namespace mtconnect_cnc_robot_example
 				_row <RobotFault     , robot_fault_detected    , RobotFault 																	>,
 				_row <RobotFault     , cnc_fault_detected      , CncFault 																		>,
 				_row <RobotFault     , gripper_fault_detected  , GripperFault																	>,
+				_row <RobotFault     , robot_fault_cleared     , Exit			                  												>,
 				//  +----------------+-------------------------+----------------------+-----------------------------+----------------------------+
 				_row < CncFault      , cnc_fault_cleared       , RobotFault 																	>,
 				_row < GripperFault  , gripper_fault_cleared   , RobotFault     																>

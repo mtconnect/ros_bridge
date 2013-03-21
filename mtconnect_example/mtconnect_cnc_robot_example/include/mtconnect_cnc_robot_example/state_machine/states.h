@@ -174,27 +174,27 @@ namespace mtconnect_cnc_robot_example
 				}
 			};
 
-			struct RobotReady : public BaseState
+			struct RobotReset : public BaseState
 			{
-				RobotReady(EventHandlerInterface::Ptr p = EventHandlerInterface::Ptr(),std::string name ="Robot Ready"):
+				RobotReset(EventHandlerInterface::Ptr p = EventHandlerInterface::Ptr(),std::string name ="Robot Reset"):
 					BaseState(p,name)
 				{
 
 				}
 			};
 
-			struct CncReady : public BaseState
+			struct CncReset : public BaseState
 			{
-				CncReady(EventHandlerInterface::Ptr p = EventHandlerInterface::Ptr(),std::string name ="Cnc Ready"):
+				CncReset(EventHandlerInterface::Ptr p = EventHandlerInterface::Ptr(),std::string name ="Cnc Reset"):
 					BaseState(p,name)
 				{
 
 				}
 			};
 
-			struct PeripheralsReady : public BaseState
+			struct PeripheralsReset : public BaseState
 			{
-				PeripheralsReady(EventHandlerInterface::Ptr p = EventHandlerInterface::Ptr(),std::string name ="Robot Peripherals Ready"):
+				PeripheralsReset(EventHandlerInterface::Ptr p = EventHandlerInterface::Ptr(),std::string name ="Robot Peripherals Reset"):
 					BaseState(p,name)
 				{
 

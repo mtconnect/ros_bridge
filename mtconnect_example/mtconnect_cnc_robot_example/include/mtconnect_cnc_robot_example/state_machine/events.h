@@ -8,6 +8,8 @@
 #ifndef EVENTS_H_
 #define EVENTS_H_
 
+#include <string>
+
 namespace mtconnect_cnc_robot_example
 {
 	namespace state_machine
@@ -24,6 +26,7 @@ namespace mtconnect_cnc_robot_example
 			{
 				task_event(int task_id = 0, bool in_progress = true,bool success = true):
 					task_id_(task_id),
+					task_description_(""),
 					in_progress_(in_progress),
 					success_(success)
 				{
@@ -31,22 +34,66 @@ namespace mtconnect_cnc_robot_example
 				}
 
 				int task_id_;
+				std::string task_description_;
 				bool in_progress_;
 				bool success_;
 			};
 
 			struct fault_event
 			{
+				fault_event(int task_id = 0, int error_code = 0,
+						std::string task_desc = "", std::string error_desc = ""):
+					task_id_(task_id),
+					task_description_(task_desc),
+					error_code_(error_code),
+					error_description_(error_desc)
+				{
 
+				}
+
+				int task_id_;
+				std::string task_description_;
+				int error_code_;
+				std::string error_description_;
 			};
 
 			// material load events
 			struct material_load_requested{};
 			struct material_load_completed{};
-			struct material_load_failed{};
+			struct material_load_failed : public fault_event
+			{
+				material_load_failed(int error_code = 0 , std::string error_desc = ""):
+					fault_event(0,error_code,"",error_desc)
+				{
+
+				}
+
+				// conversion constructor (needed for event forwarding during sub-machine exit operations)
+				material_load_failed(material_load_failed const &evnt):
+					fault_event(evnt.task_id_,evnt.error_code_,evnt.task_description_,evnt.error_description_)
+				{
+
+				}
+			};
+
 			struct material_unload_requested{};
 			struct material_unload_completed{};
-			struct material_unload_failed{};
+			struct material_unload_failed : public fault_event
+			{
+				material_unload_failed(int error_code = 0 , std::string error_desc = ""):
+					fault_event(0,error_code,"",error_desc)
+				{
+
+				}
+
+				// conversion constructor (needed for event forwarding during sub-machine exit operations)
+				material_unload_failed(material_unload_failed const &evnt):
+					fault_event(evnt.task_id_,evnt.error_code_,evnt.task_description_,evnt.error_description_)
+				{
+
+				}
+
+			};
 
 			// robot operational events
 			struct robot_move_requested: public task_event
@@ -156,6 +203,7 @@ namespace mtconnect_cnc_robot_example
 
 			// other events
 			struct startup_completed{};
+			struct all_devices_ready{};
 		}
 	}
 

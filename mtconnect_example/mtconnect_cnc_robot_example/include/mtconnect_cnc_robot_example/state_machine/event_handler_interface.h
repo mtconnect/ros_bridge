@@ -72,6 +72,7 @@ namespace mtconnect_cnc_robot_example
 			virtual bool handle_event(const peripherals_reset_requested &evnt){return true;}
 			virtual bool handle_event(const peripherals_reset_completed &evnt){return true;}
 			virtual bool handle_event(const startup_completed &evnt){return true;}
+			virtual bool handle_event(const all_devices_ready &evnt){return true;}
 		};
 	}
 
