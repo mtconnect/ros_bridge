@@ -248,6 +248,9 @@ class GenericActionClient():
         if result == 3: # SUCCEEDED from actionlib_msgs.msg.GoalStatus
             rospy.loginfo('Sending COMPLETE flag')
             bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'COMPLETE'))
+        elif result == 4: # ABORTED from actionlib_msgs.msg.GoalStatus
+            rospy.loginfo('%s ABORTED, terminating action request' % data_item)
+            bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'FAIL'))
         return
 
     ## @brief Callback function that launches a ROS action client if the machine
@@ -257,7 +260,7 @@ class GenericActionClient():
     ## 
     ## @param chunk: xml data, read from response.read()
     def xml_callback(self, chunk):
-        rospy.loginfo('*******************In PROCESS_XML callback***************')
+        #rospy.loginfo('*******************In PROCESS_XML callback***************')
         self.lock.acquire()
         try:
             # Only grab XML elements for CNC action requests 
@@ -285,7 +288,7 @@ class GenericActionClient():
             rospy.logerr("Generic Action Client: Process XML callback failed: %s, releasing lock" % e)
         finally:
             self.lock.release()
-        rospy.loginfo('*******************Done with PROCESS_XML callback***************')
+        #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
 
 if __name__ == '__main__':
