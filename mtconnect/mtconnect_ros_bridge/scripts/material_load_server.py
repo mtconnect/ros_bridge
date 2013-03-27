@@ -94,25 +94,39 @@ class MaterialLoadServer():
                     rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
                     previous = time.time()
     
-                if self.door_state == 1 and self.chuck_state == 1 and self.close_door == 1:
+                if self.door_state == 1 and self.chuck_state == 1 and self.close_door == 1 and self.counter < 25:
                     # Chuck and Door are closed, complete the material load cycle
                     self._result.load_state = 'COMPLETE'
                     dwell = False
                     rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
                     rospy.loginfo('CYCLE NUMBER --> %d' % self.counter)
                     self.counter += 1
-    
+                    
+                    # Indicate a successful action
+                    self._as.set_succeeded(self._result)
+                    rospy.loginfo('In %s Callback -- action succeeded. Result --> %s' % (self.server_name, self._result.load_state))
+                    return self._result
+                
+                elif self.door_state == 1 and self.chuck_state == 1 and self.close_door == 1 and self.counter == 25:
+                    self._result.load_state = 'FAIL'
+                    dwell = False
+                    rospy.loginfo('CNC States [door_state, chuck_state, close_door]: %s' % [self.door_state, self.chuck_state, self.close_door])
+                    rospy.loginfo('CYCLE NUMBER --> %d' % self.counter)
+                    self.counter += 1
+                    
+                    # Indicate an aborted action
+                    self._as.set_aborted(self._result)
+                    rospy.loginfo('In %s Callback -- action aborted. Result --> %s' % (self.server_name, self._result.load_state))
+                    return self._result
+                
                 # Check for timeout
                 if time.time() - start > 120.0:
                     rospy.loginfo('Material Load Server Timed Out')
                     sys.exit()
             except rospy.ROSInterruptException:
                 rospy.loginfo('program interrupted before completion')
+                return
         
-        # Indicate a successful action
-        self._as.set_succeeded(self._result)
-        rospy.loginfo('In %s Callback -- action succeeded. Result --> %s' % (self.server_name, self._result.load_state))
-        return self._result
 
     def topic_callback(self, msg):
         self.door_state = msg.door_state.val
