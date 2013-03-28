@@ -64,6 +64,9 @@
 	<node pkg="mtconnect_cnc_robot_example" type="mtconnect_state_machine_server" name="mtconnect_state_machine" output="screen">
 		<param name="arm_group" value="irb2400"/>
 		<param name="state_override" value="-1"/><!-- Empty State -->
+		<param name="force_robot_fault" value="false"/>
+		<param name="force_cnc_fault" value="false"/>
+		<param name="force_gripper_fault" value="false"/>
 	</node>
 
 	<!-- ros visualization -->

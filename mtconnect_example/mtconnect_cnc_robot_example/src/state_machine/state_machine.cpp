@@ -13,14 +13,17 @@ static const std::string PARAM_UNLOAD_PICKUP_GOAL = "unload_pickup_goal";
 static const std::string PARAM_UNLOAD_PLACE_GOAL = "unload_place_goal";
 static const std::string PARAM_LOAD_PICKUP_GOAL = "load_pickup_goal";
 static const std::string PARAM_LOAD_PLACE_GOAL = "load_place_goal";
-static const std::string PARAM_JOINT_HOME_POSITION = "/joint_home_position";
-static const std::string PARAM_JOINT_WAIT_POSITION = "/joint_wait_position";
-static const std::string PARAM_TRAJ_ARBITRARY_MOVE = "/traj_arbitrary";
-static const std::string PARAM_TRAJ_APPROACH_CNC = "/traj_approach_cnc";
-static const std::string PARAM_TRAJ_ENTER_CNC = "/traj_enter_cnc";
+static const std::string PARAM_JOINT_HOME_POSITION = "joint_home_position";
+static const std::string PARAM_JOINT_WAIT_POSITION = "joint_wait_position";
+static const std::string PARAM_TRAJ_ARBITRARY_MOVE = "traj_arbitrary";
+static const std::string PARAM_TRAJ_APPROACH_CNC = "traj_approach_cnc";
+static const std::string PARAM_TRAJ_ENTER_CNC = "traj_enter_cnc";
 static const std::string PARAM_TRAJ_MOVE_TO_CHUCK = "traj_move_to_chuck";
-static const std::string PARAM_TRAJ_RETREAT_FROM_CHUCK = "/traj_retreat_from_chuck";
-static const std::string PARAM_TRAJ_EXIT_CNC = "/traj_exit_cnc";
+static const std::string PARAM_TRAJ_RETREAT_FROM_CHUCK = "traj_retreat_from_chuck";
+static const std::string PARAM_TRAJ_EXIT_CNC = "traj_exit_cnc";
+static const std::string PARAM_FORCE_ROBOT_FAULT = "force_robot_fault";
+static const std::string PARAM_FORCE_CNC_FAULT = "force_cnc_fault";
+static const std::string PARAM_FORCE_GRIPPER_FAULT = "force_gripper_fault";
 
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
 static const std::string DEFAULT_PICKUP_ACTION = "pickup_action_service";
@@ -34,6 +37,7 @@ static const std::string DEFAULT_CNC_OPEN_CHUCK_ACTION = "cnc_open_chuck_action"
 static const std::string DEFAULT_CNC_CLOSE_CHUCK_ACTION = "cnc_close_chuck_action";
 static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
 static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
+static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
@@ -118,6 +122,9 @@ bool StateMachine::setup()
 	robot_states_pub_ = nh.advertise<mtconnect_msgs::RobotStates>(DEFAULT_ROBOT_STATES_TOPIC,1);
 	robot_spindle_pub_ = nh.advertise<mtconnect_msgs::RobotSpindle>(DEFAULT_ROBOT_SPINDLE_TOPIC,1);
 
+	// initializing subscribers
+	robot_status_sub_ = nh.subscribe(DEFAULT_ROBOT_STATUS_TOPIC,1,&StateMachine::ros_status_subs_cb,this);
+
 	// initializing mtconnect robot messages
 	robot_state_msg_.avail.val = TriState::ENABLED;
 	robot_state_msg_.mode.val = RobotMode::AUTO;
@@ -129,47 +136,296 @@ bool StateMachine::setup()
 	robot_topics_timer_ = nh.createTimer(ros::Duration(DURATION_TIMER_INTERVAL),
 			&StateMachine::publish_robot_topics_timercb,this,false,false);
 
+	// initializing material load/unload tasks lists
+	material_load_task_sequence_.clear();
+	material_unload_task_sequence_.clear();
+
+	using namespace state_machine::tasks;
+	using namespace boost::assign;
+	material_load_task_sequence_ = list_of((int)MATERIAL_LOAD_START)
+			((int)ROBOT_MOVE_HOME)
+			((int)CNC_OPEN_DOOR)
+			((int)CNC_OPEN_CHUCK)
+			((int)ROBOT_PICKUP_MATERIAL)
+			((int)ROBOT_APPROACH_CNC)
+			((int)ROBOT_ENTER_CNC)
+			((int)ROBOT_MOVE_TO_CHUCK)
+			((int)CNC_CLOSE_CHUCK)
+			((int)GRIPPER_OPEN)
+			((int)ROBOT_RETREAT_FROM_CHUCK)
+			((int)ROBOT_EXIT_CNC)
+			((int)CNC_CLOSE_DOOR)
+			((int)MATERIAL_LOAD_END);
+
+	material_unload_task_sequence_ = list_of((int)MATERIAL_UNLOAD_START)
+			((int)ROBOT_APPROACH_CNC)
+			((int)GRIPPER_OPEN)
+			((int)CNC_OPEN_DOOR)
+			((int)ROBOT_ENTER_CNC)
+			((int)ROBOT_MOVE_TO_CHUCK)
+			((int)GRIPPER_CLOSE)
+			((int)CNC_OPEN_CHUCK)
+			((int)ROBOT_RETREAT_FROM_CHUCK)
+			((int)ROBOT_EXIT_CNC)
+			((int)ROBOT_PLACE_WORKPIECE)
+			((int)CNC_CLOSE_CHUCK)
+			((int)CNC_CLOSE_DOOR)
+			((int)MATERIAL_UNLOAD_END);
+
 	return true;
 }
 
-bool StateMachine::run_task_sequence(std::vector<int> &task_sequence,int &fault_state)
+void StateMachine::run()
 {
-	return true;
-}
+	ros::NodeHandle nh;
+	ros::AsyncSpinner spinner(2);
+	spinner.start();
 
-void StateMachine::run_material_load_sequence()
-{
-	int fault_state = states::EMPTY;
-	if(run_task_sequence(material_load_sequence_,fault_state))
+	ros::Duration loop_pause(0.5f);
+	set_active_state(states::STARTUP);
+
+	int last_state = states::EMPTY;
+	int active_state = get_active_state();
+	print_current_state();
+	while(ros::ok() && process_transition())
 	{
-		set_active_state(states::MATERIAL_LOAD_COMPLETED);
+		ros::spinOnce();
+
+		// getting force fault parameters
+		get_param_force_fault_flags();
+
+		// getting externally entered state
+		get_param_state_override();
+
+		// printing new state info
+		active_state = get_active_state();
+		if(active_state != last_state)
+		{
+			last_state = active_state;
+			print_current_state();
+		}
+	}
+}
+
+bool StateMachine::run_next_task()
+{
+	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	if(++current_task_index_ < (int)current_task_sequence_.size() && all_action_servers_connected())
+	{
+		std::cout<<"\t - "<< TASK_MAP[current_task_sequence_[current_task_index_]] << " task running\n";
+		run_task(current_task_sequence_[current_task_index_]);
+		return true;
 	}
 	else
 	{
-		// return failure
+		// reached end of sequence
+		current_task_sequence_.clear();
+		current_task_index_ = 0;
+		return false;
+	}
+}
+
+bool StateMachine::run_task(int task_id)
+{
+	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	// declaring goal objects
+	typedef object_manipulation_msgs::GraspHandPostureExecutionGoal GraspGoal;
+	GraspGoal grasp_goal;
+	mtconnect_msgs::OpenDoorGoal open_door_goal;
+	mtconnect_msgs::CloseDoorGoal close_door_goal;
+	mtconnect_msgs::OpenChuckGoal open_chuck_goal;
+	mtconnect_msgs::CloseChuckGoal close_chuck_goal;
+	open_door_goal.open_door = CNC_ACTION_ACTIVE_FLAG;
+	close_door_goal.close_door = CNC_ACTION_ACTIVE_FLAG;
+	open_chuck_goal.open_chuck = CNC_ACTION_ACTIVE_FLAG;
+	close_chuck_goal.close_chuck = CNC_ACTION_ACTIVE_FLAG;
+
+
+	switch(task_id)
+	{
+	case MATERIAL_LOAD_END:
+		set_active_state(states::MATERIAL_LOAD_COMPLETED);
+		break;
+
+	case MATERIAL_UNLOAD_END:
+		set_active_state(states::MATERIAL_LOAD_COMPLETED);
+		break;
+
+	case ROBOT_APPROACH_CNC:
+
+		getTrajectoryInArmSpace(traj_approach_cnc_,cartesian_poses_);
+		moveArm(cartesian_poses_);
+		set_active_state(states::ROBOT_MOVING);
+
+		break;
+	case ROBOT_ENTER_CNC:
+
+		getTrajectoryInArmSpace(traj_enter_cnc_,cartesian_poses_);
+		moveArm(cartesian_poses_);
+		set_active_state(states::ROBOT_MOVING);
+
+		break;
+	case ROBOT_EXIT_CNC:
+
+		getTrajectoryInArmSpace(traj_exit_cnc_,cartesian_poses_);
+		moveArm(cartesian_poses_);
+		set_active_state(states::ROBOT_MOVING);
+
+		break;
+	case ROBOT_MOVE_HOME:
+
+		moveArm(joint_home_pos_);
+		set_active_state(states::ROBOT_MOVING);
+		break;
+
+	case ROBOT_MOVE_TO_CHUCK:
+
+		getTrajectoryInArmSpace(traj_move_to_chuck_,cartesian_poses_);
+		moveArm(cartesian_poses_);
+		set_active_state(states::ROBOT_MOVING);
+		break;
+
+	case ROBOT_RETREAT_FROM_CHUCK:
+
+		getTrajectoryInArmSpace(traj_retreat_from_chuck_,cartesian_poses_);
+		moveArm(cartesian_poses_);
+		set_active_state(states::ROBOT_MOVING);
+		break;
+
+	case ROBOT_PICKUP_MATERIAL:
+
+		move_pickup_client_ptr_->sendGoal(material_load_pickup_goal_);
+		set_active_state(states::ROBOT_MOVING);
+		break;
+
+	case ROBOT_PLACE_WORKPIECE:
+
+		move_place_client_ptr_->sendGoal(material_unload_place_goal_);
+		set_active_state(states::ROBOT_MOVING);
+		break;
+
+	case ROBOT_CARTESIAN_MOVE:
+
+		getTrajectoryInArmSpace(traj_arbitrary_move_,cartesian_poses_);
+		moveArm(cartesian_poses_);
+		set_active_state(states::ROBOT_MOVING);
+		break;
+
+	case CNC_CLOSE_CHUCK:
+
+		close_chuck_client_ptr_->sendGoal(close_chuck_goal);
+		set_active_state(states::CNC_MOVING);
+		break;
+
+	case CNC_OPEN_CHUCK:
+
+		open_chuck_client_ptr_->sendGoal(open_chuck_goal);
+		set_active_state(states::CNC_MOVING);
+		break;
+
+	case CNC_CLOSE_DOOR:
+
+		close_door_client_ptr_->sendGoal(close_door_goal);
+		set_active_state(states::CNC_MOVING);
+		break;
+
+	case CNC_OPEN_DOOR:
+
+		open_door_client_ptr_->sendGoal(open_door_goal);
+		set_active_state(states::CNC_MOVING);
+		break;
+
+	case GRIPPER_CLOSE:
+
+		grasp_goal.goal = GraspGoal::GRASP;
+		grasp_action_client_ptr_->sendGoal(grasp_goal);
+		set_active_state(states::GRIPPER_MOVING);
+		break;
+
+	case GRIPPER_OPEN:
+
+		grasp_goal.goal = GraspGoal::RELEASE;
+		grasp_action_client_ptr_->sendGoal(grasp_goal);
+		set_active_state(states::GRIPPER_MOVING);
+		break;
+
+	default:
+
+		break;
+	}
+
+	return true;
+}
+
+void StateMachine::cancel_active_material_requests()
+{
+	if(material_load_server_ptr_->isActive())
+	{
 		MaterialLoadServer::Result res;
 		res.load_state= "Failed";
-		material_load_server_ptr_->setAborted(res);
-		ROS_INFO_STREAM("MATERIAL LOAD request failed");
-		set_active_state(fault_state);
+		material_load_server_ptr_->setAborted(res,res.load_state);
+	}
+
+	if(material_unload_server_ptr_->isActive())
+	{
+		MaterialUnloadServer::Result res;
+		res.unload_state = "Failed";
+		material_unload_server_ptr_->setAborted(res,res.unload_state);
 	}
 }
 
-void StateMachine::run_material_unload_sequence()
+void StateMachine::cancel_active_action_goals()
 {
-	int fault_state = states::EMPTY;
-	if(run_task_sequence(material_unload_sequence_,fault_state))
+	{move_pickup_client_ptr_->cancelAllGoals();}
+	{move_arm_client_ptr_->cancelAllGoals();}
+	{move_place_client_ptr_->cancelAllGoals();}
+
+	{open_door_client_ptr_->cancelAllGoals();}
+	{open_chuck_client_ptr_->cancelAllGoals();}
+	{close_door_client_ptr_->cancelAllGoals();}
+	{close_chuck_client_ptr_->cancelAllGoals();}
+
+	{grasp_action_client_ptr_->cancelAllGoals();}
+
+//	if(!move_pickup_client_ptr_->getState().isDone()){move_pickup_client_ptr_->cancelAllGoals();}
+//	if(!move_arm_client_ptr_->getState().isDone()){move_arm_client_ptr_->cancelAllGoals();}
+//	if(!move_place_client_ptr_->getState().isDone()){move_place_client_ptr_->cancelAllGoals();}
+//
+//	if(!open_door_client_ptr_ ->getState().isDone()){open_door_client_ptr_->cancelAllGoals();}
+//	if(!open_chuck_client_ptr_->getState().isDone()){open_chuck_client_ptr_->cancelAllGoals();}
+//	if(!close_door_client_ptr_->getState().isDone()){close_door_client_ptr_->cancelAllGoals();}
+//	if(!close_chuck_client_ptr_->getState().isDone()){close_chuck_client_ptr_->cancelAllGoals();}
+//
+//	if(!grasp_action_client_ptr_->getState().isDone()){grasp_action_client_ptr_->cancelAllGoals();}
+}
+
+bool StateMachine::all_action_servers_connected()
+{
+	// action clients
+	if(!(move_pickup_client_ptr_->isServerConnected() && move_place_client_ptr_->isServerConnected()&&
+			move_arm_client_ptr_->isServerConnected()))
 	{
-		set_active_state(states::MATERIAL_UNLOAD_COMPLETED);
+		set_active_state(states::ROBOT_FAULT);
+		return false;
 	}
-	else
+
+	if(!(open_door_client_ptr_->isServerConnected() &&	close_door_client_ptr_->isServerConnected() &&
+			open_chuck_client_ptr_->isServerConnected() && close_chuck_client_ptr_->isServerConnected()))
 	{
-		MaterialUnloadServer::Result res;
-		res.unload_state= "Failed";
-		material_unload_server_ptr_->setAborted(res);
-		ROS_INFO_STREAM("MATERIAL UNLOAD request failed");
-		set_active_state(fault_state);
+		set_active_state(states::CNC_FAULT);
+		return false;
 	}
+
+	if(!grasp_action_client_ptr_->isServerConnected())
+	{
+		set_active_state(states::GRIPPER_FAULT);
+		return false;
+	}
+
+	return true;
+
 }
 
 // transition actions
@@ -191,7 +447,9 @@ bool StateMachine::on_robot_reset()
 
 bool StateMachine::on_material_load_started()
 {
-	action_execution_thread_ = boost::thread(&StateMachine::run_material_load_sequence,this);
+	current_task_index_ = 0;
+	current_task_sequence_.assign(material_load_task_sequence_.begin(),material_load_task_sequence_.end());
+	run_next_task();
 	return true;
 }
 
@@ -199,7 +457,12 @@ bool StateMachine::on_material_load_completed()
 {
 	MaterialLoadServer::Result res;
 	res.load_state= "Succeeded";
-	material_load_server_ptr_->setSucceeded(res);
+
+	if(material_load_server_ptr_->isActive())
+	{
+		material_load_server_ptr_->setSucceeded(res);
+	}
+
 	ROS_INFO_STREAM("MATERIAL LOAD request succeeded");
 
 	return true;
@@ -207,7 +470,9 @@ bool StateMachine::on_material_load_completed()
 
 bool StateMachine::on_material_unload_started()
 {
-	action_execution_thread_ = boost::thread(&StateMachine::run_material_unload_sequence,this);
+	current_task_index_ = 0;
+	current_task_sequence_.assign(material_unload_task_sequence_.begin(),material_unload_task_sequence_.end());
+	run_next_task();
 	return true;
 }
 
@@ -215,7 +480,11 @@ bool StateMachine::on_material_unload_completed()
 {
 	MaterialUnloadServer::Result res;
 	res.unload_state= "Succeeded";
-	material_unload_server_ptr_->setSucceeded(res);
+	if(material_unload_server_ptr_->isActive())
+	{
+		material_unload_server_ptr_->setSucceeded(res);
+	}
+
 	ROS_INFO_STREAM("MATERIAL UNLOAD request succeeded");
 	return true;
 }
@@ -230,19 +499,176 @@ bool StateMachine::on_peripherals_reset()
 	return true;
 }
 
+bool StateMachine::on_robot_moving()
+{
+	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	int state = actionlib::SimpleClientGoalState::ACTIVE;
+	switch(current_task_sequence_[current_task_index_])
+	{
+	case ROBOT_PICKUP_MATERIAL:
+		if(move_pickup_client_ptr_->getState().isDone())
+		{
+			state = move_pickup_client_ptr_->getState().state_;
+		}
+		break;
+
+	case ROBOT_PLACE_WORKPIECE:
+		if(move_place_client_ptr_->getState().isDone())
+		{
+			state = move_place_client_ptr_->getState().state_;
+		}
+		break;
+
+	default: // all arm client tasks
+		if(move_arm_client_ptr_->getState().isDone())
+		{
+			state = move_arm_client_ptr_->getState().state_;
+		}
+		break;
+	}
+
+	// examining state
+	switch(state)
+	{
+	case actionlib::SimpleClientGoalState::ACTIVE:
+		break;
+
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		run_next_task();
+		break;
+
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+
+		set_active_state(states::ROBOT_FAULT);
+		break;
+	}
+
+	return true;
+}
+
+bool StateMachine::on_cnc_moving()
+{
+	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	int state = actionlib::SimpleClientGoalState::ACTIVE;
+	switch(current_task_sequence_[current_task_index_])
+	{
+		case CNC_CLOSE_CHUCK:
+
+			state = close_chuck_client_ptr_->getState().state_;
+			break;
+
+		case CNC_OPEN_CHUCK:
+
+			state = open_chuck_client_ptr_->getState().state_;
+			break;
+
+		case CNC_CLOSE_DOOR:
+
+			state = close_door_client_ptr_->getState().state_;
+			break;
+
+		case CNC_OPEN_DOOR:
+
+			state = open_door_client_ptr_->getState().state_;
+			break;
+	}
+
+	// examining state
+	switch(state)
+	{
+	case actionlib::SimpleClientGoalState::ACTIVE:
+		break;
+
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		run_next_task();
+		break;
+
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+
+		set_active_state(states::CNC_FAULT);
+		break;
+	}
+
+	return true;
+}
+
+bool StateMachine::on_gripper_moving()
+{
+	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	// examining state
+	switch(grasp_action_client_ptr_->getState().state_)
+	{
+	case actionlib::SimpleClientGoalState::ACTIVE:
+		break;
+
+	case actionlib::SimpleClientGoalState::SUCCEEDED:
+		run_next_task();
+		break;
+
+	case actionlib::SimpleClientGoalState::LOST:
+	case actionlib::SimpleClientGoalState::REJECTED:
+	case actionlib::SimpleClientGoalState::ABORTED:
+
+		set_active_state(states::GRIPPER_FAULT);
+		break;
+	}
+
+	return true;
+}
+
 bool StateMachine::on_robot_fault()
 {
+	cancel_active_material_requests();
+	cancel_active_action_goals();
 	return true;
 }
 
 bool StateMachine::on_cnc_fault()
 {
+	cancel_active_material_requests();
+	cancel_active_action_goals();
 	return true;
 }
 
 bool StateMachine::on_gripper_fault()
 {
+	cancel_active_material_requests();
+	cancel_active_action_goals();
 	return true;
+}
+
+void StateMachine::get_param_force_fault_flags()
+{
+	ros::NodeHandle nh("~");
+
+	bool force_robot_fault, force_cnc_fault, force_gripper_fault;
+	if(nh.getParam(PARAM_FORCE_ROBOT_FAULT,force_robot_fault) && force_robot_fault)
+	{
+		ROS_INFO_STREAM("Forcing 'ROBOT_FAULT'");
+		set_active_state(states::ROBOT_FAULT);
+		nh.setParam(PARAM_FORCE_ROBOT_FAULT,false);
+	}
+
+	if(nh.getParam(PARAM_FORCE_CNC_FAULT,force_cnc_fault) && force_cnc_fault)
+	{
+		ROS_INFO_STREAM("Forcing 'CNC_FAULT'");
+		set_active_state(states::CNC_FAULT);
+		nh.setParam(PARAM_FORCE_CNC_FAULT,false);
+	}
+
+	if(nh.getParam(PARAM_FORCE_GRIPPER_FAULT,force_gripper_fault) && force_gripper_fault)
+	{
+		ROS_INFO_STREAM("Forcing 'GRIPPER_FAULT'");
+		set_active_state(states::GRIPPER_FAULT);
+		nh.setParam(PARAM_FORCE_GRIPPER_FAULT,false);
+	}
 }
 
 // callbacks
@@ -259,6 +685,15 @@ void StateMachine::material_unload_goalcb(const MaterialUnloadServer::GoalConstP
 	if(get_active_state()== states::READY)
 	{
 		set_active_state(states::MATERIAL_UNLOAD_STARTED);
+	}
+}
+
+void StateMachine::ros_status_subs_cb(const industrial_msgs::RobotStatusConstPtr &msg)
+{
+	if(msg->e_stopped.val == industrial_msgs::TriState::ENABLED)
+	{
+		ROS_INFO_STREAM("Received 'e_stopped' enabled, going to ROBOT_FAULT");
+		set_active_state(states::ROBOT_FAULT);
 	}
 }
 
@@ -282,7 +717,7 @@ bool StateMachine::moveArm(move_arm_utils::JointStateInfo &joint_info)
 			move_arm_goal_.motion_plan_request.goal_constraints.joint_constraints);
 
 	// sending goal
-	move_arm_client_ptr_->sendGoal(move_arm_goal_,move_arm_done_cb_);
+	move_arm_client_ptr_->sendGoal(move_arm_goal_);
 	return true;
 }
 

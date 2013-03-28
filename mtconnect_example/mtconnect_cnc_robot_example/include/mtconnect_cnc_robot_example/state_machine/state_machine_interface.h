@@ -95,7 +95,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			while(ros::ok() && process_transition())
 			{
 				// getting externally entered state
-				get_state_param_override();
+				get_param_state_override();
 
 				// printing new state info
 				active_state = get_active_state();
@@ -121,27 +121,30 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			return active_state_;
 		}
 
+		/*
+		 * Thread safe method that checks if 'check_state' meets the 'is_active' condition before setting 'state'
+		 * as the active state.  Returns true if 'state' is the new active state, false otherwise.
+		 */
+		bool check_state_and_set_active(int state,int check_state = states::EMPTY,bool is_active = false)
+		{
+			boost::mutex::scoped_lock lock(active_state_mutex_);
+			if((check_state == active_state_) == is_active)
+			{
+				previous_state_ = active_state_;
+				active_state_ = state;
+				return true;
+			}
+			return false;
+		}
+
 		int get_previous_state()
 		{
 			boost::mutex::scoped_lock lock(active_state_mutex_);
 			return previous_state_;
 		}
 
-
-		void set_fault_detected(bool fault_detected)
-		{
-			boost::mutex::scoped_lock lock(fault_detected_mutex_);
-			fault_detected_ = fault_detected;
-		}
-
-		bool get_fault_detected()
-		{
-			boost::mutex::scoped_lock lock(fault_detected_mutex_);
-			return fault_detected_;
-		}
-
 		// related state machine methods
-		void get_state_param_override(std::string name_space = "state_override")
+		void get_param_state_override(std::string name_space = "state_override")
 		{
 			ros::NodeHandle nh("~");
 			int state = states::EMPTY;
@@ -186,6 +189,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		virtual bool on_robot_fault(){return true;}
 		virtual bool on_cnc_fault(){return true;}
 		virtual bool on_gripper_fault(){return true;}
+		virtual bool on_robot_moving(){return true;}
+		virtual bool on_cnc_moving(){return true;}
+		virtual bool on_gripper_moving(){return true;}
 		virtual bool on_display_states(){print_state_list(); return true;}
 
 		// process state machine transition
@@ -236,14 +242,17 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 			case states::ROBOT_MOVING:
 
+				on_robot_moving();
 				break;
 
 			case states::CNC_MOVING:
 
+				on_cnc_moving();
 				break;
 
 			case states::GRIPPER_MOVING:
 
+				on_gripper_moving();
 				break;
 
 			case states::ROBOT_FAULT:
@@ -324,15 +333,12 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 	protected:
 
-		// event handling members
+		// state members
 		int active_state_;
 		int previous_state_;
-		bool fault_detected_;
 
-		// threading
-		boost::thread action_execution_thread_;
+		// threading members
 		boost::mutex active_state_mutex_;
-		boost::mutex fault_detected_mutex_;
 
 	};
 

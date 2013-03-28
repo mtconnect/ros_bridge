@@ -39,7 +39,6 @@ rosbuild_add_executable(move_pick_place_test src/nodes/move_pick_place_test.cpp
 rosbuild_add_executable(material_handling_server_test src/nodes/material_handling_server_test.cpp 
 	src/utilities/utilities.cpp)
 
-
-rosbuild_add_executable(test_state_machine_elements src/tests/test_state_machine_elements.cpp)
-rosbuild_add_executable(test_material_load_submachine src/tests/test_material_load_submachine.cpp)
-rosbuild_add_executable(test_basic_state_machine src/tests/test_basic_state_machine.cpp)
+rosbuild_add_executable(test_state_machine src/tests/test_state_machine.cpp)
+rosbuild_add_executable(mtconnect_state_machine_server src/nodes/mtconnect_state_machine_server.cpp 
+	src/state_machine/state_machine.cpp src/utilities/utilities.cpp src/move_arm_action_clients/MoveArmActionClient.cpp)

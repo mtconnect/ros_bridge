@@ -28,6 +28,7 @@
 #include <mtconnect_cnc_robot_example/utilities/utilities.h>
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MoveArmActionClient.h>
 #include <boost/enable_shared_from_this.hpp>
+#include <industrial_msgs/RobotStatus.h>
 #include <mtconnect_msgs/CloseChuckAction.h>
 #include <mtconnect_msgs/OpenChuckAction.h>
 #include <mtconnect_msgs/CloseDoorAction.h>
@@ -90,6 +91,10 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			CNC_CLOSE_CHUCK,
 			GRIPPER_OPEN,
 			GRIPPER_CLOSE,
+			MATERIAL_LOAD_START,
+			MATERIAL_LOAD_END,
+			MATERIAL_UNLOAD_START,
+			MATERIAL_UNLOAD_END
 		};
 
 		static std::map<int,std::string> TASK_MAP =
@@ -130,10 +135,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		StateMachine();
 		virtual ~StateMachine();
 
-		virtual void run()
-		{
-			StateMachineInterface::run();
-		}
+		virtual void run();
 
 	protected:
 
@@ -149,12 +151,25 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		void material_unload_goalcb(const MaterialUnloadServer::GoalConstPtr &gh);
 
 		// wrappers for sending a goal to a move arm server
+		bool moveArm(const geometry_msgs::PoseArray &cartesian_poses)
+		{
+			MoveArmActionClient::moveArm(cartesian_poses,false);
+		}
+
 		bool moveArm(move_arm_utils::JointStateInfo &joint_info);
 
 		// material load/unload specific
-		bool run_task_sequence(std::vector<int> &task_sequence,int &fault_state);
-		void run_material_load_sequence();
-		void run_material_unload_sequence();
+		bool run_task(int task_id);
+		bool run_next_task();
+
+		// fault related methods
+		void cancel_active_material_requests();
+		void cancel_active_action_goals();
+		void get_param_force_fault_flags();
+		bool all_action_servers_connected();
+
+		// subscriber callback
+		void ros_status_subs_cb(const industrial_msgs::RobotStatusConstPtr &msg);
 
 		// transition actions
 		virtual bool on_startup();
@@ -169,30 +184,16 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		virtual bool on_robot_fault();
 		virtual bool on_cnc_fault();
 		virtual bool on_gripper_fault();
-		//virtual bool on_display_states();
-
-//		// related state machine methods
-//		void get_state_param_override(std::string name_space = "state_override");
-//		void print_current_state()
-//		{
-//			std::cout<<"\t" <<STATE_MAP[get_active_state()]<<" active"<<std::endl;
-//		}
+		virtual bool on_robot_moving();
+		virtual bool on_cnc_moving();
+		virtual bool on_gripper_moving();
 
 	protected:
-
-//		// event handling members
-//		int active_state_;
-//		int previous_state_;
-//		bool fault_detected_;
-//
-//		// threading
-//		boost::thread action_execution_thread_;
-//		boost::mutex active_state_mutex_;
-//		boost::mutex fault_detected_mutex_;
-
 		// material load/unload task sequence
-		std::vector<int> material_load_sequence_;
-		std::vector<int> material_unload_sequence_;
+		std::vector<int> material_load_task_sequence_;
+		std::vector<int> material_unload_task_sequence_;
+		std::vector<int> current_task_sequence_; // will take the value of the load or unload task sequence
+		int current_task_index_;
 
 		// action servers
 		MaterialLoadServerPtr material_load_server_ptr_;
@@ -210,6 +211,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		// topic publishers (ros bridge components wait for these topics)
 		ros::Publisher robot_states_pub_;
 		ros::Publisher robot_spindle_pub_;
+
+		// topic subscribers
+		ros::Subscriber robot_status_sub_;
 
 		// robot state messages
 		mtconnect_msgs::RobotStates robot_state_msg_;
@@ -233,9 +237,6 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		move_arm_utils::JointStateInfo joint_home_pos_;
 		move_arm_utils::JointStateInfo joint_wait_pos_;
 
-		// state machine members
-		int current_task_id_;
-
 		// function handle placeholders
 		MoveArmDoneCallback move_arm_done_cb_;
 		MovePickupDoneCallback move_pickup_done_cb_;
@@ -245,6 +246,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		CloseDoorDoneCallback close_door_done_cb_;
 		OpenChuckDoneCallback open_chuck_done_cb_;
 		CloseChuckDoneCallback close_chuck_done_cb_;
+
+		// move arm members
+		geometry_msgs::PoseArray cartesian_poses_;
 
 	};
 
