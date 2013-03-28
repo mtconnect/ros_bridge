@@ -6,7 +6,7 @@ multi_dof_joints:
 groups:
   - name: m16ib20
     base_link: base_link
-    tip_link: tcp_frame
+    tip_link: link_6
 default_collision_operations:
   - object1: world_frame
     object2: robot_platform_link
