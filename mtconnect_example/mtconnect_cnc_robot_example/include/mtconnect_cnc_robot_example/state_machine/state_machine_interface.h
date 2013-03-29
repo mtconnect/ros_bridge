@@ -259,7 +259,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 				if(on_robot_fault())
 				{
-					set_active_state(states::READY);
+					//set_active_state(states::READY);
 				}
 
 				break;
@@ -283,10 +283,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 			case states::MATERIAL_LOAD_STARTED:
 
-				if(on_material_load_started())
-				{
-					set_active_state(states::ROBOT_MOVING);
-				}
+				on_material_load_started();
 
 				break;
 			case states::MATERIAL_LOAD_COMPLETED:
@@ -300,10 +297,8 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 			case states::MATERIAL_UNLOAD_STARTED:
 
-				if(on_material_unload_started())
-				{
-					set_active_state(states::ROBOT_MOVING);
-				}
+				on_material_unload_started();
+
 				break;
 			case states::MATERIAL_UNLOAD_COMPLETED:
 

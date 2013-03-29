@@ -38,6 +38,10 @@
     
 	<!-- gripper executer action node -->
 	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface" output="screen"/>
+
+	<!-- vise executer action node -->
+	<remap from="/grasp_execution_action" to="/vise_action_service"/>
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="vise_interface" output="screen"/>
 	
 	<!-- move arm action server and required arm navigation nodes -->
 	<include file="$(find mtconnect_irb2400_arm_navigation)/launch/mtconnect_irb2400_arm_navigation.launch"/>

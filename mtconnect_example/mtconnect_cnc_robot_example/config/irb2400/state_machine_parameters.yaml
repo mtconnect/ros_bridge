@@ -72,7 +72,7 @@ traj_approach_cnc:
   via_points:
     - position:
         x: 1.4
-        y: 0.40
+        y: 0.32
         z: 0.8
       orientation:
         angle: 1.57
@@ -88,7 +88,7 @@ traj_enter_cnc:
   via_points:
     - position:
         x: 1.8
-        y: 0.40
+        y: 0.32
         z: 0.8
       orientation:
         angle: 1.57
@@ -104,7 +104,7 @@ traj_move_to_chuck:
   via_points:
     - position:
         x: 1.8
-        y: 0.42
+        y: 0.50
         z: 0.8
       orientation:
         angle: 1.57
@@ -120,7 +120,7 @@ traj_retreat_from_chuck:
   via_points:
     - position:
         x: 1.8
-        y: 0.40
+        y: 0.32
         z: 0.8
       orientation:
         angle: 1.57
@@ -135,8 +135,8 @@ traj_exit_cnc:
   tool_name: tcp_frame #link_6
   via_points:
     - position:
-        x: 1.8
-        y: 0.40
+        x: 1.4
+        y: 0.32
         z: 0.8
       orientation:
         angle: 1.57

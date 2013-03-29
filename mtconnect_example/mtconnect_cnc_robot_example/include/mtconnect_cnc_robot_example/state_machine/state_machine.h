@@ -27,6 +27,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <mtconnect_cnc_robot_example/utilities/utilities.h>
 #include <mtconnect_cnc_robot_example/move_arm_action_clients/MoveArmActionClient.h>
+#include <mtconnect_cnc_robot_example/Command.h>
 #include <boost/enable_shared_from_this.hpp>
 #include <industrial_msgs/RobotStatus.h>
 #include <mtconnect_msgs/CloseChuckAction.h>
@@ -89,6 +90,8 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			CNC_CLOSE_DOOR,
 			CNC_OPEN_CHUCK,
 			CNC_CLOSE_CHUCK,
+			VISE_OPEN,
+			VISE_CLOSE,
 			GRIPPER_OPEN,
 			GRIPPER_CLOSE,
 			MATERIAL_LOAD_START,
@@ -112,6 +115,8 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		(CNC_CLOSE_DOOR,"CNC_CLOSE_DOOR")
 		(CNC_OPEN_CHUCK,"CNC_OPEN_CHUCK")
 		(CNC_CLOSE_CHUCK,"CNC_CLOSE_CHUCK")
+		(VISE_OPEN,"VISE_OPEN")
+		(VISE_CLOSE,"VISE_CLOSE")
 		(GRIPPER_OPEN,"GRIPPER_OPEN")
 		(GRIPPER_CLOSE,"GRIPPER_CLOSE");
 	}
@@ -147,8 +152,8 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		void publish_robot_topics_timercb(const ros::TimerEvent &evnt);
 
 		// action goal callbacks
-		void material_load_goalcb(const MaterialLoadServer::GoalConstPtr &gh);
-		void material_unload_goalcb(const MaterialUnloadServer::GoalConstPtr &gh);
+		void material_load_goalcb(/*const MaterialLoadServer::GoalConstPtr &gh*/);
+		void material_unload_goalcb(/*const MaterialUnloadServer::GoalConstPtr &gh*/);
 
 		// wrappers for sending a goal to a move arm server
 		bool moveArm(const geometry_msgs::PoseArray &cartesian_poses)
@@ -170,6 +175,10 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 		// subscriber callback
 		void ros_status_subs_cb(const industrial_msgs::RobotStatusConstPtr &msg);
+
+		// service callbacks
+		bool external_command_cb(mtconnect_cnc_robot_example::Command::Request &req,
+				mtconnect_cnc_robot_example::Command::Response &res);
 
 		// transition actions
 		virtual bool on_startup();
@@ -207,6 +216,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		CncOpenChuckClientPtr open_chuck_client_ptr_;
 		CncCloseChuckClientPtr close_chuck_client_ptr_;
 		GraspActionClientPtr grasp_action_client_ptr_;
+		GraspActionClientPtr vise_action_client_ptr_;
 
 		// topic publishers (ros bridge components wait for these topics)
 		ros::Publisher robot_states_pub_;
@@ -214,6 +224,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 		// topic subscribers
 		ros::Subscriber robot_status_sub_;
+
+		// service servers
+		ros::ServiceServer external_command_srv_;
 
 		// robot state messages
 		mtconnect_msgs::RobotStates robot_state_msg_;
@@ -249,6 +262,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 		// move arm members
 		geometry_msgs::PoseArray cartesian_poses_;
+		arm_navigation_msgs::MoveArmGoal move_arm_joint_goal_;
 
 	};
 
