@@ -1,0 +1,8 @@
+# request
+int8 FAULT_RESET=1
+int8 START=2
+int8 EXIT=3
+int8 command_flag
+---
+# response
+bool accepted
