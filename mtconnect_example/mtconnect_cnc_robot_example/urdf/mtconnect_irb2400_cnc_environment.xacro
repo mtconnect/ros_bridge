@@ -13,9 +13,9 @@
 
 	<!-- parameters -->
 	<xacro:property name="platform_thickness" value="0.1"/>
-	<xacro:property name="window_width" value="0.40"/>
-	<xacro:property name="window_length" value="0.40"/>
-	<xacro:property name="window_frame_thickness" value="0.32"/>
+	<xacro:property name="window_width" value="0.52"/>
+	<xacro:property name="window_length" value="0.52"/>
+	<xacro:property name="window_frame_thickness" value="0.20"/>
 	<xacro:property name="window_frame_depth" value="1.0"/>
 
 
@@ -139,7 +139,7 @@
 		<child link="window_frame"/>
 	</joint>
 	<joint name="tool_to_palm_intermediate" type="fixed">
-		<origin xyz="0.08 0 0" rpy="0 1.5708 0"/>
+		<origin xyz="0.165 0 0" rpy="0 1.5708 0"/>
 		<parent link="tool0"/>
 		<child link="palm_intermediate"/>
 	</joint>
