@@ -11,6 +11,8 @@
 	<arg name="use_rviz" default="false"/>
 	<arg name="real_robot" default="false"/>
 	<arg name="robot_ip" />
+	<arg name="use_bswap" default="false"/>
+
 
 	<!-- bringup of arm navigation prerequisites -->
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
@@ -19,14 +21,14 @@
 	<!-- robot drivers/simulators -->
     <remap from="/joint_trajectory_action" to="/m16ib20_controller/follow_joint_trajectory"/>
     <node pkg="industrial_robot_client" type="joint_trajectory_action" name="joint_trajectory_action_server" output="screen">
-        <param name="constraints/goal_threshold" value="0.001"/>
+        <param name="constraints/goal_threshold" value="0.01"/>
     </node>
     
-	<!-- real robot drivers -->
+    <!-- real robot drivers -->
     <group if="$(arg real_robot)">
-        <include file="$(find abb_common)/launch/robot_interface.launch">
+        <include file="$(find fanuc_common)/launch/robot_interface_streaming_m16iB20.launch">
             <arg name="robot_ip" value="$(arg robot_ip)"/>
-            <arg name="J23_coupled" value="true" />
+            <arg name="use_bswap" value="$(arg use_bswap)" />
         </include>
     </group>
 

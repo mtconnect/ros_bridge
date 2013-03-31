@@ -11,6 +11,7 @@
 	<arg name="use_rviz" default="false"/>
 	<arg name="real_robot" default="false"/>
 	<arg name="robot_ip" />
+	<arg name="use_bswap" default="false"/>
 
 	<!-- bringup of arm navigation prerequisites -->
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
@@ -22,11 +23,11 @@
         <param name="constraints/goal_threshold" value="0.001"/>
     </node>
     
-	<!-- real robot drivers -->
-	<group if="$(arg real_robot)">
-        <include file="$(find abb_common)/launch/robot_interface.launch">
+    <!-- real robot drivers -->
+    <group if="$(arg real_robot)">
+        <include file="$(find fanuc_common)/launch/robot_interface_streaming_m16iB20.launch">
             <arg name="robot_ip" value="$(arg robot_ip)"/>
-            <arg name="J23_coupled" value="true" />
+            <arg name="use_bswap" value="$(arg use_bswap)" />
         </include>
     </group>
 
