@@ -97,7 +97,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			MATERIAL_LOAD_START,
 			MATERIAL_LOAD_END,
 			MATERIAL_UNLOAD_START,
-			MATERIAL_UNLOAD_END
+			MATERIAL_UNLOAD_END,
+			TEST_TASK_START,
+			TEST_TASK_END
 		};
 
 		static std::map<int,std::string> TASK_MAP =
@@ -167,11 +169,24 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		bool run_task(int task_id);
 		bool run_next_task();
 
+		// task test
+		void print_task_list()
+		{
+			using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+			std::map<int,std::string>::iterator i;
+			std::cout<<"\tTasks List\n";
+			for(i = TASK_MAP.begin(); i != TASK_MAP.end(); i++)
+			{
+				std::cout<<"\t- ("<<i->first<<") \t"<< i->second<<"\n";
+			}
+		}
+
 		// fault related methods
 		void cancel_active_material_requests();
 		void cancel_active_action_goals();
 		void get_param_force_fault_flags();
 		bool all_action_servers_connected();
+		bool check_arm_at_position(sensor_msgs::JointState &joints, double tolerance);
 
 		// subscriber callback
 		void ros_status_subs_cb(const industrial_msgs::RobotStatusConstPtr &msg);
@@ -196,6 +211,13 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		virtual bool on_robot_moving();
 		virtual bool on_cnc_moving();
 		virtual bool on_gripper_moving();
+		virtual bool on_test_task_started();
+		virtual bool on_test_task_completed();
+		virtual bool on_display_tasks()
+		{
+			print_task_list();
+			return true;
+		}
 
 	protected:
 		// material load/unload task sequence
@@ -203,6 +225,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		std::vector<int> material_unload_task_sequence_;
 		std::vector<int> current_task_sequence_; // will take the value of the load or unload task sequence
 		int current_task_index_;
+
+		// test tasks
+		int test_task_id_;
 
 		// action servers
 		MaterialLoadServerPtr material_load_server_ptr_;

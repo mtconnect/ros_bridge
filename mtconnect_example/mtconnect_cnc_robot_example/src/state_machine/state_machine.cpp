@@ -6,8 +6,8 @@
  */
 
 #include <mtconnect_cnc_robot_example/state_machine/state_machine.h>
-
-// defaults
+#include <ros/topic.h>
+// params
 static const std::string PARAM_ARM_GROUP = "arm_group";
 static const std::string PARAM_UNLOAD_PICKUP_GOAL = "unload_pickup_goal";
 static const std::string PARAM_UNLOAD_PLACE_GOAL = "unload_place_goal";
@@ -25,6 +25,7 @@ static const std::string PARAM_FORCE_ROBOT_FAULT = "force_robot_fault";
 static const std::string PARAM_FORCE_CNC_FAULT = "force_cnc_fault";
 static const std::string PARAM_FORCE_GRIPPER_FAULT = "force_gripper_fault";
 
+// default
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
 static const std::string DEFAULT_PICKUP_ACTION = "pickup_action_service";
 static const std::string DEFAULT_PLACE_ACTION = "place_action_service";
@@ -39,6 +40,7 @@ static const std::string DEFAULT_CNC_CLOSE_CHUCK_ACTION = "cnc_close_chuck_actio
 static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
 static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
+static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
 static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
@@ -50,7 +52,8 @@ static const double DURATION_WAIT_SERVER = 2.0f;
 static const double DURATION_PLANNING_TIME = 5.0f;
 static const double DURATION_WAIT_RESULT = 40.0f;
 static const double DURATION_PATH_COMPLETION = 2.0f;
-static const int MAX_WAIT_ATTEMPTS = 40;
+static const double DURATION_JOINT_MESSAGE_TIMEOUT = 10.0f;
+//static const int MAX_WAIT_ATTEMPTS = 40;
 
 using namespace mtconnect_cnc_robot_example::state_machine;
 
@@ -315,6 +318,11 @@ bool StateMachine::run_task(int task_id)
 		set_active_state(states::MATERIAL_UNLOAD_COMPLETED);
 		break;
 
+	case TEST_TASK_END:
+
+		set_active_state(states::TEST_TASK_COMPLETED);
+		break;
+
 	case ROBOT_APPROACH_CNC:
 
 		getTrajectoryInArmSpace(traj_approach_cnc_,cartesian_poses_);
@@ -520,6 +528,27 @@ bool StateMachine::on_material_load_started()
 	return true;
 }
 
+bool StateMachine::on_test_task_started()
+{
+	// cancelling all ongoing tasks
+	cancel_active_action_goals();
+	cancel_active_material_requests();
+
+	current_task_index_ = 0;
+	current_task_sequence_.clear();
+	current_task_sequence_.push_back(tasks::TEST_TASK_START);
+	current_task_sequence_.push_back(test_task_id_);
+	current_task_sequence_.push_back(tasks::TEST_TASK_END);
+	run_next_task();
+
+	return true;
+}
+
+bool StateMachine::on_test_task_completed()
+{
+	return true;
+}
+
 bool StateMachine::on_material_load_completed()
 {
 	MaterialLoadServer::Result res;
@@ -719,6 +748,7 @@ bool StateMachine::on_gripper_fault()
 	return true;
 }
 
+// fault handling related methods
 void StateMachine::get_param_force_fault_flags()
 {
 	ros::NodeHandle nh("~");
@@ -744,6 +774,63 @@ void StateMachine::get_param_force_fault_flags()
 		set_active_state(states::GRIPPER_FAULT);
 		nh.setParam(PARAM_FORCE_GRIPPER_FAULT,false);
 	}
+}
+
+bool StateMachine::check_arm_at_position(sensor_msgs::JointState &joints, double tolerance)
+{
+//	boost::shared_ptr<sensor_msgs::JointState> actual_joints_ptr;
+	sensor_msgs::JointStateConstPtr actual_joints_ptr;
+	sensor_msgs::JointState actual_joints;
+	bool success = true;
+	int joint_index = 0;
+
+	// listening for joint state topic
+	ros::NodeHandle nh;
+	actual_joints_ptr = ros::topic::waitForMessage<sensor_msgs::JointState>(DEFAULT_JOINT_STATE_TOPIC,nh
+			,ros::Duration(DURATION_JOINT_MESSAGE_TIMEOUT));
+
+	if(actual_joints_ptr.get() != NULL /*null pointer*/)
+	{
+		// finding matching joint names
+		for(int i = 0; i < joints.name.size(); i++)
+		{
+			std::string &name = joints.name[i];
+			std::vector<std::string>::const_iterator iter_pos =  std::find(actual_joints_ptr->name.begin(),
+					actual_joints_ptr->name.end(),name);
+
+			if(iter_pos != actual_joints_ptr->name.end())
+			{
+				joint_index = 0;
+				while(actual_joints_ptr->name[joint_index].compare(name)!=0)
+				{
+					joint_index++;
+				}
+
+				// comparing joint values
+				std::vector<double> &vals = joints.position;
+				const std::vector<double> &true_vals = actual_joints_ptr->position;
+				if( (joint_index >= joints.name.size()) ||  (std::abs(vals[i] - true_vals[joint_index]) > tolerance))
+				{
+					success = false;
+					break;
+				}
+			}
+			else
+			{
+				ROS_ERROR_STREAM("Joint "<<name<<" not found, failed joint position check");
+				success = false;
+				break;
+			}
+		}
+
+	}
+	else
+	{
+		ROS_ERROR_STREAM("Joint state message not received, failed joint position check");
+		success = false;
+	}
+
+	return success;
 }
 
 // callbacks
@@ -784,7 +871,7 @@ bool StateMachine::external_command_cb(mtconnect_cnc_robot_example::Command::Req
 	{
 	case Command::Request::FAULT_RESET:
 
-		if(get_active_state() == states::ROBOT_FAULT)
+		if(get_active_state() == states::ROBOT_FAULT && check_arm_at_position(joint_home_pos_,DEFAULT_JOINT_ERROR_TOLERANCE))
 		{
 			set_active_state(states::READY);
 			res.accepted = true;
@@ -797,6 +884,13 @@ bool StateMachine::external_command_cb(mtconnect_cnc_robot_example::Command::Req
 		}
 
 		break;
+	case Command::Request::RUN_TASK:
+		test_task_id_ = req.task_id;
+		set_active_state(states::TEST_TASK_STARTED);
+		res.accepted = true;
+		ROS_INFO_STREAM("Run task accepted");
+		break;
+
 	case Command::Request::START:
 			break;
 	case Command::Request::EXIT:

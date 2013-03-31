@@ -40,8 +40,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			MATERIAL_LOAD_COMPLETED,
 			MATERIAL_UNLOAD_STARTED,
 			MATERIAL_UNLOAD_COMPLETED,
-			ROBOT_MOVE_STARTED,
-			ROBOT_MOVE_COMPLETED,
+			TEST_TASK_STARTED,
+			TEST_TASK_COMPLETED,
+			DISPLAY_TASKS
 		};
 
 		static std::map<int,std::string> STATE_MAP =
@@ -62,8 +63,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 				(MATERIAL_LOAD_COMPLETED,"MATERIAL_LOAD_COMPLETED")
 				(MATERIAL_UNLOAD_STARTED,"MATERIAL_UNLOAD_STARTED")
 				(MATERIAL_UNLOAD_COMPLETED,"MATERIAL_UNLOAD_COMPLETED")
-				(ROBOT_MOVE_STARTED,"ROBOT_MOVE_STARTED")
-				(ROBOT_MOVE_COMPLETED,"ROBOT_MOVE_COMPLETED")
+				(TEST_TASK_STARTED,"TEST_TASK_STARTED")
+				(TEST_TASK_COMPLETED,"TEST_TASK_COMPLETED")
+				(DISPLAY_TASKS,"DISPLAY_TASKS")
 				(EXIT,"EXIT");
 
 	}
@@ -193,6 +195,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		virtual bool on_cnc_moving(){return true;}
 		virtual bool on_gripper_moving(){return true;}
 		virtual bool on_display_states(){print_state_list(); return true;}
+		virtual bool on_test_task_started(){return true;}
+		virtual bool on_test_task_completed(){return true;}
+		virtual bool on_display_tasks(){ return true;}
 
 		// process state machine transition
 		virtual bool process_transition()
@@ -316,6 +321,24 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 					set_active_state(get_previous_state());
 				}
 
+				break;
+
+			case states::TEST_TASK_STARTED:
+
+				on_test_task_started();
+
+				break;
+
+			case states::TEST_TASK_COMPLETED:
+
+				on_test_task_completed();
+
+				break;
+
+			case states::DISPLAY_TASKS:
+
+				on_display_tasks();
+				set_active_state(get_previous_state());
 				break;
 
 			case states::EXIT:
