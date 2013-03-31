@@ -13,9 +13,9 @@
 
 	<!-- parameters -->
 	<xacro:property name="platform_thickness" value="0.1"/>
-	<xacro:property name="window_width" value="0.32"/>
-	<xacro:property name="window_length" value="0.32"/>
-	<xacro:property name="window_frame_thickness" value="0.4"/>
+	<xacro:property name="window_width" value="0.52"/>
+	<xacro:property name="window_length" value="0.52"/>
+	<xacro:property name="window_frame_thickness" value="0.2"/>
 	<xacro:property name="window_frame_depth" value="1.0"/>
 
 

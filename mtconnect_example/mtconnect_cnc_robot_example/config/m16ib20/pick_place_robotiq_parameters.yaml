@@ -3,7 +3,7 @@ pickup_goal:
     arm_group: m16ib20
     frame_id: world_frame
     tool_name: tcp_frame # tool0
-    lift_distance: 0.25
+    lift_distance: 0.1
     approach_distance: 0.1
     lift_direction: # relative to tool coordinate frame
       x: 0.0
