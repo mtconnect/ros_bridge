@@ -1,0 +1,75 @@
+PROGRAM ros_gripper	   
+	   
+%NOLOCKGROUP	   
+%COMMENT = 'Gripper Interface'	   
+	   
+VAR	   
+    fd       : FILE       
+    s        : INTEGER
+    bytes    : INTEGER 
+    b_flag   : BOOLEAN
+    i_value  : INTEGER
+    r_value  : REAL  
+CONST
+    port='S7:'
+    port_n=11100
+	   
+ROUTINE ConToSocket: BOOLEAN
+VAR
+  s,entry: INTEGER
+BEGIN
+   	   
+  SET_VAR(entry,'*SYSTEM*','$HOSTS_CFG['+CHR(ORD(port,2))+'].$SERVER_PORT',port_n,s)
+  REPEAT 
+    MSG_CONNECT(port,s); 
+    WRITE('Gripper Connection Status: ',s,CR); 
+    IF s=67215 THEN ; MSG_DISCO(port,s); ENDIF
+  UNTIL s=0 
+  SET_FILE_ATR(fd, ATR_UF)	   
+  OPEN FILE fd('RW',port)   
+  s = IO_STATUS(fd); 
+  RETURN(s=0)  
+END ConToSocket
+	   
+	   
+BEGIN	   
+  
+  FORCE_SPMENU(TP_PANEL,SPI_TPUSER,1)
+  WRITE ('ROS Gripper',CHR(129),CR);  -- clear display
+  WHILE TRUE DO	   
+	  WRITE('Wait for ROS gripper connect',CR)	   
+    IF ConToSocket THEN
+      WRITE('Gripper Connected',CR)	 
+      WRITE fd(1000)     -- Message Type
+      WRITE fd(3)        -- Comm Type
+      WRITE fd(0)  -- Reply  1=SUCCESS, 2-FAILURE  
+      WHILE TRUE DO	   
+  	    DELAY 100
+        -- get new packet from the socket		   
+        bytes = 0
+        BYTES_AHEAD(fd,bytes,s)
+        IF s<>0 THEN GOTO Exit; ENDIF -- if read failure, break and try again
+        IF bytes>=16 THEN
+          READ fd(s); IF s <> 1000 THEN GOTO SkipRead; ENDIF -- Message Type
+          READ fd(s); IF s <> 2    THEN GOTO SkipRead; ENDIF -- Communications Type
+          READ fd(s); IF s <> 0    THEN GOTO SkipRead; ENDIF -- Reply Type
+          READ fd(s);
+        
+          IF s=2 THEN
+	          RDO[4]=FALSE; RDO[3]=TRUE; i_value=1; WRITE('OPEN GRIP  ',CR);
+          ENDIF
+          IF s=3 THEN
+	          GET_REG(9,b_flag,i_value,r_value,s)
+	          RDO[3]=FALSE; RDO[4]=TRUE; WRITE('CLOSE GRIP ',CR); 
+          ENDIF
+          WRITE fd(1000,3,i_value,CR) -- Message Type,Comm Type,Reply,CR to clear buffer
+          s=IO_STATUS(fd)
+SkipRead:: -- jumped here if message was corrupted
+        ENDIF
+      ENDWHILE
+Exit::
+      WRITE('Dropped Gripper Socket ')
+    ENDIF
+    CLOSE FILE fd
+  ENDWHILE
+END ros_gripper

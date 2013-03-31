@@ -1,0 +1,63 @@
+PROGRAM ros_vise	   
+
+%NOLOCKGROUP	   
+%COMMENT = 'Vise Interface'	   
+	   
+VAR	   
+    fd       : FILE       
+    s        : INTEGER
+    bytes    : INTEGER 
+    b_flag   : BOOLEAN
+    i_value  : INTEGER
+    r_value  : REAL  
+CONST
+    port='S8:'
+    port_n=11101
+	   
+ROUTINE ConToSocket: BOOLEAN
+VAR
+  s,entry: INTEGER
+BEGIN 	   
+  SET_VAR(entry,'*SYSTEM*','$HOSTS_CFG['+CHR(ORD(port,2))+'].$SERVER_PORT',port_n,s)
+  REPEAT 
+    MSG_CONNECT(port,s); 
+    WRITE('Gripper Connection Status: ',s,CR); 
+    IF s=67215 THEN ; MSG_DISCO(port,s); ENDIF
+  UNTIL s=0 
+  SET_FILE_ATR(fd, ATR_UF)	   
+  OPEN FILE fd('RW',port)   
+  s = IO_STATUS(fd); 
+  RETURN(s=0)  
+END ConToSocket
+	   
+
+BEGIN	     
+  FORCE_SPMENU(TP_PANEL,SPI_TPUSER,1)
+  WRITE ('ROS Vise',CHR(129),CR); -- clear display
+  WHILE TRUE DO	   
+	  WRITE('Wait for ROS VISE connect',CR)	   
+    IF ConToSocket THEN
+      WRITE('VISE Connected',CR)	 
+      WHILE TRUE DO	   
+  	    DELAY 100		   
+        BYTES_AHEAD(fd,bytes,s)
+        IF s<>0 THEN GOTO Exit; ENDIF -- if read failure, break and try again
+        IF bytes>=16 THEN
+          READ fd(s); IF s <> 1000 THEN GOTO SkipRead; ENDIF -- Message Type
+          READ fd(s); IF s <> 2    THEN GOTO SkipRead; ENDIF -- Communications Type
+          READ fd(s); IF s <> 0    THEN GOTO SkipRead; ENDIF -- Reply Type
+          READ fd(s);
+        
+          IF s=2 THEN DOUT[9]=FALSE; WRITE('OPEN VISE  ',CR); ENDIF
+          IF s=3 THEN DOUT[9]=TRUE;  WRITE('CLOSE VISE ',CR); ENDIF
+         
+          WRITE fd(1000,3,1,CR) -- Message Type, Comm type, SUCCESS, CR
+SkipRead:: -- jumped here if message was corrupted
+        ENDIF
+      ENDWHILE
+Exit::
+      WRITE('Dropped VISE socket ')
+    ENDIF
+    CLOSE FILE fd
+  ENDWHILE
+END ros_vise
