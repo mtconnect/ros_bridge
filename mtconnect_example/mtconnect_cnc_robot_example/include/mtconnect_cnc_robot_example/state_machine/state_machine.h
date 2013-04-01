@@ -45,6 +45,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <mtconnect_msgs/RobotSpindle.h>
 #include <mtconnect_msgs/RobotStates.h>
+#include <mtconnect_msgs/MaterialServerState.h>
 
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
@@ -253,9 +254,16 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		// service servers
 		ros::ServiceServer external_command_srv_;
 
+		// server clients
+		ros::ServiceClient material_server_state_client_;
+
+
 		// robot state messages
 		mtconnect_msgs::RobotStates robot_state_msg_;
 		mtconnect_msgs::RobotSpindle robot_spindle_msg_;
+
+		// server req/res
+		mtconnect_msgs::MaterialServerState material_server_state_;
 
 		// timers
 		ros::Timer robot_topics_timer_;

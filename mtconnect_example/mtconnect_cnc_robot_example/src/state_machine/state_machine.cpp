@@ -42,6 +42,8 @@ static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
+static const std::string DEFAULT_MATERIAL_HANDLING_STATE_SERVICE = "material_handling_server_state";
+
 static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
@@ -84,6 +86,7 @@ bool StateMachine::fetch_parameters(std::string name_space)
 			traj_arbitrary_move_.fetchParameters(PARAM_TRAJ_ARBITRARY_MOVE);
 	return true;
 }
+
 bool StateMachine::setup()
 {
 	using namespace industrial_msgs;
@@ -140,6 +143,13 @@ bool StateMachine::setup()
 
 	// initializing servers
 	external_command_srv_ = nh.advertiseService(DEFAULT_EXTERNAL_COMMAND_SERVICE,&StateMachine::external_command_cb,this);
+
+	// initializing clients
+	material_server_state_client_ = nh.serviceClient<mtconnect_msgs::MaterialServerState>(DEFAULT_MATERIAL_HANDLING_STATE_SERVICE);
+
+	// initializing service client req msg
+	material_server_state_.request.state_flag = mtconnect_msgs::MaterialServerState::Request::READY;
+	material_server_state_.response.accepted = false;
 
 	// initializing mtconnect robot messages
 	robot_state_msg_.avail.val = TriState::ENABLED;
@@ -512,12 +522,44 @@ bool StateMachine::on_startup()
 
 bool StateMachine::on_ready()
 {
+
+
 	return true;
 }
 
 bool StateMachine::on_robot_reset()
 {
-	return true;
+	bool success = true;
+
+	//TODO: Will remove the next line after the bridge implements the material state server
+	return success;
+
+	// sending ready state to server
+	material_server_state_.response.accepted = false;
+	if(!material_server_state_client_.exists() ||
+			!material_server_state_client_.call(material_server_state_.request,material_server_state_.response))
+	{
+		ROS_ERROR_STREAM("material server state request failed");
+		success = false;
+	}
+
+	if(material_server_state_.response.accepted)
+	{
+		ROS_INFO_STREAM("material server state request accepted");
+		success = true;
+	}
+	else
+	{
+		ROS_ERROR_STREAM("material server state request rejected");
+		success = false;
+	}
+
+	if(!success)
+	{
+		ros::Duration(DURATION_WAIT_SERVER).sleep();
+	}
+
+	return success;
 }
 
 bool StateMachine::on_material_load_started()
@@ -873,7 +915,7 @@ bool StateMachine::external_command_cb(mtconnect_cnc_robot_example::Command::Req
 
 		if(get_active_state() == states::ROBOT_FAULT && check_arm_at_position(joint_home_pos_,DEFAULT_JOINT_ERROR_TOLERANCE))
 		{
-			set_active_state(states::READY);
+			set_active_state(states::ROBOT_RESET);
 			res.accepted = true;
 			ROS_INFO_STREAM("Fault reset accepted");
 		}

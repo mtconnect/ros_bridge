@@ -208,7 +208,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 				if(on_startup())
 				{
-					set_active_state(states::READY);
+					set_active_state(states::ROBOT_RESET);
 				}
 
 				break;
