@@ -18,11 +18,9 @@
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
 	
 	
-	<!-- robot drivers/simulators -->
+	<!-- remapping -->
     <remap from="/joint_trajectory_action" to="/m16ib20_controller/follow_joint_trajectory"/>
-    <node pkg="industrial_robot_client" type="joint_trajectory_action" name="joint_trajectory_action_server" output="screen">
-        <param name="constraints/goal_threshold" value="0.01"/>
-    </node>
+
     
     <!-- real robot drivers -->
     <group if="$(arg real_robot)">
@@ -34,7 +32,7 @@
 
     <!-- simulated robot drivers -->
     <group unless="$(arg real_robot)">
-	    <node pkg="industrial_robot_simulator" type="industrial_robot_simulator" name="simulated_robot_controller" output="screen"/>
+      <include file="$(find industrial_robot_simulator)/launch/robot_interface_simulator.launch"/>
     </group>
     
     
