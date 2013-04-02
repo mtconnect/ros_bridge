@@ -121,7 +121,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		(VISE_OPEN,"VISE_OPEN")
 		(VISE_CLOSE,"VISE_CLOSE")
 		(GRIPPER_OPEN,"GRIPPER_OPEN")
-		(GRIPPER_CLOSE,"GRIPPER_CLOSE");
+		(GRIPPER_CLOSE,"GRIPPER_CLOSE")
+		(MATERIAL_LOAD_END,"MATERIAL_LOAD_END")
+		(MATERIAL_UNLOAD_END,"MATERIAL_UNLOAD_END");
 	}
 
 	class StateMachine : public StateMachineInterface , public MoveArmActionClient
@@ -186,6 +188,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		void cancel_active_material_requests();
 		void cancel_active_action_goals();
 		void get_param_force_fault_flags();
+		bool get_param_fault_on_task_check(int task_id);
 		bool all_action_servers_connected();
 		bool check_arm_at_position(sensor_msgs::JointState &joints, double tolerance);
 

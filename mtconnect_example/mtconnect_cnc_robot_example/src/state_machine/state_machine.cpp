@@ -24,6 +24,7 @@ static const std::string PARAM_TRAJ_EXIT_CNC = "traj_exit_cnc";
 static const std::string PARAM_FORCE_ROBOT_FAULT = "force_robot_fault";
 static const std::string PARAM_FORCE_CNC_FAULT = "force_cnc_fault";
 static const std::string PARAM_FORCE_GRIPPER_FAULT = "force_gripper_fault";
+static const std::string PARAM_FORCE_FAULT_ON_TASK = "force_fault_on_task";
 
 // default
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
@@ -243,10 +244,7 @@ bool StateMachine::setup()
 void StateMachine::run()
 {
 	ros::NodeHandle nh;
-	ros::AsyncSpinner spinner(2);
-	spinner.start();
 
-	ros::Duration loop_pause(0.5f);
 	set_active_state(states::STARTUP);
 
 	int last_state = states::EMPTY;
@@ -522,44 +520,30 @@ bool StateMachine::on_startup()
 
 bool StateMachine::on_ready()
 {
+	// communicating ready state with service call
+	if(!material_server_state_.response.accepted)
+	{
+		// sending ready state to server
+		if(material_server_state_client_.exists() &&
+				material_server_state_client_.call(material_server_state_.request,material_server_state_.response))
+		{
+			ROS_INFO_STREAM("server state service call "<< (material_server_state_.response.accepted ? "accepted" : "rejected"));
+		}
+		else
+		{
+			ROS_WARN_STREAM("server state service call failed");
+			ros::Duration(DURATION_LOOP_PAUSE).sleep();
+		}
+	}
 
-
-	return true;
+	return material_server_state_.response.accepted;
 }
 
 bool StateMachine::on_robot_reset()
 {
-	bool success = true;
-
-	//TODO: Will remove the next line after the bridge implements the material state server
-	return success;
-
-	// sending ready state to server
+	// resetting service request accepted flag back to false
 	material_server_state_.response.accepted = false;
-	if(!material_server_state_client_.exists() ||
-			!material_server_state_client_.call(material_server_state_.request,material_server_state_.response))
-	{
-		ROS_ERROR_STREAM("material server state request failed");
-		success = false;
-	}
-
-	if(material_server_state_.response.accepted)
-	{
-		ROS_INFO_STREAM("material server state request accepted");
-		success = true;
-	}
-	else
-	{
-		ROS_ERROR_STREAM("material server state request rejected");
-		success = false;
-	}
-
-	if(!success)
-	{
-		ros::Duration(DURATION_WAIT_SERVER).sleep();
-	}
-
-	return success;
+	return true;
 }
 
 bool StateMachine::on_material_load_started()
@@ -641,6 +625,14 @@ bool StateMachine::on_robot_moving()
 {
 	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
 
+	// check if task is set to trigger fault
+	if(get_param_fault_on_task_check(current_task_sequence_[current_task_index_]))
+	{
+		ROS_WARN_STREAM("Forcing fault on task "<<tasks::TASK_MAP[current_task_sequence_[current_task_index_]]);
+		set_active_state(states::ROBOT_FAULT);
+		return true;
+	}
+
 	int state = actionlib::SimpleClientGoalState::ACTIVE;
 	switch(current_task_sequence_[current_task_index_])
 	{
@@ -684,6 +676,14 @@ bool StateMachine::on_robot_moving()
 bool StateMachine::on_cnc_moving()
 {
 	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	// check if task is set to trigger fault
+	if(get_param_fault_on_task_check(current_task_sequence_[current_task_index_]))
+	{
+		ROS_WARN_STREAM("Forcing fault on task "<<tasks::TASK_MAP[current_task_sequence_[current_task_index_]]);
+		set_active_state(states::CNC_FAULT);
+		return true;
+	}
 
 	int state = actionlib::SimpleClientGoalState::ACTIVE;
 	switch(current_task_sequence_[current_task_index_])
@@ -733,6 +733,14 @@ bool StateMachine::on_cnc_moving()
 bool StateMachine::on_gripper_moving()
 {
 	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+
+	// check if task is set to trigger fault
+	if(get_param_fault_on_task_check(current_task_sequence_[current_task_index_]))
+	{
+		ROS_WARN_STREAM("Forcing fault on task "<<tasks::TASK_MAP[current_task_sequence_[current_task_index_]]);
+		set_active_state(states::GRIPPER_FAULT);
+		return true;
+	}
 
 	int state = actionlib::SimpleClientGoalState::ACTIVE;
 	switch(current_task_sequence_[current_task_index_])
@@ -796,6 +804,7 @@ void StateMachine::get_param_force_fault_flags()
 	ros::NodeHandle nh("~");
 
 	bool force_robot_fault, force_cnc_fault, force_gripper_fault;
+
 	if(nh.getParam(PARAM_FORCE_ROBOT_FAULT,force_robot_fault) && force_robot_fault)
 	{
 		ROS_INFO_STREAM("Forcing 'ROBOT_FAULT'");
@@ -815,6 +824,25 @@ void StateMachine::get_param_force_fault_flags()
 		ROS_INFO_STREAM("Forcing 'GRIPPER_FAULT'");
 		set_active_state(states::GRIPPER_FAULT);
 		nh.setParam(PARAM_FORCE_GRIPPER_FAULT,false);
+	}
+
+}
+
+bool StateMachine::get_param_fault_on_task_check(int task_id)
+{
+	ros::NodeHandle nh("~");
+	int fault_on_task_id;
+
+	// check task id match
+	if(nh.getParam(PARAM_FORCE_FAULT_ON_TASK,fault_on_task_id) && fault_on_task_id != tasks::NO_TASK &&
+			task_id == fault_on_task_id )
+	{
+		//nh.setParam(PARAM_FORCE_FAULT_ON_TASK,tasks::NO_TASK);
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 
