@@ -71,6 +71,7 @@
 		<param name="force_robot_fault" value="false"/>
 		<param name="force_cnc_fault" value="false"/>
 		<param name="force_gripper_fault" value="false"/>
+		<param name="force_fault_on_task" value="0"/><!--task id that will cause a fault (NO_TASK = 0) -->
 	</node>
 
 	<!-- ros visualization -->
