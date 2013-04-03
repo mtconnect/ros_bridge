@@ -45,6 +45,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <mtconnect_msgs/RobotSpindle.h>
 #include <mtconnect_msgs/RobotStates.h>
+#include <mtconnect_msgs/MaterialServerState.h>
 
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
@@ -120,7 +121,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		(VISE_OPEN,"VISE_OPEN")
 		(VISE_CLOSE,"VISE_CLOSE")
 		(GRIPPER_OPEN,"GRIPPER_OPEN")
-		(GRIPPER_CLOSE,"GRIPPER_CLOSE");
+		(GRIPPER_CLOSE,"GRIPPER_CLOSE")
+		(MATERIAL_LOAD_END,"MATERIAL_LOAD_END")
+		(MATERIAL_UNLOAD_END,"MATERIAL_UNLOAD_END");
 	}
 
 	class StateMachine : public StateMachineInterface , public MoveArmActionClient
@@ -185,6 +188,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		void cancel_active_material_requests();
 		void cancel_active_action_goals();
 		void get_param_force_fault_flags();
+		bool get_param_fault_on_task_check(int task_id);
 		bool all_action_servers_connected();
 		bool check_arm_at_position(sensor_msgs::JointState &joints, double tolerance);
 
@@ -253,9 +257,16 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		// service servers
 		ros::ServiceServer external_command_srv_;
 
+		// server clients
+		ros::ServiceClient material_server_state_client_;
+
+
 		// robot state messages
 		mtconnect_msgs::RobotStates robot_state_msg_;
 		mtconnect_msgs::RobotSpindle robot_spindle_msg_;
+
+		// server req/res
+		mtconnect_msgs::MaterialServerState material_server_state_;
 
 		// timers
 		ros::Timer robot_topics_timer_;

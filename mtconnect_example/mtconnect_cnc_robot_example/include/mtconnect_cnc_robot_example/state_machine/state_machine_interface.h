@@ -123,22 +123,6 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			return active_state_;
 		}
 
-		/*
-		 * Thread safe method that checks if 'check_state' meets the 'is_active' condition before setting 'state'
-		 * as the active state.  Returns true if 'state' is the new active state, false otherwise.
-		 */
-		bool check_state_and_set_active(int state,int check_state = states::EMPTY,bool is_active = false)
-		{
-			boost::mutex::scoped_lock lock(active_state_mutex_);
-			if((check_state == active_state_) == is_active)
-			{
-				previous_state_ = active_state_;
-				active_state_ = state;
-				return true;
-			}
-			return false;
-		}
-
 		int get_previous_state()
 		{
 			boost::mutex::scoped_lock lock(active_state_mutex_);
@@ -208,7 +192,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 				if(on_startup())
 				{
-					set_active_state(states::READY);
+					set_active_state(states::ROBOT_RESET);
 				}
 
 				break;

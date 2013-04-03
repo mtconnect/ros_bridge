@@ -63,7 +63,11 @@ int main(int argc, char** argv)
 			ROS_INFO("Grasp action connecting to IP address: %s and port: %i", ip_address.c_str(),port_number);
 			industrial::tcp_client::TcpClient robot;
 			robot.init(const_cast<char*>(ip_address.c_str()), port_number);
-			robot.makeConnect();
+			if(!robot.makeConnect())
+			{
+				ROS_ERROR_STREAM("Failed to connect, exiting");
+				return 0;
+			}
 
 			cout << "Grasp client connected" << endl;;
 
