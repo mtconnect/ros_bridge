@@ -22,8 +22,8 @@ load_pickup_goal:
           z: 0.0
     object_pose: # relative to world frame
       position:
-        x: 1.0
-        y: -0.40
+        x: 0.4
+        y: 1.0
         z: 0.4
       orientation:
         angle: 0.01
@@ -55,8 +55,8 @@ unload_place_goal:
           z: 0.0
     place_pose: # final pose of object relative to world frame
       position:
-        x: 1.0
-        y: 0.40
+        x: -0.4
+        y: 1.0
         z: 0.4
       orientation:
         angle: 0.01
@@ -71,7 +71,7 @@ traj_approach_cnc:
   tool_name: tcp_frame #link_6
   via_points:
     - position:
-        x: 1.4
+        x: 1.0
         y: 0.32
         z: 0.8
       orientation:
@@ -135,7 +135,7 @@ traj_exit_cnc:
   tool_name: tcp_frame #link_6
   via_points:
     - position:
-        x: 1.4
+        x: 1.0
         y: 0.32
         z: 0.8
       orientation:
@@ -165,15 +165,15 @@ joint_home_position:
   arm_group: m16ib20
   joints:
     - name: joint_1
-      position: 0.0
+      position: -1.57
       velocity: 0.0
       effort: 0.0
     - name: joint_2
-      position: 0.0
+      position: -0.5
       velocity: 0.0
       effort: 0.0
     - name: joint_3
-      position: 0.0
+      position: -0.5
       velocity: 0.0
       effort: 0.0
     - name: joint_4
@@ -193,26 +193,26 @@ joint_wait_position:
   arm_group: m16ib20
   joints:
     - name: joint_1
-      position: -0.60
+      position: 0.0
       velocity: 0.0
       effort: 0.0
     - name: joint_2
-      position: -0.15
+      position: -0.5
       velocity: 0.0
       effort: 0.0
     - name: joint_3
-      position: 0.09
+      position: -0.5
       velocity: 0.0
       effort: 0.0
     - name: joint_4
-      position: -2.10
+      position: 0.0
       velocity: 0.0
       effort: 0.0
     - name: joint_5
-      position: 0.46
+      position: 0.0
       velocity: 0.0
       effort: 0.0
     - name: joint_6
-      position: 5.29
+      position: 0.0
       velocity: 0.0
       effort: 0.0
