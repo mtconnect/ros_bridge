@@ -24,7 +24,6 @@ static const std::string PARAM_TRAJ_EXIT_CNC = "traj_exit_cnc";
 static const std::string PARAM_FORCE_ROBOT_FAULT = "force_robot_fault";
 static const std::string PARAM_FORCE_CNC_FAULT = "force_cnc_fault";
 static const std::string PARAM_FORCE_GRIPPER_FAULT = "force_gripper_fault";
-static const std::string PARAM_FORCE_FAULT_ON_TASK = "force_fault_on_task";
 
 // default
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
@@ -43,8 +42,6 @@ static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
-static const std::string DEFAULT_MATERIAL_HANDLING_STATE_SERVICE = "material_handling_server_state";
-
 static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
 static const int DEFAULT_PATH_PLANNING_ATTEMPTS = 2;
@@ -87,7 +84,6 @@ bool StateMachine::fetch_parameters(std::string name_space)
 			traj_arbitrary_move_.fetchParameters(PARAM_TRAJ_ARBITRARY_MOVE);
 	return true;
 }
-
 bool StateMachine::setup()
 {
 	using namespace industrial_msgs;
@@ -144,13 +140,6 @@ bool StateMachine::setup()
 
 	// initializing servers
 	external_command_srv_ = nh.advertiseService(DEFAULT_EXTERNAL_COMMAND_SERVICE,&StateMachine::external_command_cb,this);
-
-	// initializing clients
-	material_server_state_client_ = nh.serviceClient<mtconnect_msgs::MaterialServerState>(DEFAULT_MATERIAL_HANDLING_STATE_SERVICE);
-
-	// initializing service client req msg
-	material_server_state_.request.state_flag = mtconnect_msgs::MaterialServerState::Request::READY;
-	material_server_state_.response.accepted = false;
 
 	// initializing mtconnect robot messages
 	robot_state_msg_.avail.val = TriState::ENABLED;
@@ -244,7 +233,10 @@ bool StateMachine::setup()
 void StateMachine::run()
 {
 	ros::NodeHandle nh;
+	ros::AsyncSpinner spinner(2);
+	spinner.start();
 
+	ros::Duration loop_pause(0.5f);
 	set_active_state(states::STARTUP);
 
 	int last_state = states::EMPTY;
@@ -520,29 +512,11 @@ bool StateMachine::on_startup()
 
 bool StateMachine::on_ready()
 {
-	// communicating ready state with service call
-	if(!material_server_state_.response.accepted)
-	{
-		// sending ready state to server
-		if(material_server_state_client_.exists() &&
-				material_server_state_client_.call(material_server_state_.request,material_server_state_.response))
-		{
-			ROS_INFO_STREAM("server state service call "<< (material_server_state_.response.accepted ? "accepted" : "rejected"));
-		}
-		else
-		{
-			ROS_WARN_STREAM("server state service call failed");
-			ros::Duration(DURATION_LOOP_PAUSE).sleep();
-		}
-	}
-
-	return material_server_state_.response.accepted;
+	return true;
 }
 
 bool StateMachine::on_robot_reset()
 {
-	// resetting service request accepted flag back to false
-	material_server_state_.response.accepted = false;
 	return true;
 }
 
@@ -625,14 +599,6 @@ bool StateMachine::on_robot_moving()
 {
 	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
 
-	// check if task is set to trigger fault
-	if(get_param_fault_on_task_check(current_task_sequence_[current_task_index_]))
-	{
-		ROS_WARN_STREAM("Forcing fault on task "<<tasks::TASK_MAP[current_task_sequence_[current_task_index_]]);
-		set_active_state(states::ROBOT_FAULT);
-		return true;
-	}
-
 	int state = actionlib::SimpleClientGoalState::ACTIVE;
 	switch(current_task_sequence_[current_task_index_])
 	{
@@ -676,14 +642,6 @@ bool StateMachine::on_robot_moving()
 bool StateMachine::on_cnc_moving()
 {
 	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
-
-	// check if task is set to trigger fault
-	if(get_param_fault_on_task_check(current_task_sequence_[current_task_index_]))
-	{
-		ROS_WARN_STREAM("Forcing fault on task "<<tasks::TASK_MAP[current_task_sequence_[current_task_index_]]);
-		set_active_state(states::CNC_FAULT);
-		return true;
-	}
 
 	int state = actionlib::SimpleClientGoalState::ACTIVE;
 	switch(current_task_sequence_[current_task_index_])
@@ -733,14 +691,6 @@ bool StateMachine::on_cnc_moving()
 bool StateMachine::on_gripper_moving()
 {
 	using namespace mtconnect_cnc_robot_example::state_machine::tasks;
-
-	// check if task is set to trigger fault
-	if(get_param_fault_on_task_check(current_task_sequence_[current_task_index_]))
-	{
-		ROS_WARN_STREAM("Forcing fault on task "<<tasks::TASK_MAP[current_task_sequence_[current_task_index_]]);
-		set_active_state(states::GRIPPER_FAULT);
-		return true;
-	}
 
 	int state = actionlib::SimpleClientGoalState::ACTIVE;
 	switch(current_task_sequence_[current_task_index_])
@@ -804,7 +754,6 @@ void StateMachine::get_param_force_fault_flags()
 	ros::NodeHandle nh("~");
 
 	bool force_robot_fault, force_cnc_fault, force_gripper_fault;
-
 	if(nh.getParam(PARAM_FORCE_ROBOT_FAULT,force_robot_fault) && force_robot_fault)
 	{
 		ROS_INFO_STREAM("Forcing 'ROBOT_FAULT'");
@@ -824,25 +773,6 @@ void StateMachine::get_param_force_fault_flags()
 		ROS_INFO_STREAM("Forcing 'GRIPPER_FAULT'");
 		set_active_state(states::GRIPPER_FAULT);
 		nh.setParam(PARAM_FORCE_GRIPPER_FAULT,false);
-	}
-
-}
-
-bool StateMachine::get_param_fault_on_task_check(int task_id)
-{
-	ros::NodeHandle nh("~");
-	int fault_on_task_id;
-
-	// check task id match
-	if(nh.getParam(PARAM_FORCE_FAULT_ON_TASK,fault_on_task_id) && fault_on_task_id != tasks::NO_TASK &&
-			task_id == fault_on_task_id )
-	{
-		//nh.setParam(PARAM_FORCE_FAULT_ON_TASK,tasks::NO_TASK);
-		return true;
-	}
-	else
-	{
-		return false;
 	}
 }
 
@@ -943,7 +873,7 @@ bool StateMachine::external_command_cb(mtconnect_cnc_robot_example::Command::Req
 
 		if(get_active_state() == states::ROBOT_FAULT && check_arm_at_position(joint_home_pos_,DEFAULT_JOINT_ERROR_TOLERANCE))
 		{
-			set_active_state(states::ROBOT_RESET);
+			set_active_state(states::READY);
 			res.accepted = true;
 			ROS_INFO_STREAM("Fault reset accepted");
 		}
