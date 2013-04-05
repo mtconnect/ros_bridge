@@ -78,7 +78,7 @@ module Cnc
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
 
-      @cycle_time = 5
+      @cycle_time = 1
       @load_timer, @unload_timer = nil
       @load_time_limit = 5 * 60
       @unload_time_limit = 5 * 60
