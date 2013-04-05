@@ -59,14 +59,14 @@ module MTConnect
     def stop
       @adapter.stop
     end
-    
-    def event(name, value, code = nil, text = nil)
-      puts "Received #{name} #{value} #{code} #{text}"
+
+    def event(source, name, value, code = nil, text = nil)
+      puts "Received #{source} #{name} #{value} #{code} #{text}"
       case value
       when "Fault"
         key = "#{name}:#{code}"
         @faults[key] = true
-        action = "robot_#{name.downcase}_#{value.downcase}".to_sym
+        action = "#{source}_#{name.downcase}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
@@ -78,13 +78,13 @@ module MTConnect
           key = "#{name}:#{code}"
           @faults.delete(key)
         end
-        action = "robot_#{name.downcase}_#{value.downcase}".to_sym
+        action = "#{source}_#{name.downcase}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
 
       when 'Unavailable'
-        action = "robot_#{name.downcase}_#{value.downcase}".to_sym
+        action = "#{source}_#{name.downcase}_#{value.downcase}".to_sym
         @statemachine.send(action) if @statemachine.respond_to? action
 
       when 'DISCONNECTED'
@@ -99,12 +99,12 @@ module MTConnect
 
         # Convert camel case to lower _ separated words: FizzBangFlop fizz_bang_flop
         element = name.split(/([A-Z][a-z]+)/).delete_if(&:empty?).map(&:downcase).join('_')
-        mth = "robot_#{element}=".to_sym
+        mth = "#{source}_#{element}=".to_sym
         puts "    Trying method: #{mth} #{value}"
         self.send(mth, value) if self.respond_to? mth
     
         # Only send valid events to the statemachine.
-        action = "robot_#{element}_#{value.downcase}".to_sym
+        action = "#{source}_#{element}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
       end

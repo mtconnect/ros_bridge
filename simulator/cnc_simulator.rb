@@ -25,7 +25,17 @@ context.start
 streamer = MTConnect::Streamer.new(ARGV[0] || 'http://localhost:5000/Robot')
 thread = streamer.start do |name, value, code = nil, text = nil|
   begin
-    context.event(name, value, code, text)
+    context.event('robot', name, value, code, text)
+  rescue
+    puts "Error occurred in handling event: #{$!}"
+    puts $!.backtrace.join("\n")
+  end
+end
+
+streamer = MTConnect::Streamer.new(ARGV[1] || 'http://localhost:5000/cnc')
+thread = streamer.start do |name, value, code = nil, text = nil|
+  begin
+    context.event('cnc', name, value, code, text)
   rescue
     puts "Error occurred in handling event: #{$!}"
     puts $!.backtrace.join("\n")
