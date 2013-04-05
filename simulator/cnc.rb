@@ -26,12 +26,18 @@ module Cnc
   class CncContext < MTConnect::Context  
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
-                  :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door, :cycle_time,
-                  :robot_execution, :robot_availability, :load_time_limit, :unload_time_limit, :load_failed_time_limit,
-                  :unload_failed_time_limit
-    attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
-                :material_load, :material_unload, :link, :exec, :material, :system
-  
+                  :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door,
+                  :robot_execution, :robot_availability
+
+    attr_accessor :cnc_controller_mode, :cnc_execution, :cnc_availability, :cnc_chuck_state
+
+    attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
+                :material_load, :material_unload, :link
+
+    attr_accessor :cycle_time, :unload_failed_time_limit, :load_time_limit, :unload_time_limit,
+                  :load_failed_time_limit
+
+
     def initialize(port = 7879)
       super(port)
 
@@ -46,27 +52,23 @@ module Cnc
       @adapter.data_items << (@open_door = DataItem.new('open_door'))
       @adapter.data_items << (@close_door = DataItem.new('close_door'))
 
-
-      @adapter.data_items << (@chuck_state = DataItem.new('chuck_state'))
-
       @adapter.data_items << (@link = DataItem.new('robo_link'))
-      @adapter.data_items << (@exec = DataItem.new('exec'))
-      @adapter.data_items << (@mode = DataItem.new('mode'))
-      @adapter.data_items << (@door_state = DataItem.new('door_state'))
 
       @adapter.data_items << (@material = DataItem.new('material'))
 
+      # CNC Data items not supplied by the machine tool adapter
+      # @adapter.data_items << (@chuck_state = DataItem.new('chuck_state'))
+      # @adapter.data_items << (@exec = DataItem.new('exec'))
+      # @adapter.data_items << (@mode = DataItem.new('mode'))
+      @adapter.data_items << (@system = SimpleCondition.new('infc_system'))
 
-      @adapter.data_items << (@system = SimpleCondition.new('system'))
+      # Controller does not have a door signal, so we need to simulate it here.
+      @adapter.data_items << (@door_state = DataItem.new('door_state'))
 
       @interfaces = [@material_load, @material_unload]
 
       # Initialize data items
-      @availability.value = "AVAILABLE"
-      @chuck_state.value = 'OPEN'
       @link.value = 'ENABLED'
-      @exec.value = 'READY'
-      @mode.value = 'AUTOMATIC'
       @door_state.value = "OPEN"
 
       @material.value = "'ROUND 440C THING', 3.27, 11.23"
@@ -98,8 +100,8 @@ module Cnc
       @adapter.stop
     end
 
-    def event(name, value, code = nil, text = nil)
-      puts "CNC Received #{name} #{value}"
+    def event(source, name, value, code = nil, text = nil)
+      puts "CNC Received #{name} #{value} from #{source}"
       case name
       when "OpenChuck"
         action = value.downcase.to_sym
@@ -108,6 +110,13 @@ module Cnc
       when "CloseChuck"
         action = value.downcase.to_sym
         @close_chuck_interface.statemachine.send(action)
+
+      when "ChuckState"
+        action = "chuck_#{value.downcase}".to_sym
+        @cnc_chuck_state = value
+
+        @close_chuck_interface.statemachine.send(action)
+        @open_chuck_interface.statemachine.send(action)
 
       when "OpenDoor"
         action = value.downcase.to_sym
@@ -118,7 +127,7 @@ module Cnc
         @close_door_interface.statemachine.send(action)
 
       else
-        super(name, value, code, text)
+        super(source, name, value, code, text)
       end
     end
     
@@ -136,7 +145,6 @@ module Cnc
       puts "****** Beginning New Part ******"
 
       @adapter.gather do
-        @exec.value = 'READY'
         @interfaces.each { |i| i.value = 'READY' }
       end
       @open_chuck_interface.activate
@@ -146,7 +154,7 @@ module Cnc
     end
 
     def activate
-      if @faults.empty? and @mode.value == 'AUTOMATIC' and
+      if @faults.empty? and @cnc_controller_mode == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
           @robot_material_load == 'READY' and @robot_material_unload == 'READY' and
           @robot_execution == 'ACTIVE' and @system.normal? and @robot_availability == 'AVAILABLE'
@@ -155,7 +163,7 @@ module Cnc
       else
         puts "Still not ready"
         puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
-        puts "  Mode is not AUTOMATIC: #{@mode.vlaue}" unless @mode.value == 'AUTOMATIC'
+        puts "  Mode is not AUTOMATIC: #{@cnc_controller_mode}" unless @cnc_controller_mode == 'AUTOMATIC'
         puts "  Robot Material Load is not READY: #@robot_material_load" unless @robot_material_load == 'READY'
         puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
         puts "  Robot material unload is not READY: #@robot_material_unload" unless @robot_material_unload == 'READY'
@@ -163,18 +171,6 @@ module Cnc
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
         puts "  Robot is not available: #@robot_availability" unless @robot_availability == 'AVAILABLE'
         @statemachine.still_not_ready
-      end
-    end
-    
-    def automatic_mode
-      @adapter.gather do
-        @mode.value = 'AUTOMATIC'
-      end
-    end
-    
-    def manual_mode
-      @adapter.gather do
-        @mode.value = 'MANUAL'
       end
     end
 
@@ -201,28 +197,15 @@ module Cnc
     def cycling
       # Check preconditions for a cycle start. Chuck has to be closed and
       # door must be shut.
-      if @door_state.value != 'CLOSED' or @chuck_state.value != 'CLOSED'
+      if @door_state.value != 'CLOSED' or @cnc_chuck_state != 'CLOSED'
         @adapter.gather do
           @system.add('FAULT', 'Door or Chuck in invalid state', 'CYCLE')
         end
         @statemachine.fault
       else
         @adapter.gather do
-          @exec.value = 'ACTIVE'
           @material_load.value = 'READY'
         end
-        Thread.new do
-          puts "------ Cutting a part ------"
-          sleep @cycle_time
-          puts "------ Finished Cutting a part ------"
-          @statemachine.cycle_complete
-        end
-      end
-    end
-
-    def cycle_complete
-      @adapter.gather do
-        @exec.value = 'READY'
       end
     end
 
@@ -333,8 +316,8 @@ module Cnc
           event :robot_material_unload_not_ready, :activated
 
           # user commands
-          event :auto, :activated, :automatic_mode
-          event :manual, :activated, :manual_mode
+          event :cnc_controller_mode_automatic, :activated
+          event :cnc_controller_mode_manual, :activated
           event :disable, :activated, :disable
           event :enable, :activated, :enable
           event :reset_cnc, :activated, :reset_cnc
@@ -372,7 +355,7 @@ module Cnc
 
             state :cycle_start do
               on_entry :cycling
-              event :cycle_complete, :material_unload, :cycle_complete
+              event :cnc_execution_ready, :material_unload
               event :fault, :fault
             end
 
