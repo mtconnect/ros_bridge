@@ -18,9 +18,9 @@ module Cnc
     attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 
-    def initialize(adapter, interface, state, prefix, dest_state, transition_state, rel)
-      @adapter, @interface, @state, @prefix, @dest_state, @transition_state = adapter, interface, state,
-          prefix, dest_state, transition_state
+    def initialize(adapter, interface, state, prefix, dest_state, rel)
+      @adapter, @interface, @state, @prefix, @dest_state = adapter, interface, state,
+          prefix, dest_state
       @related = nil
       @active = true
       self.related = rel if rel
@@ -99,7 +99,6 @@ module Cnc
     def create_statemachine
       myself = self
       dest_event = "#{@prefix}_#{@dest_state.downcase}".to_sym
-      trans_event = "#{@prefix}_#{@transition_state.downcase}".to_sym
       prefix = @prefix
       sm = Statemachine.build do
         startstate :base
@@ -130,9 +129,9 @@ module Cnc
           state :active do
             on_entry :active
             default :fail
-            event trans_event, :active
             event dest_event, :complete
             event :complete, :complete
+            event :unlatched, :active
           end
 
           # Handle invalid CNC state change in which we will respond with a fail
