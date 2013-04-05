@@ -64,7 +64,7 @@ void MoveArmActionClient::run()
 /*
  * Takes and array of poses where each pose is the desired tip link pose described in terms of the arm base
  */
-bool MoveArmActionClient::moveArm(const geometry_msgs::PoseArray &cartesian_poses)
+bool MoveArmActionClient::moveArm(const geometry_msgs::PoseArray &cartesian_poses, bool wait_for_completion)
 {
 	using namespace arm_navigation_msgs;
 
@@ -85,6 +85,12 @@ bool MoveArmActionClient::moveArm(const geometry_msgs::PoseArray &cartesian_pose
 
 		// sending goal
 		move_arm_client_ptr_->sendGoal(move_arm_goal_);
+
+		if(!wait_for_completion)
+		{
+			return success;
+		}
+
 		success = move_arm_client_ptr_->waitForResult(ros::Duration(DURATION_WAIT_RESULT));
 		if(success)
 		{
@@ -99,7 +105,6 @@ bool MoveArmActionClient::moveArm(const geometry_msgs::PoseArray &cartesian_pose
 						<<(unsigned int)move_arm_client_ptr_->getState().state_);
 				break;
 			}
-
 		}
 		else
 		{
@@ -200,13 +205,6 @@ bool MoveArmActionClient::setup()
 
 	// obtaining arm info
 	collision_models_ptr_ = CollisionModelsPtr(new planning_environment::CollisionModels("robot_description"));
-//	const planning_models::KinematicModel::JointModelGroup *joint_model_group =
-//					collision_models_ptr_->getKinematicModel()->getModelGroup(arm_group_);
-//	const std::vector<const planning_models::KinematicModel::JointModel *> &joint_models_ = joint_model_group->getJointModels();
-//
-//	// finding arm base and tip links
-//	base_link_frame_id_ = joint_models_.front()->getParentLinkModel()->getName();
-//	tip_link_frame_id_ = joint_models_.back()->getChildLinkModel()->getName();
 	getArmInfo(collision_models_ptr_.get(),arm_group_,base_link_frame_id_,tip_link_frame_id_);
 
 	// initializing move arm request members
@@ -253,9 +251,7 @@ bool MoveArmActionClient::getArmInfo(const planning_environment::CollisionModels
 				success = true;
 				break;
 			}
-
 		}
-
 	}
 	else
 	{

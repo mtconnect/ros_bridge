@@ -1,0 +1,80 @@
+<?xml version="1.0" ?>
+<launch>
+
+    <!-- This launch file executes all ROS side nodes for the MTConnect
+    cnc load/unload demonstration.
+
+    Usage:
+      mtconnect_irb2400_material_handling.launch [use_rviz:=false]
+        [real_robot:=false] [robot_ip:=<value>]
+    -->
+	<arg name="use_rviz" default="false"/>
+	<arg name="real_robot" default="false"/>
+	<arg name="robot_ip" />
+
+	<!-- bringup of arm navigation prerequisites -->
+	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+	
+	
+	<!-- robot drivers/simulators -->
+    <remap from="/joint_trajectory_action" to="/irb2400_controller/follow_joint_trajectory"/>
+    <node pkg="industrial_robot_client" type="joint_trajectory_action" name="joint_trajectory_action_server" output="screen">
+        <param name="constraints/goal_threshold" value="0.001"/>
+    </node>
+    
+	<!-- real robot drivers -->
+	<group if="$(arg real_robot)">
+        <include file="$(find abb_common)/launch/robot_interface.launch">
+            <arg name="robot_ip" value="$(arg robot_ip)"/>
+            <arg name="J23_coupled" value="true" />
+        </include>
+    </group>
+
+    <!-- simulated robot drivers -->
+	<group unless="$(arg real_robot)">
+	    <node pkg="industrial_robot_simulator" type="industrial_robot_simulator" name="simulated_robot_controller" output="screen"/>
+    </group>
+    
+    
+	<!-- gripper executer action node -->
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface" output="screen"/>
+
+	<!-- vise executer action node -->
+	<remap from="/grasp_execution_action" to="/vise_action_service"/>
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="vise_interface" output="screen"/>
+	
+	<!-- move arm action server and required arm navigation nodes -->
+	<include file="$(find mtconnect_irb2400_arm_navigation)/launch/mtconnect_irb2400_arm_navigation.launch"/>
+
+	<!-- move pick place server node -->
+	<remap from="/grasp_action_service" to="/grasp_execution_action"/>
+	<remap from="/move_arm_action" to="/move_irb2400"/>
+	<node pkg="mtconnect_cnc_robot_example" type="move_pick_place_server_node" name="move_pick_place_server" output="screen">
+		<param name="arm_group" value="irb2400"/>
+	</node>
+
+	<!-- material load/unload server node -->
+	<remap from="/move_arm_action" to="/move_irb2400"/>
+	<remap from="/robot_states" to= "/RobotStateTopic"/>
+	<remap from="/robot_spindle" to="/RobotSpindleTopic" />
+	<remap from="/cnc_open_door_action" to= "/OpenDoorClient"/>
+	<remap from="/cnc_close_door_action" to="/CloseDoorClient" />
+	<remap from="/cnc_open_chuck_action" to= "/OpenChuckClient"/>
+	<remap from="/cnc_close_chuck_action" to="/CloseChuckClient" />
+	<remap from="/material_load_action" to= "/MaterialLoadClient"/>
+	<remap from="/material_unload_action" to="/MaterialUnloadClient" />
+
+	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/irb2400/state_machine_parameters.yaml"/>
+	<node pkg="mtconnect_cnc_robot_example" type="mtconnect_state_machine_server" name="mtconnect_state_machine" output="screen">
+		<param name="arm_group" value="irb2400"/>
+		<param name="state_override" value="-1"/><!-- Empty State -->
+		<param name="force_robot_fault" value="false"/>
+		<param name="force_cnc_fault" value="false"/>
+		<param name="force_gripper_fault" value="false"/>
+	</node>
+
+	<!-- ros visualization -->
+	<node if="$(arg use_rviz)" pkg="rviz" type="rviz" name="mtconnect_visualization"
+		args="-d $(find mtconnect_cnc_robot_example)/vcg/mtconnect_visualization_conf.vcg"/>
+	
+</launch>

@@ -80,7 +80,7 @@ public:
 	/*
 	 * Takes and array of poses where each pose is the desired tip link pose described in terms of the arm base
 	 */
-	virtual bool moveArm(const geometry_msgs::PoseArray &cartesian_poses);
+	virtual bool moveArm(const geometry_msgs::PoseArray &cartesian_poses,bool wait_for_completion = true);
 
 	virtual bool fetchParameters(std::string nameSpace = "");
 

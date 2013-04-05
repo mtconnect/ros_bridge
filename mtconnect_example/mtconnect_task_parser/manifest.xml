@@ -1,0 +1,18 @@
+<package>
+  <description brief="mtconnect_task_parser">
+
+     mtconnect_task_parser
+
+  </description>
+  <author>Shaun M. Edwards</author>
+  <license>Apache2</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_task_parser</url>
+  
+  <rosdep name="tinyxml" />
+  
+  <depend package="roscpp"/>
+
+</package>
+
+

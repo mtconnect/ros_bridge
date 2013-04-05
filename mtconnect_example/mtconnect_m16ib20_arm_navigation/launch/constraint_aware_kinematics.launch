@@ -5,7 +5,7 @@
 	<rosparam command="load" file="$(find mtconnect_m16ib20_arm_navigation)/config/kinematic_parameters.yaml"/>
         <param name="group" type="string" value="m16ib20" />
         <param name="m16ib20/root_name" type="string" value="base_link" />
-        <param name="m16ib20/tip_name" type="string" value="tcp_frame" />
-        <param name="kinematics_solver" type="string" value="arm_kinematics_constraint_aware/KDLArmKinematicsPlugin" />
+        <param name="m16ib20/tip_name" type="string" value="link_6" />
+        <param name="kinematics_solver" type="string" value="M16iB20_manipulator_kinematics/IKFastKinematicsPlugin" />
     </node>
 </launch>

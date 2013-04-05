@@ -1,16 +1,43 @@
 <?xml version="1.0" ?>
 <launch>
+
+    <!-- This launch file executes all ROS side nodes for the MTConnect
+    cnc load/unload demonstration.
+
+    Usage:
+      mtconnect_m16ib20_material_handling.launch [use_rviz:=false]
+        [real_robot:=false] [robot_ip:=<value>]
+    -->
 	<arg name="use_rviz" default="false"/>
+	<arg name="real_robot" default="false"/>
+	<arg name="robot_ip" />
+	<arg name="use_bswap" default="false"/>
 
 	<!-- bringup of arm navigation prerequisites -->
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+	
+	
+	<!-- robot drivers/simulators -->
+    <remap from="/joint_trajectory_action" to="/m16ib20_controller/follow_joint_trajectory"/>
+    
+    
+    <!-- real robot drivers -->
+    <group if="$(arg real_robot)">
+        <include file="$(find fanuc_common)/launch/robot_interface_streaming_m16iB20.launch">
+            <arg name="robot_ip" value="$(arg robot_ip)"/>
+            <arg name="use_bswap" value="$(arg use_bswap)" />
+        </include>
+    </group>
 
-	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/m16ib20/joint_definitions.yaml"/>
-	<node pkg="object_manipulation_tools" type="simulated_robot_controller" name="simulated_robot_controller" output="screen"/>
-
-	<remap from="/joint_trajectory_action" to="/m16ib20_controller/follow_joint_trajectory"/>
-	<node pkg="object_manipulation_tools" name="joint_trajectory_action_server" type="joint_trajectory_action" output="screen"/>
-
+    <!-- simulated robot drivers -->
+	<group unless="$(arg real_robot)">
+	    <node pkg="industrial_robot_simulator" type="industrial_robot_simulator" name="simulated_robot_controller" output="screen"/>
+	    <node pkg="industrial_robot_client" type="joint_trajectory_action" name="joint_trajectory_action_server" output="screen">
+        <param name="constraints/goal_threshold" value="0.001"/>
+      </node>
+    </group>
+    
+    
 	<!-- gripper executer action node -->
 	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface" output="screen"/>
 	

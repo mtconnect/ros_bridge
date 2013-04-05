@@ -122,7 +122,7 @@ unload_place_goal:
     place_pose: # final pose of object relative to world frame
       position:
         x: 1.0
-        y: 0.32
+        y: 0.8
         z: 0.4
       orientation:
         angle: 0.01
@@ -167,22 +167,22 @@ joint_wait_position:
       velocity: 0.0
       effort: 0.0
     - name: joint_2
-      position: -0.15
+      position: 0.45
       velocity: 0.0
       effort: 0.0
     - name: joint_3
-      position: 0.304
+      position: 0.5  #0.35 at approach point
       velocity: 0.0
       effort: 0.0
     - name: joint_4
-      position: 0.53
+      position: 0.50
       velocity: 0.0
       effort: 0.0
     - name: joint_5
-      position: -0.5
+      position: -0.8
       velocity: 0.0
       effort: 0.0
     - name: joint_6
-      position: -0.0
+      position: -0.35
       velocity: 0.0
       effort: 0.0

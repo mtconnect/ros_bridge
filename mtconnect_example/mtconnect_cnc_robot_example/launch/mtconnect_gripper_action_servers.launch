@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<launch>
+	<!-- gripper executer action node -->
+	<node pkg="mtconnect_cnc_robot_example" type="grasp_action_server" name="gripper_interface" output="screen">
+		<param name="ip_address" value="129.162.110.29"/>
+		<param name="port_number" value="10000"/>
+	</node>
+
+	<!-- vise executer action node -->
+	<remap from="/grasp_execution_action" to="/vise_action_service"/>
+	<node pkg="mtconnect_cnc_robot_example" type="grasp_action_server" name="vise_interface" output="screen">
+		<param name="ip_address" value="129.162.110.29"/>
+		<param name="port_number" value="11000"/>
+	</node>
+</launch>

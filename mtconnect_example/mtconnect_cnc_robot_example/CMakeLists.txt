@@ -19,7 +19,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services
-#rosbuild_gensrv()
+rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
@@ -38,3 +38,14 @@ rosbuild_add_executable(move_pick_place_test src/nodes/move_pick_place_test.cpp
 	
 rosbuild_add_executable(material_handling_server_test src/nodes/material_handling_server_test.cpp 
 	src/utilities/utilities.cpp)
+
+rosbuild_add_executable(test_state_machine src/tests/test_state_machine.cpp)
+rosbuild_add_executable(mtconnect_state_machine_server src/nodes/mtconnect_state_machine_server.cpp 
+	src/state_machine/state_machine.cpp src/utilities/utilities.cpp src/move_arm_action_clients/MoveArmActionClient.cpp)
+
+rosbuild_add_executable(grasp_action_server src/nodes/grasp_execution_action_server.cpp src/gripper_message/gripper_message.cpp)
+target_link_libraries(grasp_action_server simple_message)
+
+rosbuild_add_executable(grasp_test_utility src/nodes/grasp_test_utility.cpp src/gripper_message/gripper_message.cpp)
+target_link_libraries(grasp_test_utility simple_message)
+

@@ -235,22 +235,38 @@ class GenericActionServer():
                             elif element.text == 'READY' and robot_hold == 1:
                                 dwell = False
                                 self.capture_xml = False
+                                
+                                # When response is READY, set server result and communicate as below:
+                                # Extract action attribute
+                                result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+                                
+                                # Set the attribute per the ROS to MTConnect conversion
+                                setattr(self._resultDict[self.server_name[action]], result_attribute, 'READY')
+                                
+                                # Indicate a successful action
+                                self._as[self.server_name[action]].set_succeeded(self._resultDict[self.server_name[action]])
+                                rospy.loginfo('In %s Callback -- action succeeded.' % self.server_name[action])
+                            
+                            elif element.text == 'FAIL':
+                                bridge_library.action_cb((self.adapter, self.di_dict, action, 'FAIL'))
+                                dwell = False
+                                self.capture_xml = False
+                                
+                                # When response is FAIL, set server result and communicate as below:
+                                # Extract action attribute.  For CNC Actions, only one result --> i.e. OpenDoorResult.__slots__[0] = 'door_ready'
+                                result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+                                
+                                # Set the attribute per the ROS to MTConnect conversion
+                                setattr(self._resultDict[self.server_name[action]], result_attribute, 'FAIL')
+                                
+                                # Indicate a successful action
+                                self._as[self.server_name[action]].set_aborted(self._resultDict[self.server_name[action]])
+                                rospy.loginfo('In %s Callback -- action aborted by CNC.' % self.server_name[action])
                     
                     # Release the queue
                     self.XML_queue.task_done()
             except rospy.ROSInterruptException:
                 rospy.loginfo('program interrupted before completion')
-            
-        # When response is READY, set server result and communicate as below:
-        # Extract action attribute
-        result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
-        
-        # Set the attribute per the ROS to MTConnect conversion
-        setattr(self._resultDict[self.server_name[action]], result_attribute, 'READY')
-        
-        # Indicate a successful action
-        self._as[self.server_name[action]].set_succeeded(self._resultDict[self.server_name[action]])
-        rospy.loginfo('In %s Callback -- action succeeded.' % self.server_name[action])
         return
 
     ## @brief Processes the xml chunk provided by the LongPull class instance and stores the result
