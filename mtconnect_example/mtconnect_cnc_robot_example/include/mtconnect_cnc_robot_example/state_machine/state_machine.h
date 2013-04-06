@@ -233,6 +233,10 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		// test tasks
 		int test_task_id_;
 
+		// task definitions
+		std::string task_desc_;
+		std::map<std::string, trajectory_msgs::JointTrajectoryPtr> joint_paths_;
+
 		// action servers
 		MaterialLoadServerPtr material_load_server_ptr_;
 		MaterialUnloadServerPtr material_unload_server_ptr_;

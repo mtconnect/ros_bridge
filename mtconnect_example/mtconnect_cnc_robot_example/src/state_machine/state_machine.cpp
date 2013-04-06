@@ -25,6 +25,7 @@ static const std::string PARAM_FORCE_ROBOT_FAULT = "force_robot_fault";
 static const std::string PARAM_FORCE_CNC_FAULT = "force_cnc_fault";
 static const std::string PARAM_FORCE_GRIPPER_FAULT = "force_gripper_fault";
 static const std::string PARAM_FORCE_FAULT_ON_TASK = "force_fault_on_task";
+static const std::string PARAM_TASK_DESCRIPTION = "task_description";
 
 // default
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
@@ -74,7 +75,8 @@ StateMachine::~StateMachine()
 bool StateMachine::fetch_parameters(std::string name_space)
 {
 	ros::NodeHandle ph("~");
-	return ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
+	return ph.getParam(PARAM_TASK_DESCRIPTION, task_desc_) &&
+	                ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
 			material_load_pickup_goal_.fetchParameters(PARAM_LOAD_PICKUP_GOAL) &&
 			material_unload_place_goal_.fetchParameters(PARAM_UNLOAD_PLACE_GOAL) &&
 			joint_home_pos_.fetchParameters(PARAM_JOINT_HOME_POSITION) &&
@@ -103,6 +105,13 @@ bool StateMachine::setup()
 	{
 		ROS_ERROR_STREAM("Failed to read parameters, exiting");
 		return false;
+	}
+
+	// initializing joint paths (for alternative path execution)
+	if (!parseTaskXml(task_desc_, joint_paths_))
+	{
+	  ROS_ERROR_STREAM("Failed to initialize task xml");
+          return false;
 	}
 
 	// initializing move arm client

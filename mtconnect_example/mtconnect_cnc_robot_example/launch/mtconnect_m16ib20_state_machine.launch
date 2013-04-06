@@ -72,6 +72,7 @@
 		<param name="force_cnc_fault" value="false"/>
 		<param name="force_gripper_fault" value="false"/>
 		<param name="force_fault_on_task" value="0"/><!--task id that will cause a fault (NO_TASK = 0) -->
+		<param name="task_description" textfile="$(find mtconnect_cnc_robot_example)/config/m16ib20/task_description.xml" />
 	</node>
 
 	<!-- ros visualization -->

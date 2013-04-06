@@ -291,25 +291,25 @@ bool fromXml(Task & task, TiXmlElement* config)
   }
 
   // Parsing paths
-  for (TiXmlElement* path_xml = config->FirstChildElement("path"); path_xml; path_xml =
-      path_xml->NextSiblingElement("path"))
+  for (TiXmlElement* path_xml = config->FirstChildElement("path"); path_xml;
+      path_xml = path_xml->NextSiblingElement("path"))
+  {
+    Path path;
+    path.clear();
+    if (fromXml(path, path_xml, task.motion_groups_))
     {
-      Path path;
-      path.clear();
-      if (fromXml(path, path_xml, task.motion_groups_))
-      {
-        task.paths_[path.name_] = boost::make_shared<Path>(path);
-        ROS_INFO_STREAM("Adding path to task, total size: " << task.paths_.size());
-        rtn = true;
-      }
-      else
-      {
-        //It's possible that the motion group might not be used
-        ROS_WARN_STREAM("Failed to parse motion group element of task, ignoring, will fail later if group is needed");
-        rtn = false;
-        break;
-      }
+      task.paths_[path.name_] = boost::make_shared<Path>(path);
+      ROS_INFO_STREAM("Adding path to task, total size: " << task.paths_.size());
+      rtn = true;
     }
+    else
+    {
+      //It's possible that the motion group might not be used
+      ROS_WARN_STREAM("Failed to parse motion group element of task, ignoring, will fail later if group is needed");
+      rtn = false;
+      break;
+    }
+  }
 
   if (!rtn)
   {
@@ -320,33 +320,14 @@ bool fromXml(Task & task, TiXmlElement* config)
 
 }
 
-/*
- for (TiXmlElement* material_xml = robot_xml->FirstChildElement("material"); material_xml; material_xml = material_xml->NextSiblingElement("material"))
- {
- boost::shared_ptr<Material> material;
- material.reset(new Material);
+//TODO: This funciton need more extensive error checking
+bool fromXml(Task & task, const std::string & xml)
+{
+  TiXmlDocument xml_doc;
+  xml_doc.Parse(xml.c_str());
+  TiXmlElement *xml_t = xml_doc.FirstChildElement("task");
+  return fromXml(task, xml_t);
+}
 
- try {
- parseMaterial(*material, material_xml, false); // material needs to be fully defined here
- if (model->getMaterial(material->name))
- {
- logError("material '%s' is not unique.", material->name.c_str());
- material.reset();
- model.reset();
- return model;
- }
- else
- {
- model->materials_.insert(make_pair(material->name,material));
- logDebug("successfully added a new material '%s'", material->name.c_str());
- }
- }
- catch (ParseError &e) {
- logError("material xml is not initialized correctly");
- material.reset();
- model.reset();
- return model;
- }
- }
- */
+
 } //mtconnect

@@ -206,6 +206,8 @@ TEST(Task, from_xml)
   boost::shared_ptr<Path> path_ptr = task.paths_["path_1"];
   ASSERT_EQ(path_ptr->moves_.front().point_->group_, group_ptr);
 
+  ASSERT_TRUE(fromXml(task, xml_string));
+
 }
 
 // Run all the tests that were declared with TEST()

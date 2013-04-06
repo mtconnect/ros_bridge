@@ -15,6 +15,7 @@
   <depend package="sensor_msgs"/>
   <depend package="mtconnect_msgs"/>
   <depend package="mtconnect_ros_bridge"/>
+  <depend package="mtconnect_task_parser"/>
   <depend package="nav_msgs"/>
   <depend package="planning_environment"/>
   <depend package="object_manipulation_tools"/>
