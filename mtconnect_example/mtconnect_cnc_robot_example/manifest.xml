@@ -13,6 +13,7 @@
   <depend package="arm_navigation_msgs"/>
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
+  <depend package="control_msgs"/>
   <depend package="mtconnect_msgs"/>
   <depend package="mtconnect_ros_bridge"/>
   <depend package="mtconnect_task_parser"/>
