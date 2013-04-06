@@ -18,10 +18,16 @@ module Cnc
     attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 
-    def initialize(adapter, interface, state, dest_state, rel)
-      @adapter, @interface, @state, @dest_state = adapter, interface, state, dest_state
+    def initialize(adapter, interface, state, prefix, dest_state, transition_state,
+        rel, simulate: false)
+      @adapter, @interface, @state, @prefix, @dest_state,
+        @transition_state = adapter, interface, state,
+          prefix, dest_state, transition_state
+
       @related = nil
       @active = true
+      @simulate = simulate
+
       self.related = rel if rel
     end
 
@@ -62,7 +68,8 @@ module Cnc
 
     def active
       puts "#{self.class} Active - #{@related.class} #{@related and @related.interface.value}"
-      if @state.value == @dest_state
+      if (@simulate and @state.value == @dest_state) or
+          (!@simulate and @state == @dest_state)
         @adapter.gather do
           @interface.value = 'ACTIVE'
         end
@@ -73,11 +80,13 @@ module Cnc
       else
         @adapter.gather do
           @interface.value = 'ACTIVE'
-          @state.value = 'UNLATCHED'
+          @state.value = 'UNLATCHED' if @simulate
         end
-        Thread.new do
-          sleep 1
-          @statemachine.complete
+        if @simulate
+          Thread.new do
+            sleep 1
+            @statemachine.complete
+          end
         end
       end
     end
@@ -86,7 +95,7 @@ module Cnc
       puts "Completed"
       @adapter.gather do
         @interface.value = 'COMPLETE'
-        @state.value = @dest_state
+        @state.value = @dest_state if @simulate
       end
     end
 
@@ -103,6 +112,10 @@ module Cnc
 
     def create_statemachine
       myself = self
+      dest_event = "#{@prefix}_#{@dest_state.downcase}".to_sym
+      trans_event = "#{@prefix}_#{@transition_state.downcase}".to_sym
+      prefix = @prefix
+
       sm = Statemachine.build do
         startstate :base
 
@@ -113,6 +126,9 @@ module Cnc
             on_entry :not_ready
             event :ready, :ready
             event :not_ready, :not_ready
+            event "#{prefix}_open".to_sym, :not_ready
+            event "#{prefix}_close".to_sym, :not_ready
+            event "#{prefix}_unlatched".to_sym, :not_ready
             default :fail
           end
 
@@ -129,6 +145,8 @@ module Cnc
           state :active do
             on_entry :active
             default :fail
+            event trans_event, :active
+            event dest_event, :complete
             event :complete, :complete
           end
 

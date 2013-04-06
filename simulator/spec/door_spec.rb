@@ -21,7 +21,6 @@ require 'data_item'
 # open chuck, and close chuck will be tested if they differ in the future from the generic response.
 
 
-# TODO: Test chuck separately
 describe "Response" do
   context "OpenDoor" do
     before(:each) do

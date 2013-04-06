@@ -20,7 +20,6 @@ require 'data_item'
 # We will only test open chuck since the code is exactly the same for all responses. close chuck
 # open chuck, and close chuck will be tested if they differ in the future from the generic response.
 
-# TODO: Test chuck separately
 describe "Interface" do
   context "OpenChuck" do
     before(:each) do
