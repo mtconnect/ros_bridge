@@ -93,7 +93,6 @@ bool StateMachine::fetch_parameters(std::string name_space)
 			traj_arbitrary_move_.fetchParameters(PARAM_TRAJ_ARBITRARY_MOVE);
 	return true;
 }
-
 bool StateMachine::setup()
 {
 	using namespace industrial_msgs;
@@ -299,7 +298,6 @@ bool StateMachine::setup()
 void StateMachine::run()
 {
 	ros::NodeHandle nh;
-
 	set_active_state(states::STARTUP);
 
 	int last_state = states::EMPTY;
@@ -906,7 +904,6 @@ void StateMachine::get_param_force_fault_flags()
 	ros::NodeHandle nh("~");
 
 	bool force_robot_fault, force_cnc_fault, force_gripper_fault;
-
 	if(nh.getParam(PARAM_FORCE_ROBOT_FAULT,force_robot_fault) && force_robot_fault)
 	{
 		ROS_INFO_STREAM("Forcing 'ROBOT_FAULT'");

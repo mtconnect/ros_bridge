@@ -26,6 +26,7 @@
   <depend package="industrial_robot_simulator"/>
   <depend package="industrial_trajectory_filters"/>
   <depend package="abb_common"/>
+  <depend package="M16iB20_arm_navigation"/>
 
 </package>
 
