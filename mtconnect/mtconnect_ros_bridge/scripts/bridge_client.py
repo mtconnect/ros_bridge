@@ -132,6 +132,14 @@ class GenericActionClient():
         # Create XML polling thread
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
+        
+        # Create robot Service Server thread for each machine tool action
+        self.ss_thread = []
+        for mt_action in self.action_goals.keys():
+            self.ss_thread.append(threading.Thread(target = self.action_server_service(mt_action)))
+            self.ss_thread[-1].daemon = True
+            self.ss_thread[-1].start()
+            rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
 
     ## @brief This function captures the topic package, type, action goals, and action
     ## state conversion from ROS to MTConnect as required for the ROS action client.
@@ -290,6 +298,28 @@ class GenericActionClient():
             self.lock.release()
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
+
+    def action_service_server(self, mt_action):
+        rospy.init_node(mt_action)
+        self.as_name = mt_action
+        s = rospy.Service('material_handling_server_state', MaterialServerState, robot_state_callback)
+        rospy.spin()
+        return
+    
+    def robot_state_callback(self, request):
+        if request.state_flag == 0: # NOT_READY
+            try:
+                bridge_library.action_cb((self.adapter, self.di_dict, self.as_name, 'NOT_READY'))
+                return MaterialServerStateResponse(True)
+            except:
+                return MaterialServerStateResponse(False)
+        elif request.state_flag == 1: # READY
+            try:
+                bridge_library.action_cb((self.adapter, self.di_dict, self.as_name, 'READY'))
+                return MaterialServerStateResponse(True)
+            except:
+                return MaterialServerStateResponse(False)
+
 
 if __name__ == '__main__':
     try:
