@@ -3,9 +3,9 @@ filter_chain:
 #  -
 #    name: normalize_trajectory
 #    type: NormalizeFilterJointTrajectoryWithConstraints
-  -
-    name: unnormalize_trajectory
-    type: UnNormalizeFilterJointTrajectoryWithConstraints
+#  -
+#    name: unnormalize_trajectory
+#    type: UnNormalizeFilterJointTrajectoryWithConstraints
   -
     name: parabolic_smoother
     type: IterativeParabolicSmootherFilterJointTrajectoryWithConstraints

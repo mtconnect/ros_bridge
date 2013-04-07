@@ -20,6 +20,7 @@
 #include <actionlib/client/simple_action_client.h>
 #include <arm_navigation_msgs/MoveArmAction.h>
 #include <arm_navigation_msgs/SimplePoseConstraint.h>
+#include <arm_navigation_msgs/FilterJointTrajectoryWithConstraints.h>
 #include <nav_msgs/Path.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
@@ -105,12 +106,14 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			TEST_TASK_START,
 			TEST_TASK_END,
 
-			JM_HOME,
-			JM_HOME_TO_APPROACH,
+			JM_HOME_TO_READY,
+			JM_READY_TO_APPROACH,
 			JM_APPROACH_TO_PICK,
 			JM_PICK_TO_DOOR,
 			JM_DOOR_TO_CHUCK,
-			JM_CHUCK_TO_HOME
+                        JM_CHUCK_TO_READY,
+			JM_READY_TO_DOOR,
+			JM_PICK_TO_HOME
 		};
 
 		static std::map<int,std::string> TASK_MAP =
@@ -134,12 +137,14 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		(GRIPPER_CLOSE,"GRIPPER_CLOSE")
 		(MATERIAL_LOAD_END,"MATERIAL_LOAD_END")
 		(MATERIAL_UNLOAD_END,"MATERIAL_UNLOAD_END")
-		(JM_HOME, "JM_HOME")
-		(JM_HOME_TO_APPROACH, "JM_HOME_TO_APPROACH")
+		(JM_HOME_TO_READY, "JM_HOME_TO_READY")
+		(JM_READY_TO_APPROACH, "JM_READY_TO_APPROACH")
 		(JM_APPROACH_TO_PICK, "JM_APPROACH_TO_PICK")
 		(JM_PICK_TO_DOOR, "JM_PICK_TO_DOOR")
 		(JM_DOOR_TO_CHUCK, "JM_DOOR_TO_CHUCK")
-		(JM_CHUCK_TO_HOME, "JM_CHUCK_TO_HOME");
+                (JM_CHUCK_TO_READY, "JM_CHUCK_TO_READY")
+		(JM_READY_TO_DOOR, "JM_READY_TO_DOOR")
+		(JM_PICK_TO_HOME, "JM_PICK_TO_HOME");
 	}
 
 	class StateMachine : public StateMachineInterface , public MoveArmActionClient
@@ -243,8 +248,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 	protected:
 		// material load/unload task sequence
 		std::vector<int> material_load_task_sequence_;
-        std::vector<int> jm_material_load_task_sequence_;
+                std::vector<int> jm_material_load_task_sequence_;
 		std::vector<int> material_unload_task_sequence_;
+		std::vector<int> jm_material_unload_task_sequence_;
 		std::vector<int> current_task_sequence_; // will take the value of the load or unload task sequence
 		int current_task_index_;
 
@@ -283,6 +289,8 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 		// server clients
 		ros::ServiceClient material_server_state_client_;
+		ros::ServiceClient trajectory_filter_client_;
+
 
 
 		// robot state messages
@@ -291,6 +299,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 		// server req/res
 		mtconnect_msgs::MaterialServerState material_server_state_;
+		arm_navigation_msgs::FilterJointTrajectoryWithConstraints trajectory_filter_;
 
 		// timers
 		ros::Timer robot_topics_timer_;
@@ -325,7 +334,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		arm_navigation_msgs::MoveArmGoal move_arm_joint_goal_;
 
 		// joint trajectory members
-		control_msgs::FollowJointTrajectoryActionGoal joint_traj_goal_;
+		control_msgs::FollowJointTrajectoryGoal joint_traj_goal_;
 
 	};
 
