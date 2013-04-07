@@ -24,6 +24,7 @@
 namespace mtconnect
 {
 
+bool fromXml(Task & task, const std::string & xml);
 bool fromXml(MotionGroup & motion_group, TiXmlElement* config);
 bool fromXml(JointPoint & joint_point, TiXmlElement* config,
              const std::map<std::string, boost::shared_ptr<MotionGroup> >& motion_groups);
@@ -32,6 +33,7 @@ bool fromXml(JointMove & joint_move, TiXmlElement* config,
 bool fromXml(Path & path, TiXmlElement* config,
              const std::map<std::string, boost::shared_ptr<MotionGroup> >& motion_groups);
 bool fromXml(Task & task, TiXmlElement* config);
+
 
 } //mtconnect
 

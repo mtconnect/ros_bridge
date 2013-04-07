@@ -63,7 +63,7 @@
 	<remap from="/cnc_close_chuck_action" to="/CloseChuckClient" />
 	<remap from="/material_load_action" to= "/MaterialLoadClient"/>
 	<remap from="/material_unload_action" to="/MaterialUnloadClient" />
-
+	
 	<rosparam command="load" file="$(find mtconnect_cnc_robot_example)/config/m16ib20/state_machine_parameters.yaml"/>
 	<node pkg="mtconnect_cnc_robot_example" type="mtconnect_state_machine_server" name="mtconnect_state_machine" output="screen">
 		<param name="arm_group" value="m16ib20"/>
@@ -72,6 +72,12 @@
 		<param name="force_cnc_fault" value="false"/>
 		<param name="force_gripper_fault" value="false"/>
 		<param name="force_fault_on_task" value="0"/><!--task id that will cause a fault (NO_TASK = 0) -->
+		<param name="task_description" textfile="$(find mtconnect_cnc_robot_example)/config/m16ib20/task_description.xml" />
+		<param name="use_task_motion" value="false"/>
+		
+		<!-- trajectory filter service -->
+		<remap from="filter_trajectory_with_constraints" to="/trajectory_filter_server/filter_trajectory_with_constraints"/>
+		
 	</node>
 
 	<!-- ros visualization -->

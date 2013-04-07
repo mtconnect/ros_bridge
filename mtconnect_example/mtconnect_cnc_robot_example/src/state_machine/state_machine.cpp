@@ -25,6 +25,8 @@ static const std::string PARAM_FORCE_ROBOT_FAULT = "force_robot_fault";
 static const std::string PARAM_FORCE_CNC_FAULT = "force_cnc_fault";
 static const std::string PARAM_FORCE_GRIPPER_FAULT = "force_gripper_fault";
 static const std::string PARAM_FORCE_FAULT_ON_TASK = "force_fault_on_task";
+static const std::string PARAM_TASK_DESCRIPTION = "task_description";
+static const std::string PARAM_USE_TASK_MOTION = "use_task_motion";
 
 // default
 static const std::string DEFAULT_MOVE_ARM_ACTION = "move_arm_action";
@@ -38,12 +40,14 @@ static const std::string DEFAULT_CNC_OPEN_DOOR_ACTION = "cnc_open_door_action";
 static const std::string DEFAULT_CNC_CLOSE_DOOR_ACTION = "cnc_close_door_action";
 static const std::string DEFAULT_CNC_OPEN_CHUCK_ACTION = "cnc_open_chuck_action";
 static const std::string DEFAULT_CNC_CLOSE_CHUCK_ACTION = "cnc_close_chuck_action";
+static const std::string DEFAULT_JOINT_TRAJ_ACTION = "joint_trajectory_action";
 static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
 static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
 static const std::string DEFAULT_MATERIAL_HANDLING_STATE_SERVICE = "material_handling_server_state";
+static const std::string DEFAULT_TRAJECTORY_FILTER_SERVICE = "filter_trajectory_with_constraints";
 
 static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
 static const double DEFAULT_JOINT_ERROR_TOLERANCE = 0.01f; // radians
@@ -74,7 +78,9 @@ StateMachine::~StateMachine()
 bool StateMachine::fetch_parameters(std::string name_space)
 {
 	ros::NodeHandle ph("~");
-	return ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
+	return ph.getParam(PARAM_TASK_DESCRIPTION, task_desc_) &&
+	                ph.getParam(PARAM_USE_TASK_MOTION, use_task_desc_motion) &&
+	                ph.getParam(PARAM_ARM_GROUP,arm_group_) &&
 			material_load_pickup_goal_.fetchParameters(PARAM_LOAD_PICKUP_GOAL) &&
 			material_unload_place_goal_.fetchParameters(PARAM_UNLOAD_PLACE_GOAL) &&
 			joint_home_pos_.fetchParameters(PARAM_JOINT_HOME_POSITION) &&
@@ -87,7 +93,6 @@ bool StateMachine::fetch_parameters(std::string name_space)
 			traj_arbitrary_move_.fetchParameters(PARAM_TRAJ_ARBITRARY_MOVE);
 	return true;
 }
-
 bool StateMachine::setup()
 {
 	using namespace industrial_msgs;
@@ -103,6 +108,13 @@ bool StateMachine::setup()
 	{
 		ROS_ERROR_STREAM("Failed to read parameters, exiting");
 		return false;
+	}
+
+	// initializing joint paths (for alternative path execution)
+	if (!parseTaskXml(task_desc_, joint_paths_))
+	{
+	  ROS_ERROR_STREAM("Failed to initialize task xml");
+          return false;
 	}
 
 	// initializing move arm client
@@ -133,7 +145,7 @@ bool StateMachine::setup()
 	close_chuck_client_ptr_ =CncCloseChuckClientPtr(new CncCloseChuckClient(DEFAULT_CNC_CLOSE_CHUCK_ACTION,true));
 	grasp_action_client_ptr_ = GraspActionClientPtr(new GraspActionClient(DEFAULT_GRASP_ACTION,true));
 	vise_action_client_ptr_ = GraspActionClientPtr(new GraspActionClient(DEFAULT_VISE_ACTION,true));
-
+	joint_traj_client_ptr_ = JointTractoryClientPtr(new JointTractoryClient(DEFAULT_JOINT_TRAJ_ACTION,true));
 
 	// initializing publishers
 	robot_states_pub_ = nh.advertise<mtconnect_msgs::RobotStates>(DEFAULT_ROBOT_STATES_TOPIC,1);
@@ -147,10 +159,13 @@ bool StateMachine::setup()
 
 	// initializing clients
 	material_server_state_client_ = nh.serviceClient<mtconnect_msgs::MaterialServerState>(DEFAULT_MATERIAL_HANDLING_STATE_SERVICE);
-
+	trajectory_filter_client_ =
+	    nh.serviceClient<arm_navigation_msgs::FilterJointTrajectoryWithConstraints>(
+	        DEFAULT_TRAJECTORY_FILTER_SERVICE);
 	// initializing service client req msg
 	material_server_state_.request.state_flag = mtconnect_msgs::MaterialServerState::Request::READY;
 	material_server_state_.response.accepted = false;
+
 
 	// initializing mtconnect robot messages
 	robot_state_msg_.avail.val = TriState::ENABLED;
@@ -173,7 +188,9 @@ bool StateMachine::setup()
 
 	// initializing material load/unload tasks lists
 	material_load_task_sequence_.clear();
+	jm_material_load_task_sequence_.clear();
 	material_unload_task_sequence_.clear();
+	jm_material_unload_task_sequence_.clear();
 
 	using namespace state_machine::tasks;
 	using namespace boost::assign;
@@ -194,6 +211,27 @@ bool StateMachine::setup()
 			((int)CNC_CLOSE_DOOR)
 			((int)MATERIAL_LOAD_END);
 
+
+
+	jm_material_load_task_sequence_ = list_of((int)MATERIAL_LOAD_START)
+	                        ((int)JM_HOME_TO_READY)
+	                        ((int)JM_READY_TO_APPROACH)
+	                        ((int)GRIPPER_OPEN)
+	                        ((int)JM_APPROACH_TO_PICK)
+	                        ((int)GRIPPER_CLOSE)
+	                        ((int)JM_PICK_TO_DOOR)
+	                        ((int)CNC_OPEN_DOOR)
+	                        ((int)VISE_OPEN)
+	                        ((int)CNC_OPEN_CHUCK)
+	                        ((int)JM_DOOR_TO_CHUCK)
+	                        ((int)CNC_CLOSE_CHUCK)
+	                        ((int)VISE_CLOSE)
+                                ((int)GRIPPER_OPEN)
+                                ((int)JM_CHUCK_TO_READY)
+                                ((int)CNC_CLOSE_DOOR)
+	                        ((int)MATERIAL_LOAD_END);
+
+
 	material_unload_task_sequence_ = list_of((int)MATERIAL_UNLOAD_START)
 			((int)ROBOT_APPROACH_CNC)
 			((int)GRIPPER_OPEN)
@@ -211,6 +249,21 @@ bool StateMachine::setup()
 			((int)CNC_CLOSE_DOOR)
 			((int)MATERIAL_UNLOAD_END);
 
+	jm_material_unload_task_sequence_ = list_of((int)MATERIAL_UNLOAD_START)
+                            ((int)JM_READY_TO_DOOR)
+                            ((int)GRIPPER_OPEN)
+                            ((int)CNC_OPEN_DOOR)
+                            ((int)JM_DOOR_TO_CHUCK)
+                            ((int)GRIPPER_CLOSE)
+                            ((int)VISE_OPEN)
+                            ((int)CNC_OPEN_CHUCK)
+                            ((int)JM_CHUCK_TO_READY)
+                            ((int)JM_READY_TO_APPROACH)
+                            ((int)JM_APPROACH_TO_PICK)
+                            ((int)GRIPPER_OPEN)
+                            ((int)JM_PICK_TO_HOME)
+                            ((int)MATERIAL_UNLOAD_END);
+
 	// waiting for robot related service servers
 	while(	ros::ok() && (
 			(!move_arm_client_ptr_->isServerConnected() && !move_arm_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
@@ -221,8 +274,9 @@ bool StateMachine::setup()
 			(!open_door_client_ptr_->isServerConnected() && !open_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
 			(!close_door_client_ptr_->isServerConnected() && !close_door_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
 			(!open_chuck_client_ptr_->isServerConnected() && !open_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
-			(!close_chuck_client_ptr_->isServerConnected() && !close_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
-			))
+			(!close_chuck_client_ptr_->isServerConnected() && !close_chuck_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER))) ||
+			(!joint_traj_client_ptr_->isServerConnected() && !joint_traj_client_ptr_->waitForServer(ros::Duration(DURATION_WAIT_SERVER)))
+	                ))
 	{
 		if(wait_attempts++ > MAX_WAIT_ATTEMPTS)
 		{
@@ -244,7 +298,6 @@ bool StateMachine::setup()
 void StateMachine::run()
 {
 	ros::NodeHandle nh;
-
 	set_active_state(states::STARTUP);
 
 	int last_state = states::EMPTY;
@@ -442,6 +495,22 @@ bool StateMachine::run_task(int task_id)
 		set_active_state(states::GRIPPER_MOVING);
 		break;
 
+
+        case JM_HOME_TO_READY:
+        case JM_READY_TO_APPROACH:
+        case JM_APPROACH_TO_PICK:
+        case JM_PICK_TO_DOOR:
+        case JM_DOOR_TO_CHUCK:
+        case JM_READY_TO_DOOR:
+        case JM_CHUCK_TO_READY:
+        case JM_PICK_TO_HOME:
+	        // The task ID for all JM moves is also the key for
+	        // the task name.  The task name is passed to move
+	        // arm and it executes the path from the task_description
+	        moveArm(TASK_MAP[task_id]);
+                set_active_state(states::ROBOT_MOVING);
+                break;
+
 	default:
 
 		break;
@@ -474,6 +543,7 @@ void StateMachine::cancel_active_action_goals()
 	move_pickup_client_ptr_->cancelAllGoals();
 	move_arm_client_ptr_->cancelAllGoals();
 	move_place_client_ptr_->cancelAllGoals();
+	joint_traj_client_ptr_->cancelAllGoals();
 
 	open_door_client_ptr_->cancelAllGoals();
 	open_chuck_client_ptr_->cancelAllGoals();
@@ -488,7 +558,7 @@ bool StateMachine::all_action_servers_connected()
 {
 	// action clients
 	if(!(move_pickup_client_ptr_->isServerConnected() && move_place_client_ptr_->isServerConnected()&&
-			move_arm_client_ptr_->isServerConnected()))
+			move_arm_client_ptr_->isServerConnected() && joint_traj_client_ptr_->isServerConnected()))
 	{
 		set_active_state(states::ROBOT_FAULT);
 		return false;
@@ -549,7 +619,17 @@ bool StateMachine::on_robot_reset()
 bool StateMachine::on_material_load_started()
 {
 	current_task_index_ = 0;
-	current_task_sequence_.assign(material_load_task_sequence_.begin(),material_load_task_sequence_.end());
+	if( use_task_desc_motion)
+        {
+          ROS_INFO("Executing NEW dumb joint move material load");
+          current_task_sequence_.assign(jm_material_load_task_sequence_.begin(), jm_material_load_task_sequence_.end());
+        }
+
+	else
+	{
+          ROS_INFO("Executing OLD smart path planning material load");
+          current_task_sequence_.assign(material_load_task_sequence_.begin(),material_load_task_sequence_.end());
+        }
 	run_next_task();
 	return true;
 }
@@ -593,7 +673,20 @@ bool StateMachine::on_material_load_completed()
 bool StateMachine::on_material_unload_started()
 {
 	current_task_index_ = 0;
-	current_task_sequence_.assign(material_unload_task_sequence_.begin(),material_unload_task_sequence_.end());
+
+	if( use_task_desc_motion)
+	        {
+	          ROS_INFO("Executing NEW dumb joint move material unload");
+	          current_task_sequence_.assign(jm_material_unload_task_sequence_.begin(), jm_material_unload_task_sequence_.end());
+	        }
+
+	        else
+	        {
+	          ROS_INFO("Executing OLD smart path planning material unload");
+	          current_task_sequence_.assign(material_unload_task_sequence_.begin(),material_unload_task_sequence_.end());
+	        }
+
+
 	run_next_task();
 	return true;
 }
@@ -648,7 +741,14 @@ bool StateMachine::on_robot_moving()
 
 	default: // all arm client tasks
 
-		state = move_arm_client_ptr_->getState().state_;
+	        if( use_task_desc_motion )
+	        {
+	          state = joint_traj_client_ptr_->getState().state_;
+	        }
+	        else
+	        {
+	          state = move_arm_client_ptr_->getState().state_;
+	        }
 		break;
 	}
 
@@ -804,7 +904,6 @@ void StateMachine::get_param_force_fault_flags()
 	ros::NodeHandle nh("~");
 
 	bool force_robot_fault, force_cnc_fault, force_gripper_fault;
-
 	if(nh.getParam(PARAM_FORCE_ROBOT_FAULT,force_robot_fault) && force_robot_fault)
 	{
 		ROS_INFO_STREAM("Forcing 'ROBOT_FAULT'");
@@ -994,5 +1093,44 @@ bool StateMachine::moveArm(move_arm_utils::JointStateInfo &joint_info)
 	// sending goal
 	move_arm_client_ptr_->sendGoal(move_arm_joint_goal_);
 	return true;
+}
+
+// joint trajectory move arm method
+bool StateMachine::moveArm(std::string & move_name)
+{
+  joint_traj_goal_.trajectory = *joint_paths_[move_name];
+  ROS_INFO_STREAM("Sending a joint trajectory with " <<
+                  joint_traj_goal_.trajectory.points.size() << "points");
+  trajectory_filter_.request.trajectory = joint_traj_goal_.trajectory;
+  if(!joint_traj_goal_.trajectory.points.empty())
+    if(trajectory_filter_client_.call(trajectory_filter_))
+    {
+        if (trajectory_filter_.response.error_code.val ==
+            trajectory_filter_.response.error_code.SUCCESS)
+        {
+          ROS_INFO("Trajectory successfully filtered...sending goal");
+          joint_traj_goal_.trajectory = trajectory_filter_.response.trajectory;
+          ROS_INFO("Copying trajectory to back to goal");
+          joint_traj_client_ptr_->sendGoal(joint_traj_goal_);
+        }
+        else
+        {
+          ROS_ERROR("Failed to process filter trajectory, entering fault state");
+          set_active_state(states::ROBOT_FAULT);
+        }
+      }
+
+    else
+    {
+      ROS_ERROR("Failed to call filter trajectory, entering fault state");
+      set_active_state(states::ROBOT_FAULT);
+    }
+  else
+  {
+    ROS_ERROR_STREAM(move_name << " trajectory is empty, failing");
+    set_active_state(states::ROBOT_FAULT);
+  }
+
+  return true;
 }
 

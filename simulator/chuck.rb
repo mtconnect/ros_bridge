@@ -15,19 +15,19 @@
 require 'rubygems'
 require 'statemachine'
 require 'mtc_context'
-require 'interface'
+require 'response'
 
 module Cnc
-  class OpenChuck < Interface
+  class OpenChuck < Response
     def initialize(cnc, rel = nil)
-      super(cnc.adapter, cnc.open_chuck, cnc.cnc_chuck_state, 'chuck', 'OPEN', rel)
+      super(cnc.adapter, cnc.open_chuck, cnc.chuck_state, 'OPEN', rel)
       create_statemachine
     end
   end
 
-  class CloseChuck < Interface
+  class CloseChuck < Response
     def initialize(cnc, rel = nil)
-      super(cnc.adapter, cnc.close_chuck, cnc.cnc_chuck_state, 'chuck', 'CLOSED', rel)
+      super(cnc.adapter, cnc.close_chuck, cnc.chuck_state, 'CLOSED', rel)
       create_statemachine
     end
   end

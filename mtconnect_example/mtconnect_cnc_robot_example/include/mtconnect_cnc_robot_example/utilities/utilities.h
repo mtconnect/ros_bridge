@@ -27,6 +27,8 @@
 #include <object_manipulation_msgs/PickupGoal.h>
 #include <boost/tuple/tuple.hpp>
 #include <sensor_msgs/JointState.h>
+#include <trajectory_msgs/JointTrajectory.h>
+#include <mtconnect_task_parser/task.h>
 
 namespace move_arm_utils
 {
@@ -44,6 +46,12 @@ bool parseVect3(XmlRpc::XmlRpcValue &val, geometry_msgs::Vector3 &v);
 bool parsePose(XmlRpc::XmlRpcValue &val, geometry_msgs::Pose &pose);
 
 bool parseTransform(XmlRpc::XmlRpcValue &val, tf::Transform &t);
+
+bool parseTaskXml(const std::string & xml,
+                  std::map<std::string, trajectory_msgs::JointTrajectoryPtr> & paths);
+
+bool toJointTrajectory(boost::shared_ptr<mtconnect::Path> & path,
+                       trajectory_msgs::JointTrajectoryPtr & traj);
 
 struct CartesianTrajectory
 {
