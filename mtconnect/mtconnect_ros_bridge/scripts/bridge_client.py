@@ -23,6 +23,7 @@ import optparse
 import yaml
 import operator
 import thread
+import threading
 import re
 import time
 import socket
@@ -45,6 +46,11 @@ from long_pull import LongPull
 import roslib
 import rospy
 import actionlib
+
+# Import MTConnect Service Server
+roslib.load_manifest('mtconnect_msgs')
+from mtconnect_msgs.srv import *
+
 
 ## @class GenericActionClient
 ## @brief The GenericActionClient
@@ -109,6 +115,15 @@ class GenericActionClient():
         rospy.loginfo('Start the Robot Link adapter')
         self.adapter.start()
         
+        # Create robot Service Server thread for each machine tool action
+        self.ss_thread = []
+        for mt_action in self.action_goals.keys():
+            rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
+            self.ss_thread.append(threading.Thread(target = self.action_service_server, args = (mt_action,)))
+            self.ss_thread[-1].daemon = True
+            self.ss_thread[-1].start()
+        
+        
         # Establish XML connection, read in current XML
         while True:
             try:
@@ -133,13 +148,7 @@ class GenericActionClient():
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
         
-        # Create robot Service Server thread for each machine tool action
-        self.ss_thread = []
-        for mt_action in self.action_goals.keys():
-            self.ss_thread.append(threading.Thread(target = self.action_server_service(mt_action)))
-            self.ss_thread[-1].daemon = True
-            self.ss_thread[-1].start()
-            rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
+        
 
     ## @brief This function captures the topic package, type, action goals, and action
     ## state conversion from ROS to MTConnect as required for the ROS action client.
@@ -163,6 +172,7 @@ class GenericActionClient():
                 # Import module
                 rospy.loginfo('Importing --> ' + package + '.msg')
                 self.type_handle = import_module(package + '.msg')
+                self.action_service = import_module(package + '.srv')
                 
                 # Capture package for action client
                 self.package = package
@@ -300,25 +310,28 @@ class GenericActionClient():
         return
 
     def action_service_server(self, mt_action):
-        rospy.init_node(mt_action)
-        self.as_name = mt_action
-        s = rospy.Service('material_handling_server_state', MaterialServerState, robot_state_callback)
+        #service_type = getattr(self.action_service,  'SetMTConnectState')
+        
+        self.as_name = bridge_library.split_event(mt_action)
+        
+        s = rospy.Service(mt_action + '/' + 'set_mtconnect_state', SetMTConnectState, self.robot_state_callback)
         rospy.spin()
         return
-    
+
     def robot_state_callback(self, request):
-        if request.state_flag == 0: # NOT_READY
+        rospy.loginfo('SERVICE REQUEST --> %s' % request.state_flag)
+        if request.state_flag == -1: # NOT_READY
             try:
                 bridge_library.action_cb((self.adapter, self.di_dict, self.as_name, 'NOT_READY'))
-                return MaterialServerStateResponse(True)
+                return SetMTConnectStateResponse(True)
             except:
-                return MaterialServerStateResponse(False)
-        elif request.state_flag == 1: # READY
+                return SetMTConnectStateResponse(False)
+        elif request.state_flag == 0: # READY
             try:
                 bridge_library.action_cb((self.adapter, self.di_dict, self.as_name, 'READY'))
-                return MaterialServerStateResponse(True)
+                return SetMTConnectStateResponse(True)
             except:
-                return MaterialServerStateResponse(False)
+                return SetMTConnectStateResponse(False)
 
 
 if __name__ == '__main__':
