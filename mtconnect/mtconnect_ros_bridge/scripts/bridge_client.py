@@ -74,7 +74,7 @@ from mtconnect_msgs.srv import *
 ## setup_topic_data -- utilizes introspection to set up class instance variables.
 ## action_client -- function triggered by the xml_callback that executes a ROS action.
 ## xml_callback -- parses xml stream and launches action client.  Completes 'READY' handshake with machine tool.
-class GenericActionClient():
+class GenericActionClient(object):
     ## @brief Constructor for a GenericActionClient
     def __init__(self):
         # Initialize ROS generic client node
@@ -116,13 +116,9 @@ class GenericActionClient():
         self.adapter.start()
         
         # Create robot Service Server thread for each machine tool action
-        self.ss_thread = []
+        self.action_service = []
         for mt_action in self.action_goals.keys():
-            rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
-            self.ss_thread.append(threading.Thread(target = self.action_service_server, args = (mt_action,)))
-            self.ss_thread[-1].daemon = True
-            self.ss_thread[-1].start()
-        
+            self.action_service.append(ActionService(mt_action, self.adapter, self.di_dict))
         
         # Establish XML connection, read in current XML
         while True:
@@ -309,26 +305,36 @@ class GenericActionClient():
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
 
-    def action_service_server(self, mt_action):
-        #service_type = getattr(self.action_service,  'SetMTConnectState')
+
+class ActionService(GenericActionClient):
+    def __init__(self, mt_action, adapt, data_item_dict):
         
-        self.as_name = bridge_library.split_event(mt_action)
+        self.mt_action = mt_action
+        self.adapt = adapt
+        self.data_item_dict = data_item_dict
         
-        s = rospy.Service(mt_action + '/' + 'set_mtconnect_state', SetMTConnectState, self.robot_state_callback)
+        rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
+        self.ss_thread = threading.Thread(target = self.action_service_server)
+        self.ss_thread.daemon = True
+        self.ss_thread.start()
+        
+    def action_service_server(self):
+        self.as_name = bridge_library.split_event(self.mt_action)
+        s = rospy.Service(self.mt_action + '/' + 'set_mtconnect_state', SetMTConnectState, self.robot_state_callback)
         rospy.spin()
         return
-
+    
     def robot_state_callback(self, request):
         rospy.loginfo('SERVICE REQUEST --> %s' % request.state_flag)
         if request.state_flag == -1: # NOT_READY
             try:
-                bridge_library.action_cb((self.adapter, self.di_dict, self.as_name, 'NOT_READY'))
+                bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'NOT_READY'))
                 return SetMTConnectStateResponse(True)
             except:
                 return SetMTConnectStateResponse(False)
         elif request.state_flag == 0: # READY
             try:
-                bridge_library.action_cb((self.adapter, self.di_dict, self.as_name, 'READY'))
+                bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'READY'))
                 return SetMTConnectStateResponse(True)
             except:
                 return SetMTConnectStateResponse(False)
