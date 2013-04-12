@@ -1,75 +1,223 @@
-PROGRAM ros_gripper	   
-	   
-%NOLOCKGROUP	   
-%COMMENT = 'Gripper Interface'	   
-	   
-VAR	   
-    fd       : FILE       
-    s        : INTEGER
-    bytes    : INTEGER 
-    b_flag   : BOOLEAN
-    i_value  : INTEGER
-    r_value  : REAL  
-CONST
-    port='S7:'
-    port_n=11100
-	   
-ROUTINE ConToSocket: BOOLEAN
+--   Copyright 2013 Southwest Research Institute
+--
+--   Licensed under the Apache License, Version 2.0 (the "License");
+--   you may not use this file except in compliance with the License.
+--  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+--   Unless required by applicable law or agreed to in writing, software
+--   distributed under the License is distributed on an "AS IS" BASIS,
+--   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--   See the License for the specific language governing permissions and
+--   limitations under the License.
+PROGRAM ros_gripper
+
+
+%NOLOCKGROUP
+%COMMENT = 'ROS Ind Gripper'
+
+
+--------------------------------------------------------------------------------
+-- 
+-- remote types & constants
+-- 
+--------------------------------------------------------------------------------
+%INCLUDE libssock_t
+%INCLUDE libind_pkt_t
+%INCLUDE libmt_grp_t
+
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- local types & constants
+-- 
+--------------------------------------------------------------------------------
 VAR
-  s,entry: INTEGER
+	sock_        : ssock_t
+	sock_fd_     : FILE       -- file descriptor has to be declared here
+	pkt_in       : mt_grp_t   -- incoming joint commands
+	pkt_out      : mt_grp_t   -- outgoing reply msgs
+	stat_        : INTEGER
+	sleep_time   : INTEGER
+	do_it        : BOOLEAN
+	   reply_code   : INTEGER    -- Reply code (see REPLY_TYPES)
+	   b_flag       : BOOLEAN    -- temp var for register read
+	   r_value      : REAL      -- float var for register read  
+	   s        : INTEGER
+
+
+
+CONST
+	LOG_PFIX     = 'GRP '  -- 
+
+	SCKT_TAG     =  7       -- which server tag to use
+   	SCKT_PORT    =  11010   -- which server port
+
+	LOOP_HZ      = 40       -- Hz
+
+
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- remote routine prototypes
+-- 
+--------------------------------------------------------------------------------
+%INCLUDE libssock_h
+%INCLUDE libind_log_h
+%INCLUDE libind_mth_h
+%INCLUDE libind_hdr_h
+%INCLUDE libmt_grp_h
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- Main program
+-- 
+--------------------------------------------------------------------------------
 BEGIN
-   	   
-  SET_VAR(entry,'*SYSTEM*','$HOSTS_CFG['+CHR(ORD(port,2))+'].$SERVER_PORT',port_n,s)
-  REPEAT 
-    MSG_CONNECT(port,s); 
-    WRITE('Gripper Connection Status: ',s,CR); 
-    IF s=67215 THEN ; MSG_DISCO(port,s); ENDIF
-  UNTIL s=0 
-  SET_FILE_ATR(fd, ATR_UF)	   
-  OPEN FILE fd('RW',port)   
-  s = IO_STATUS(fd); 
-  RETURN(s=0)  
-END ConToSocket
-	   
-	   
-BEGIN	   
-  
-  FORCE_SPMENU(TP_PANEL,SPI_TPUSER,1)
-  WRITE ('ROS Gripper',CHR(129),CR);  -- clear display
-  WHILE TRUE DO	   
-	  WRITE('Wait for ROS gripper connect',CR)	   
-    IF ConToSocket THEN
-      WRITE('Gripper Connected',CR)	 
-      WRITE fd(1000)     -- Message Type
-      WRITE fd(3)        -- Comm Type
-      WRITE fd(0)  -- Reply  1=SUCCESS, 2-FAILURE  
-      WHILE TRUE DO	   
-  	    DELAY 100
-        -- get new packet from the socket		   
-        bytes = 0
-        BYTES_AHEAD(fd,bytes,s)
-        IF s<>0 THEN GOTO Exit; ENDIF -- if read failure, break and try again
-        IF bytes>=16 THEN
-          READ fd(s); IF s <> 1000 THEN GOTO SkipRead; ENDIF -- Message Type
-          READ fd(s); IF s <> 2    THEN GOTO SkipRead; ENDIF -- Communications Type
-          READ fd(s); IF s <> 0    THEN GOTO SkipRead; ENDIF -- Reply Type
-          READ fd(s);
-        
-          IF s=2 THEN
-	          RDO[4]=FALSE; RDO[3]=TRUE; i_value=1; WRITE('OPEN GRIP  ',CR);
-          ENDIF
-          IF s=3 THEN
-	          GET_REG(9,b_flag,i_value,r_value,s)
-	          RDO[3]=FALSE; RDO[4]=TRUE; WRITE('CLOSE GRIP ',CR); 
-          ENDIF
-          WRITE fd(1000,3,i_value,CR) -- Message Type,Comm Type,Reply,CR to clear buffer
-          s=IO_STATUS(fd)
-SkipRead:: -- jumped here if message was corrupted
-        ENDIF
-      ENDWHILE
-Exit::
-      WRITE('Dropped Gripper Socket ')
-    ENDIF
-    CLOSE FILE fd
-  ENDWHILE
+	-- init
+	stat_      = 0
+	sleep_time = ROUND(1000.0 / LOOP_HZ)
+	do_it = TRUE
+
+
+	-- enable log output
+	log_clear
+
+
+	-- init server socket
+	stat_ = ssock_ctor(sock_, SCKT_PORT, SCKT_TAG)
+	IF stat_ <> 0 THEN
+		IF stat_ = TAG_CONF_ERR THEN
+			log_error_a(LOG_PFIX + 'TAG config error. TAG nr:', SCKT_TAG)
+		ELSE
+			log_error_a(LOG_PFIX + 'ssock_ctor err:', stat_)
+		ENDIF
+		-- nothing we can do, abort
+		GOTO exit_on_err
+	ENDIF
+
+
+	-- init incoming packet
+	mtgrp_ctor(pkt_in)
+
+	-- init reply packet
+	mtgrp_ctor(pkt_out)
+   
+	-- make sure socket is closed
+	-- don t care about result
+	stat_ = ssock_dconnf(sock_)
+
+
+	-- 
+	WHILE do_it DO
+
+		-- inform user
+		log_info(LOG_PFIX + 'Waiting for ROS gripper')
+		SET_FILE_ATR(sock_fd_, ATR_UF)
+
+		-- wait for connection
+		stat_ = ssock_accpt2(sock_, sock_fd_)
+		IF stat_ <> 0 THEN
+			log_error_a(LOG_PFIX + 'sock_accept err:', stat_)
+			-- can't continue
+			GOTO exit_discon
+		ENDIF
+
+		-- inform user
+		log_info(LOG_PFIX + 'Connected')
+
+		-- got client, start relay loop
+		WHILE do_it DO
+
+			-- get new packet from the socket
+			stat_ = mtgrp_rqdsrl(pkt_in, sock_fd_)
+			IF stat_ < 0 THEN
+				log_error_a(LOG_PFIX + 'socket err:', stat_)
+
+				-- can't continue
+				GOTO exit_discon
+			ENDIF
+
+         -- Some debugging
+         log_info(ihdr_tostr(pkt_in.header_))
+         log_info(mtgrp_tostr(pkt_in))
+
+         -- check sequence number for special values
+         IF (pkt_in.header_.comm_type_ = RI_CT_SVCREQ) THEN
+            -- 
+            SELECT pkt_in.cmd_ OF
+               -- 
+               CASE (GRP_OPEN):
+                  log_info(LOG_PFIX + 'Gripper open')
+                  --RDO[4]=FALSE; RDO[3]=TRUE;
+                  reply_code = RI_RT_FAIL
+
+               -- 
+               CASE (GRP_CLOSE):
+                  log_info(LOG_PFIX + 'Gripper close')              
+                  -- RDO[3]=FALSE; RDO[4]=TRUE; WRITE('CLOSE GRIP ',CR);   
+                  -- GET_REG(9,b_flag,reply_code,r_value,s)
+
+               -- unknown special sequence nr
+               ELSE:
+                  log_warn_a(LOG_PFIX + 'unknown cmd:', pkt_in.cmd_)
+                  log_warn(LOG_PFIX + 'please report')
+                  reply_code = RI_RT_FAIL
+
+            ENDSELECT
+            
+            log_info_a(LOG_PFIX + 'Sending reply: ', reply_code)
+            stat_ = mtgrp_rpsrl( pkt_out, sock_fd_, reply_code)
+            
+            IF stat_ < 0 THEN
+               log_error_a(LOG_PFIX + 'socket err:', stat_)
+
+               -- can't continue
+               GOTO exit_discon
+            ENDIF
+            
+            -- Some more debugging
+            log_info(ihdr_tostr(pkt_in.header_))
+            log_info(mtgrp_tostr(pkt_in))
+
+
+         ELSE
+         
+         log_warn('Unexpected comm type')
+         log_warn(ihdr_tostr(pkt_in.header_))
+
+            
+
+         ENDIF
+
+         -- no packets waiting; and no motion in progress,
+         -- sleep a little (1/T)
+         DELAY sleep_time
+
+
+		-- inner WHILE TRUE DO
+		ENDWHILE
+
+		-- exit with forced disconnect
+exit_discon::
+		stat_ = ssock_dconn2(sock_, sock_fd_)
+
+	-- outer WHILE TRUE DO
+	ENDWHILE
+
+
+exit_on_err::
+	-- nothing
+
 END ros_gripper
+
+
+
+
