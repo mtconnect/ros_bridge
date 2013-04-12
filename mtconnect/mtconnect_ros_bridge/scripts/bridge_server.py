@@ -259,7 +259,7 @@ class GenericActionServer():
                                 # Set the attribute per the ROS to MTConnect conversion
                                 setattr(self._resultDict[self.server_name[action]], result_attribute, 'FAIL')
                                 
-                                # Indicate a successful action
+                                # Indicate an aborted action
                                 self._as[self.server_name[action]].set_aborted(self._resultDict[self.server_name[action]])
                                 rospy.loginfo('In %s Callback -- action aborted by CNC.' % self.server_name[action])
                     

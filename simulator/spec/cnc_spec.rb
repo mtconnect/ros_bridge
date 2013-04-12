@@ -307,6 +307,18 @@ describe "Cnc" do
         @cnc.material_unload.value.should == 'FAIL'
       end
 
+      it "should fault if the load fail is not resolved in a certain amount of time" do
+        @cnc.load_time_limit = 1
+        @cnc.load_failed_time_limit = 1
+        @cnc.event('MaterialLoad', 'ACTIVE')
+        sleep 1.2
+
+        @cnc.statemachine.state.should == :material_load_failed
+        @cnc.material_load.value.should == 'FAIL'
+
+        sleep 1.2
+        @cnc.statemachine.state.should == :not_ready
+      end
     end
   end
 end

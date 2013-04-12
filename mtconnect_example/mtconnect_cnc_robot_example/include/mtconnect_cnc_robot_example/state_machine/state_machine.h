@@ -20,6 +20,7 @@
 #include <actionlib/client/simple_action_client.h>
 #include <arm_navigation_msgs/MoveArmAction.h>
 #include <arm_navigation_msgs/SimplePoseConstraint.h>
+#include <arm_navigation_msgs/FilterJointTrajectoryWithConstraints.h>
 #include <nav_msgs/Path.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
@@ -45,6 +46,8 @@
 #include <actionlib/server/simple_action_server.h>
 #include <mtconnect_msgs/RobotSpindle.h>
 #include <mtconnect_msgs/RobotStates.h>
+#include <mtconnect_msgs/SetMTConnectState.h>
+#include <control_msgs/FollowJointTrajectoryAction.h>
 
 // aliases
 typedef actionlib::SimpleActionClient<arm_navigation_msgs::MoveArmAction> MoveArmClient;
@@ -57,6 +60,7 @@ typedef actionlib::SimpleActionClient<mtconnect_msgs::CloseChuckAction> CncClose
 typedef actionlib::SimpleActionServer<mtconnect_msgs::MaterialLoadAction> MaterialLoadServer;
 typedef actionlib::SimpleActionServer<mtconnect_msgs::MaterialUnloadAction> MaterialUnloadServer;
 typedef actionlib::SimpleActionClient<object_manipulation_msgs::GraspHandPostureExecutionAction> GraspActionClient;
+typedef actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> JointTractoryClient;
 typedef boost::shared_ptr<MoveArmClient> MoveArmClientPtr;
 typedef boost::shared_ptr<MovePickupClient> MovePickupClientPtr;
 typedef boost::shared_ptr<MovePlaceClient> MovePlaceClientPtr;
@@ -67,6 +71,7 @@ typedef boost::shared_ptr<CncCloseChuckClient> CncCloseChuckClientPtr;
 typedef boost::shared_ptr<MaterialLoadServer> MaterialLoadServerPtr;
 typedef boost::shared_ptr<MaterialUnloadServer> MaterialUnloadServerPtr;
 typedef boost::shared_ptr<GraspActionClient> GraspActionClientPtr;
+typedef boost::shared_ptr<JointTractoryClient> JointTractoryClientPtr;
 typedef std::vector<int> MaterialHandlingSequence;
 
 namespace mtconnect_cnc_robot_example {	namespace state_machine	{
@@ -97,7 +102,18 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			MATERIAL_LOAD_START,
 			MATERIAL_LOAD_END,
 			MATERIAL_UNLOAD_START,
-			MATERIAL_UNLOAD_END
+			MATERIAL_UNLOAD_END,
+			TEST_TASK_START,
+			TEST_TASK_END,
+
+			JM_HOME_TO_READY,
+			JM_READY_TO_APPROACH,
+			JM_APPROACH_TO_PICK,
+			JM_PICK_TO_DOOR,
+			JM_DOOR_TO_CHUCK,
+                        JM_CHUCK_TO_READY,
+			JM_READY_TO_DOOR,
+			JM_PICK_TO_HOME
 		};
 
 		static std::map<int,std::string> TASK_MAP =
@@ -118,7 +134,17 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		(VISE_OPEN,"VISE_OPEN")
 		(VISE_CLOSE,"VISE_CLOSE")
 		(GRIPPER_OPEN,"GRIPPER_OPEN")
-		(GRIPPER_CLOSE,"GRIPPER_CLOSE");
+		(GRIPPER_CLOSE,"GRIPPER_CLOSE")
+		(MATERIAL_LOAD_END,"MATERIAL_LOAD_END")
+		(MATERIAL_UNLOAD_END,"MATERIAL_UNLOAD_END")
+		(JM_HOME_TO_READY, "JM_HOME_TO_READY")
+		(JM_READY_TO_APPROACH, "JM_READY_TO_APPROACH")
+		(JM_APPROACH_TO_PICK, "JM_APPROACH_TO_PICK")
+		(JM_PICK_TO_DOOR, "JM_PICK_TO_DOOR")
+		(JM_DOOR_TO_CHUCK, "JM_DOOR_TO_CHUCK")
+                (JM_CHUCK_TO_READY, "JM_CHUCK_TO_READY")
+		(JM_READY_TO_DOOR, "JM_READY_TO_DOOR")
+		(JM_PICK_TO_HOME, "JM_PICK_TO_HOME");
 	}
 
 	class StateMachine : public StateMachineInterface , public MoveArmActionClient
@@ -162,16 +188,31 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		}
 
 		bool moveArm(move_arm_utils::JointStateInfo &joint_info);
+		bool moveArm(std::string & move_name);
 
 		// material load/unload specific
 		bool run_task(int task_id);
 		bool run_next_task();
 
+		// task test
+		void print_task_list()
+		{
+			using namespace mtconnect_cnc_robot_example::state_machine::tasks;
+			std::map<int,std::string>::iterator i;
+			std::cout<<"\tTasks List\n";
+			for(i = TASK_MAP.begin(); i != TASK_MAP.end(); i++)
+			{
+				std::cout<<"\t- ("<<i->first<<") \t"<< i->second<<"\n";
+			}
+		}
+
 		// fault related methods
 		void cancel_active_material_requests();
 		void cancel_active_action_goals();
 		void get_param_force_fault_flags();
+		bool get_param_fault_on_task_check(int task_id);
 		bool all_action_servers_connected();
+		bool check_arm_at_position(sensor_msgs::JointState &joints, double tolerance);
 
 		// subscriber callback
 		void ros_status_subs_cb(const industrial_msgs::RobotStatusConstPtr &msg);
@@ -196,13 +237,30 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		virtual bool on_robot_moving();
 		virtual bool on_cnc_moving();
 		virtual bool on_gripper_moving();
+		virtual bool on_test_task_started();
+		virtual bool on_test_task_completed();
+		virtual bool on_display_tasks()
+		{
+			print_task_list();
+			return true;
+		}
 
 	protected:
 		// material load/unload task sequence
 		std::vector<int> material_load_task_sequence_;
+                std::vector<int> jm_material_load_task_sequence_;
 		std::vector<int> material_unload_task_sequence_;
+		std::vector<int> jm_material_unload_task_sequence_;
 		std::vector<int> current_task_sequence_; // will take the value of the load or unload task sequence
 		int current_task_index_;
+
+		// test tasks
+		int test_task_id_;
+
+		// task definitions
+		std::string task_desc_;
+		std::map<std::string, trajectory_msgs::JointTrajectoryPtr> joint_paths_;
+		bool use_task_desc_motion;  //if true, will use task defined motion (instead of planners)
 
 		// action servers
 		MaterialLoadServerPtr material_load_server_ptr_;
@@ -217,6 +275,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		CncCloseChuckClientPtr close_chuck_client_ptr_;
 		GraspActionClientPtr grasp_action_client_ptr_;
 		GraspActionClientPtr vise_action_client_ptr_;
+		JointTractoryClientPtr joint_traj_client_ptr_;
 
 		// topic publishers (ros bridge components wait for these topics)
 		ros::Publisher robot_states_pub_;
@@ -228,9 +287,21 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		// service servers
 		ros::ServiceServer external_command_srv_;
 
+		// server clients
+		ros::ServiceClient material_load_set_state_client_;
+		ros::ServiceClient material_unload_set_state_client_;
+		ros::ServiceClient trajectory_filter_client_;
+
+
+
 		// robot state messages
 		mtconnect_msgs::RobotStates robot_state_msg_;
 		mtconnect_msgs::RobotSpindle robot_spindle_msg_;
+
+		// service req/res
+		mtconnect_msgs::SetMTConnectState mat_load_set_state_;
+		mtconnect_msgs::SetMTConnectState mat_unload_set_state_;
+		arm_navigation_msgs::FilterJointTrajectoryWithConstraints trajectory_filter_;
 
 		// timers
 		ros::Timer robot_topics_timer_;
@@ -263,6 +334,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		// move arm members
 		geometry_msgs::PoseArray cartesian_poses_;
 		arm_navigation_msgs::MoveArmGoal move_arm_joint_goal_;
+
+		// joint trajectory members
+		control_msgs::FollowJointTrajectoryGoal joint_traj_goal_;
 
 	};
 

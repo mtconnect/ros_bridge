@@ -40,8 +40,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 			MATERIAL_LOAD_COMPLETED,
 			MATERIAL_UNLOAD_STARTED,
 			MATERIAL_UNLOAD_COMPLETED,
-			ROBOT_MOVE_STARTED,
-			ROBOT_MOVE_COMPLETED,
+			TEST_TASK_STARTED,
+			TEST_TASK_COMPLETED,
+			DISPLAY_TASKS
 		};
 
 		static std::map<int,std::string> STATE_MAP =
@@ -62,8 +63,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 				(MATERIAL_LOAD_COMPLETED,"MATERIAL_LOAD_COMPLETED")
 				(MATERIAL_UNLOAD_STARTED,"MATERIAL_UNLOAD_STARTED")
 				(MATERIAL_UNLOAD_COMPLETED,"MATERIAL_UNLOAD_COMPLETED")
-				(ROBOT_MOVE_STARTED,"ROBOT_MOVE_STARTED")
-				(ROBOT_MOVE_COMPLETED,"ROBOT_MOVE_COMPLETED")
+				(TEST_TASK_STARTED,"TEST_TASK_STARTED")
+				(TEST_TASK_COMPLETED,"TEST_TASK_COMPLETED")
+				(DISPLAY_TASKS,"DISPLAY_TASKS")
 				(EXIT,"EXIT");
 
 	}
@@ -119,22 +121,6 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		{
 			boost::mutex::scoped_lock lock(active_state_mutex_);
 			return active_state_;
-		}
-
-		/*
-		 * Thread safe method that checks if 'check_state' meets the 'is_active' condition before setting 'state'
-		 * as the active state.  Returns true if 'state' is the new active state, false otherwise.
-		 */
-		bool check_state_and_set_active(int state,int check_state = states::EMPTY,bool is_active = false)
-		{
-			boost::mutex::scoped_lock lock(active_state_mutex_);
-			if((check_state == active_state_) == is_active)
-			{
-				previous_state_ = active_state_;
-				active_state_ = state;
-				return true;
-			}
-			return false;
 		}
 
 		int get_previous_state()
@@ -193,6 +179,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		virtual bool on_cnc_moving(){return true;}
 		virtual bool on_gripper_moving(){return true;}
 		virtual bool on_display_states(){print_state_list(); return true;}
+		virtual bool on_test_task_started(){return true;}
+		virtual bool on_test_task_completed(){return true;}
+		virtual bool on_display_tasks(){ return true;}
 
 		// process state machine transition
 		virtual bool process_transition()
@@ -203,7 +192,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 				if(on_startup())
 				{
-					set_active_state(states::READY);
+					set_active_state(states::ROBOT_RESET);
 				}
 
 				break;
@@ -290,7 +279,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 				if(on_material_load_completed())
 				{
-					set_active_state(states::READY);
+					set_active_state(states::ROBOT_RESET);
 				}
 
 				break;
@@ -304,7 +293,7 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 
 				if(on_material_unload_completed())
 				{
-					set_active_state(states::READY);
+					set_active_state(states::ROBOT_RESET);
 				}
 
 				break;
@@ -316,6 +305,27 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 					set_active_state(get_previous_state());
 				}
 
+				break;
+
+			case states::TEST_TASK_STARTED:
+
+				on_test_task_started();
+
+				break;
+
+			case states::TEST_TASK_COMPLETED:
+
+				if(on_test_task_completed())
+				{
+					set_active_state(states::ROBOT_FAULT);
+				}
+
+				break;
+
+			case states::DISPLAY_TASKS:
+
+				on_display_tasks();
+				set_active_state(get_previous_state());
 				break;
 
 			case states::EXIT:

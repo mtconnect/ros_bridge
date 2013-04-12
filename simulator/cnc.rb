@@ -27,7 +27,8 @@ module Cnc
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door, :cycle_time,
-                  :robot_execution, :robot_availability, :load_time_limit, :unload_time_limit
+                  :robot_execution, :robot_availability, :load_time_limit, :unload_time_limit, :load_failed_time_limit,
+                  :unload_failed_time_limit
     attr_reader :adapter, :chuck_state, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
                 :material_load, :material_unload, :link, :exec, :material, :system
   
@@ -78,12 +79,13 @@ module Cnc
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
 
-      @cycle_time = 5
-      @load_timer, @unload_timer = nil
-      @load_time_limit = 5 * 60
-      @unload_time_limit = 5 * 60
+      @cycle_time = 1
 
+      @load_timer = @unload_timer = nil
+      @load_time_limit = @unload_time_limit = 5 * 60
 
+      @load_failed_timer = @unload_failed_timer = nil
+      @load_failed_time_limit = @unload_failed_time_limit = 30
 
       create_statemachine
     end
@@ -141,7 +143,6 @@ module Cnc
       @close_chuck_interface.activate
       @open_door_interface.activate
       @close_door_interface.activate
-      @statemachine.handling
     end
 
     def activate
@@ -266,6 +267,15 @@ module Cnc
       @adapter.gather do
         @material_load.value = 'FAIL'
       end
+      @load_failed_timer = Thread.new do
+        sleep @load_failed_time_limit
+        @statemachine.material_load_failed_timeout
+      end
+    end
+
+    def stop_load_failed_timer
+      @load_failed_timer.kill if @load_failed_timer
+      @load_failed_timer = nil
     end
 
     def material_unload_active
@@ -284,8 +294,17 @@ module Cnc
       @adapter.gather do
         @material_unload.value = 'FAIL'
       end
+      @unload_failed_timer = Thread.new do
+        sleep @unload_failed_time_limit
+        @statemachine.material_unload_failed_timeout
+      end
     end
     
+    def stop_unload_failed_timer
+      @unload_failed_timer.kill if @unload_failed_timer
+      @unload_failed_timer = nil
+    end
+
     def reset_history
       @statemachine.get_state(:operational).reset
     end
@@ -344,18 +363,12 @@ module Cnc
           end
 
           superstate :operational do
-            startstate :ready
-            default_history :ready
+            startstate :handling
+            default_history :handling
             event :robot_controller_mode_manual, :activated, :reset_history
             event :robot_controller_mode_manual_data_input, :activated, :reset_history
             event :robot_execution_ready, :activated, :reset_history
             event :robot_execution_stopped, :activated, :reset_history
-
-            state :ready do
-              default :ready
-              on_entry :cnc_ready
-              event :handling, :handling
-            end
 
             state :cycle_start do
               on_entry :cycling
@@ -364,11 +377,13 @@ module Cnc
             end
 
             superstate :handling do
+              on_entry :cnc_ready
               default_history :material_load
               event :robot_material_load_ready, :activated
 
               state :material_load do
                 on_entry :material_load_active
+                default :material_load
 
                 event :robot_material_load_active, :material_load, :start_load_active_timer
                 event :robot_material_load_complete, :cycle_start, :stop_load_active_timer
@@ -376,33 +391,36 @@ module Cnc
                 event :robot_material_load_not_ready, :activated, :reset_history
                 event :robot_material_unload_ready, :material_load
                 event :material_load_timeout, :material_load_failed
-                default :material_load
               end
 
               state :material_load_failed do
                 on_entry :load_failed
                 default :material_load_failed
+
                 event :robot_material_load_fail, :material_load_failed
-                event :robot_material_load_ready, :material_load
+                event :robot_material_load_ready, :material_load, :stop_load_failed_timer
+                event :material_load_failed_timeout, :disabled
               end
 
               state :material_unload do
                 on_entry :material_unload_active
+                default :material_unload
 
                 event :robot_material_unload_active, :material_unload, :start_unload_active_timer
-                event :robot_material_unload_complete, :ready, :stop_unload_active_timer
+                event :robot_material_unload_complete, :handling, :stop_unload_active_timer
                 event :robot_material_unload_not_ready, :activated, :reset_history
                 event :robot_material_unload_fail, :material_unload_failed
                 event :robot_material_unload_ready, :material_unload
                 event :material_unload_timeout, :material_unload_failed
-                default :material_unload
               end
 
               state :material_unload_failed do
                 on_entry :unload_failed
                 default :material_unload_failed
+
                 event :robot_material_unload_fail, :material_unload_failed
-                event :robot_material_unload_ready, :material_unload
+                event :robot_material_unload_ready, :material_unload, :stop_unload_failed_timer
+                event :material_unload_failed_timeout, :disabled
               end
             end
           end
@@ -417,35 +435,5 @@ module Cnc
 end
 
 if $0 == __FILE__
-  module Statemachine
-    module Generate
-      module DotGraph
-        class DotGraphStatemachine
-          def explore_sm
-            @nodes = []
-            @transitions = []
-            @sm.states.values.each { |state|
-              state.transitions.values.each { |transition|
-                @nodes << transition.origin_id
-                @nodes << transition.destination_id
-                @transitions << transition
-              }
-            }
-            @transitions = @transitions.uniq
-            @nodes = @nodes.uniq
-          end
-        end
-      end
-    end
-  end
-  dir = File.dirname(__FILE__) + '/graph'
-  Dir.mkdir dir unless File.exist?(dir)
-  context = Cnc::CncContext.new
-  context.statemachine.to_dot(:output => 'graph')
-  Dir.chdir('graph') do
-    system('dot -Tpng -o main.png main.dot')
-    Dir['*.dot'].each do |f|
-      system("dot -Tsvg -o #{File.basename(f, '.dot')}.svg #{f}")
-    end
-  end
+  load "graph_generator.rb"
 end

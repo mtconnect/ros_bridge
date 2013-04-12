@@ -1,0 +1,8 @@
+#request
+int8 NOT_READY=-1
+int8 READY=0
+int8 state_flag
+---
+#response
+bool accepted
+

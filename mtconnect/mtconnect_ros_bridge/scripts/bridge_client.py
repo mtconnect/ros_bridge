@@ -23,6 +23,7 @@ import optparse
 import yaml
 import operator
 import thread
+import threading
 import re
 import time
 import socket
@@ -46,6 +47,11 @@ import roslib
 import rospy
 import actionlib
 
+# Import MTConnect Service Server
+roslib.load_manifest('mtconnect_msgs')
+from mtconnect_msgs.srv import *
+
+
 ## @class GenericActionClient
 ## @brief The GenericActionClient
 ## launches a ROS node that will stream XML data from the machine tool and will launch a ROS
@@ -68,7 +74,7 @@ import actionlib
 ## setup_topic_data -- utilizes introspection to set up class instance variables.
 ## action_client -- function triggered by the xml_callback that executes a ROS action.
 ## xml_callback -- parses xml stream and launches action client.  Completes 'READY' handshake with machine tool.
-class GenericActionClient():
+class GenericActionClient(object):
     ## @brief Constructor for a GenericActionClient
     def __init__(self):
         # Initialize ROS generic client node
@@ -109,6 +115,11 @@ class GenericActionClient():
         rospy.loginfo('Start the Robot Link adapter')
         self.adapter.start()
         
+        # Create robot Service Server thread for each machine tool action
+        self.action_service = []
+        for mt_action in self.action_goals.keys():
+            self.action_service.append(ActionService(mt_action, self.adapter, self.di_dict))
+        
         # Establish XML connection, read in current XML
         while True:
             try:
@@ -132,6 +143,8 @@ class GenericActionClient():
         # Create XML polling thread
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
+        
+        
 
     ## @brief This function captures the topic package, type, action goals, and action
     ## state conversion from ROS to MTConnect as required for the ROS action client.
@@ -155,6 +168,7 @@ class GenericActionClient():
                 # Import module
                 rospy.loginfo('Importing --> ' + package + '.msg')
                 self.type_handle = import_module(package + '.msg')
+                self.action_service = import_module(package + '.srv')
                 
                 # Capture package for action client
                 self.package = package
@@ -290,6 +304,41 @@ class GenericActionClient():
             self.lock.release()
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
+
+
+class ActionService(GenericActionClient):
+    def __init__(self, mt_action, adapt, data_item_dict):
+        
+        self.mt_action = mt_action
+        self.adapt = adapt
+        self.data_item_dict = data_item_dict
+        
+        rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
+        self.ss_thread = threading.Thread(target = self.action_service_server)
+        self.ss_thread.daemon = True
+        self.ss_thread.start()
+        
+    def action_service_server(self):
+        self.as_name = bridge_library.split_event(self.mt_action)
+        s = rospy.Service(self.mt_action + '/' + 'set_mtconnect_state', SetMTConnectState, self.robot_state_callback)
+        rospy.spin()
+        return
+    
+    def robot_state_callback(self, request):
+        rospy.loginfo('SERVICE REQUEST --> %s' % request.state_flag)
+        if request.state_flag == -1: # NOT_READY
+            try:
+                bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'NOT_READY'))
+                return SetMTConnectStateResponse(True)
+            except:
+                return SetMTConnectStateResponse(False)
+        elif request.state_flag == 0: # READY
+            try:
+                bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'READY'))
+                return SetMTConnectStateResponse(True)
+            except:
+                return SetMTConnectStateResponse(False)
+
 
 if __name__ == '__main__':
     try:
