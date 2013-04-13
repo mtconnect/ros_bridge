@@ -74,11 +74,12 @@ ROUTINE mtgrp_rqdsrl(this : mt_grp_t; fd : FILE) : INTEGER FROM libmt_grp
 -- [in    ]  this    : the packet to serialise
 -- [in    ]  fd      : file desc to write to
 -- [in    ]  reply   : reply code (see libind_hdr_t)
+--[in    ]  echo   : cmd echo
 -- [return]          :    0 IF no error
 --                     <  0 on any error
 -- 
 --------------------------------------------------------------------------------
-ROUTINE mtgrp_rpsrl(this : mt_grp_t; fd : FILE; reply_code : INTEGER) : INTEGER FROM libmt_grp
+ROUTINE mtgrp_rpsrl(this : mt_grp_t; fd : FILE; reply_code : INTEGER; cmd_echo : INTEGER) : INTEGER FROM libmt_grp
 
 
 

@@ -37,7 +37,8 @@ PROGRAM libmt_grp
 %INCLUDE libmt_grp_t
 %INCLUDE libind_pkt_t
 
-
+CONST
+	LOG_PFIX     = 'MT_GRP '  -- 
 
 --------------------------------------------------------------------------------
 -- 
@@ -55,6 +56,7 @@ PROGRAM libmt_grp
 --------------------------------------------------------------------------------
 %INCLUDE libmt_grp_h
 %INCLUDE libind_hdr_h
+%INCLUDE libind_log_h
 
 
 
@@ -109,12 +111,14 @@ BEGIN
    
    IF stat__ <> 0 THEN RETURN (-stat__); ENDIF
    
-   IF(( this.header_.length_ = GRP_SZ_REQ) AND( this.header_.msg_type_ = GRP_MSG_TYP) AND( this.header_.reply_type_ = RI_CT_SVCREQ)) THEN
+   IF(( this.header_.length_ = GRP_SZ_REQ) AND( this.header_.msg_type_ = GRP_MSG_TYP) AND( this.header_.comm_type_ = RI_CT_SVCREQ)) THEN
       READ fd(this.cmd_)
       stat__ = IO_STATUS(fd)
    ELSE
       -- should probably flush the buffer (length - header size)
       -- should probably return an error
+      log_error(LOG_PFIX + 'Invalid request header')
+       log_error(ihdr_tostr( this.header_))
       mtgrp_reset(this)
    ENDIF
    
@@ -137,6 +141,7 @@ BEGIN
    this.header_.length_     = GRP_SZ_RPLY
    this.header_.comm_type_ = RI_CT_SVCRPL
    this.header_.reply_type_= reply_code 
+   this.cmd_ = cmd_echo
    stat__ = ihdr_srlise(this.header_, fd)
 
    IF stat__ <> 0 THEN RETURN (-stat__); ENDIF

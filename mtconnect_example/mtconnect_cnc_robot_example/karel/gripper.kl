@@ -138,68 +138,60 @@ BEGIN
 
 			-- get new packet from the socket
 			stat_ = mtgrp_rqdsrl(pkt_in, sock_fd_)
-			IF stat_ < 0 THEN
+			IF stat_ <> 0 THEN
 				log_error_a(LOG_PFIX + 'socket err:', stat_)
 
 				-- can't continue
 				GOTO exit_discon
 			ENDIF
-
-         -- Some debugging
-         log_info(ihdr_tostr(pkt_in.header_))
-         log_info(mtgrp_tostr(pkt_in))
-
-         -- check sequence number for special values
-         IF (pkt_in.header_.comm_type_ = RI_CT_SVCREQ) THEN
-            -- 
-            SELECT pkt_in.cmd_ OF
-               -- 
-               CASE (GRP_OPEN):
-                  log_info(LOG_PFIX + 'Gripper open')
-                  --RDO[4]=FALSE; RDO[3]=TRUE;
-                  reply_code = RI_RT_FAIL
-
-               -- 
-               CASE (GRP_CLOSE):
-                  log_info(LOG_PFIX + 'Gripper close')              
-                  -- RDO[3]=FALSE; RDO[4]=TRUE; WRITE('CLOSE GRIP ',CR);   
-                  -- GET_REG(9,b_flag,reply_code,r_value,s)
-
-               -- unknown special sequence nr
-               ELSE:
-                  log_warn_a(LOG_PFIX + 'unknown cmd:', pkt_in.cmd_)
-                  log_warn(LOG_PFIX + 'please report')
-                  reply_code = RI_RT_FAIL
-
-            ENDSELECT
-            
-            log_info_a(LOG_PFIX + 'Sending reply: ', reply_code)
-            stat_ = mtgrp_rpsrl( pkt_out, sock_fd_, reply_code)
-            
-            IF stat_ < 0 THEN
-               log_error_a(LOG_PFIX + 'socket err:', stat_)
-
-               -- can't continue
-               GOTO exit_discon
-            ENDIF
-            
-            -- Some more debugging
-            log_info(ihdr_tostr(pkt_in.header_))
-            log_info(mtgrp_tostr(pkt_in))
-
-
-         ELSE
-         
-         log_warn('Unexpected comm type')
-         log_warn(ihdr_tostr(pkt_in.header_))
-
-            
-
-         ENDIF
-
-         -- no packets waiting; and no motion in progress,
-         -- sleep a little (1/T)
-         DELAY sleep_time
+			
+		         -- check sequence number for special values
+		         IF (pkt_in.header_.comm_type_ = RI_CT_SVCREQ) THEN
+		            -- 
+		            SELECT pkt_in.cmd_ OF
+		               -- 
+		               CASE (GRP_OPEN):
+		                  log_info(LOG_PFIX + 'Gripper open')
+		                  --RDO[4]=FALSE; RDO[3]=TRUE;
+		                  reply_code = RI_RT_SUCC
+		
+		               -- 
+		               CASE (GRP_CLOSE):
+		                  log_info(LOG_PFIX + 'Gripper close')              
+		                  -- RDO[3]=FALSE; RDO[4]=TRUE; WRITE('CLOSE GRIP ',CR);   
+		                  reply_code = RI_RT_SUCC
+		                  -- GET_REG(9,b_flag,reply_code,r_value,s)
+		
+		               -- unknown special sequence nr
+		               ELSE:
+		                  log_warn_a(LOG_PFIX + 'unknown cmd:', pkt_in.cmd_)
+		                  log_warn(LOG_PFIX + 'please report')
+		                  reply_code = RI_RT_FAIL
+		
+		            ENDSELECT
+		            
+		            log_info_a(LOG_PFIX + 'Sending reply: ', reply_code)
+		            stat_ = mtgrp_rpsrl( pkt_out, sock_fd_, reply_code,  pkt_in.cmd_)
+		            
+		            IF stat_ < 0 THEN
+		               log_error_a(LOG_PFIX + 'socket err:', stat_)
+		
+		               -- can't continue
+		               GOTO exit_discon
+		            ENDIF
+		
+		         ELSE
+		         
+		         log_warn('Unexpected comm type')
+		         log_warn(ihdr_tostr(pkt_in.header_))
+		
+		            
+		
+		         ENDIF
+		
+		         -- no packets waiting; and no motion in progress,
+		         -- sleep a little (1/T)
+		         DELAY sleep_time
 
 
 		-- inner WHILE TRUE DO
