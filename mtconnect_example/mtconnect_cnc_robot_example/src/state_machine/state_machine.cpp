@@ -46,7 +46,8 @@ static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
-static const std::string DEFAULT_MATERIAL_HANDLING_STATE_SERVICE = "material_handling_server_state";
+static const std::string DEFAULT_MATERIAL_LOAD_SET_STATE_SERVICE = "/MaterialLoad/set_mtconnect_state";
+static const std::string DEFAULT_MATERIAL_UNLOAD_SET_STATE_SERVICE = "/MaterialUnload/set_mtconnect_state";
 static const std::string DEFAULT_TRAJECTORY_FILTER_SERVICE = "filter_trajectory_with_constraints";
 
 static const std::string CNC_ACTION_ACTIVE_FLAG = "ACTIVE";
@@ -130,12 +131,6 @@ bool StateMachine::setup()
 	material_unload_server_ptr_ = MaterialUnloadServerPtr(new  MaterialUnloadServer(nh,DEFAULT_MATERIAL_UNLOAD_ACTION,false));
 	material_unload_server_ptr_->registerGoalCallback(boost::bind(&StateMachine::material_unload_goalcb,this));
 
-//	material_load_server_ptr_ = MaterialLoadServerPtr(new MaterialLoadServer(nh,DEFAULT_MATERIAL_LOAD_ACTION,
-//			boost::bind(&StateMachine::material_load_goalcb,this,_1),false));
-//
-//	material_unload_server_ptr_ = MaterialUnloadServerPtr(new  MaterialUnloadServer(nh,DEFAULT_MATERIAL_UNLOAD_ACTION,
-//					boost::bind(&StateMachine::material_unload_goalcb,this,_1),false));
-
 	// initializing action service clients
 	move_pickup_client_ptr_ = MovePickupClientPtr(new MovePickupClient(DEFAULT_PICKUP_ACTION,true));
 	move_place_client_ptr_ = MovePlaceClientPtr(new MovePlaceClient(DEFAULT_PLACE_ACTION,true));
@@ -158,13 +153,19 @@ bool StateMachine::setup()
 	external_command_srv_ = nh.advertiseService(DEFAULT_EXTERNAL_COMMAND_SERVICE,&StateMachine::external_command_cb,this);
 
 	// initializing clients
-	material_server_state_client_ = nh.serviceClient<mtconnect_msgs::MaterialServerState>(DEFAULT_MATERIAL_HANDLING_STATE_SERVICE);
+	material_load_set_state_client_ = nh.serviceClient<mtconnect_msgs::SetMTConnectState>(DEFAULT_MATERIAL_LOAD_SET_STATE_SERVICE);
+	material_unload_set_state_client_ = nh.serviceClient<mtconnect_msgs::SetMTConnectState>(DEFAULT_MATERIAL_UNLOAD_SET_STATE_SERVICE);
+
 	trajectory_filter_client_ =
 	    nh.serviceClient<arm_navigation_msgs::FilterJointTrajectoryWithConstraints>(
 	        DEFAULT_TRAJECTORY_FILTER_SERVICE);
-	// initializing service client req msg
-	material_server_state_.request.state_flag = mtconnect_msgs::MaterialServerState::Request::READY;
-	material_server_state_.response.accepted = false;
+
+	// initializing service client messages
+	mat_load_set_state_.request.state_flag = mtconnect_msgs::SetMTConnectState::Request::READY;
+	mat_load_set_state_.response.accepted = false;
+
+	mat_unload_set_state_.request.state_flag = mtconnect_msgs::SetMTConnectState::Request::READY;
+	mat_unload_set_state_.response.accepted = false;
 
 
 	// initializing mtconnect robot messages
@@ -591,28 +592,44 @@ bool StateMachine::on_startup()
 bool StateMachine::on_ready()
 {
 	// communicating ready state with service call
-	if(!material_server_state_.response.accepted)
+	if(!mat_load_set_state_.response.accepted)
 	{
 		// sending ready state to server
-		if(material_server_state_client_.exists() &&
-				material_server_state_client_.call(material_server_state_.request,material_server_state_.response))
+		if(material_load_set_state_client_.exists() &&
+				material_load_set_state_client_.call(mat_load_set_state_.request,mat_load_set_state_.response))
 		{
-			ROS_INFO_STREAM("server state service call "<< (material_server_state_.response.accepted ? "accepted" : "rejected"));
+			ROS_INFO_STREAM("set state service call "<< (mat_load_set_state_.response.accepted ? "accepted" : "rejected"));
 		}
 		else
 		{
-			ROS_WARN_STREAM("server state service call failed");
+			ROS_WARN_STREAM("set state service call failed");
 			ros::Duration(DURATION_LOOP_PAUSE).sleep();
 		}
 	}
 
-	return material_server_state_.response.accepted;
+	if(!mat_unload_set_state_.response.accepted)
+	{
+		// sending ready state to server
+		if(material_unload_set_state_client_.exists() &&
+				material_unload_set_state_client_.call(mat_unload_set_state_.request,mat_unload_set_state_.response))
+		{
+			ROS_INFO_STREAM("set state service call "<< (mat_unload_set_state_.response.accepted ? "accepted" : "rejected"));
+		}
+		else
+		{
+			ROS_WARN_STREAM("set state service call failed");
+			ros::Duration(DURATION_LOOP_PAUSE).sleep();
+		}
+	}
+
+	return mat_load_set_state_.response.accepted && mat_unload_set_state_.response.accepted;
 }
 
 bool StateMachine::on_robot_reset()
 {
 	// resetting service request accepted flag back to false
-	material_server_state_.response.accepted = false;
+	mat_load_set_state_.response.accepted = false;
+	mat_unload_set_state_.response.accepted = false;
 	return true;
 }
 

@@ -46,7 +46,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <mtconnect_msgs/RobotSpindle.h>
 #include <mtconnect_msgs/RobotStates.h>
-#include <mtconnect_msgs/MaterialServerState.h>
+#include <mtconnect_msgs/SetMTConnectState.h>
 #include <control_msgs/FollowJointTrajectoryAction.h>
 
 // aliases
@@ -288,7 +288,8 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		ros::ServiceServer external_command_srv_;
 
 		// server clients
-		ros::ServiceClient material_server_state_client_;
+		ros::ServiceClient material_load_set_state_client_;
+		ros::ServiceClient material_unload_set_state_client_;
 		ros::ServiceClient trajectory_filter_client_;
 
 
@@ -297,8 +298,9 @@ namespace mtconnect_cnc_robot_example {	namespace state_machine	{
 		mtconnect_msgs::RobotStates robot_state_msg_;
 		mtconnect_msgs::RobotSpindle robot_spindle_msg_;
 
-		// server req/res
-		mtconnect_msgs::MaterialServerState material_server_state_;
+		// service req/res
+		mtconnect_msgs::SetMTConnectState mat_load_set_state_;
+		mtconnect_msgs::SetMTConnectState mat_unload_set_state_;
 		arm_navigation_msgs::FilterJointTrajectoryWithConstraints trajectory_filter_;
 
 		// timers
