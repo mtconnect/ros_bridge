@@ -1,0 +1,54 @@
+--   Copyright 2013 Southwest Research Institute
+--
+--   Licensed under the Apache License, Version 2.0 (the "License");
+--   you may not use this file except in compliance with the License.
+--  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+--   Unless required by applicable law or agreed to in writing, software
+--   distributed under the License is distributed on an "AS IS" BASIS,
+--   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--   See the License for the specific language governing permissions and
+--   limitations under the License.
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- libmt_grp shared type / constant decls
+-- 
+-- author: Shaun Edwards
+-- 
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- 
+-- local types & constants
+-- 
+--------------------------------------------------------------------------------
+%INCLUDE libind_hdr_t
+
+
+TYPE
+mt_grp_t FROM libmt_grp = STRUCTURE
+   header_              : ind_hdr_t          -- message header
+   
+   cmd_                 : INTEGER            -- gripper commang (see GRP constants)
+
+ENDSTRUCTURE
+
+CONST
+	-- 
+	-- Sizes (in bytes) of gripper message
+	--
+   
+   GRP_UNKWN   = 0
+   GRP_INIT    = 1
+   GRP_OPEN    = 2
+   GRP_CLOSE   = 3
+   GRP_SZ_REQ  = 16   -- header + data
+   GRP_SZ_RPLY = 16   -- header + echo
+   GRP_MSG_TYP = 1000 -- gripper message type
+
+    

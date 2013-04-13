@@ -47,11 +47,6 @@ import roslib
 import rospy
 import actionlib
 
-# Import MTConnect Service Server
-roslib.load_manifest('mtconnect_msgs')
-from mtconnect_msgs.srv import *
-
-
 ## @class GenericActionClient
 ## @brief The GenericActionClient
 ## launches a ROS node that will stream XML data from the machine tool and will launch a ROS
@@ -82,12 +77,13 @@ class GenericActionClient(object):
         
         # Setup MTConnect to ROS Conversion
         self.config = bridge_library.obtain_dataMap()
-        self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace', 'adapter_port']
+        self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace', 'adapter_port', 'service']
         self.url = self.config[self.msg_parameters[0]]
         self.url_port = self.config[self.msg_parameters[1]]
         self.mtool = self.config[self.msg_parameters[2]]
         self.ns = dict(m = self.config[self.msg_parameters[3]])
         self.port = self.config[self.msg_parameters[4]]
+        self.service = self.config[self.msg_parameters[5]]
         
         # Check for url connectivity, dwell until system timeout
         bridge_library.check_connectivity((1,self.url,self.url_port))
@@ -118,7 +114,7 @@ class GenericActionClient(object):
         # Create robot Service Server thread for each machine tool action
         self.action_service = []
         for mt_action in self.action_goals.keys():
-            self.action_service.append(ActionService(mt_action, self.adapter, self.di_dict))
+            self.action_service.append(ActionService(mt_action, self.adapter, self.di_dict, self.service_handle, self.service))
         
         # Establish XML connection, read in current XML
         while True:
@@ -168,7 +164,7 @@ class GenericActionClient(object):
                 # Import module
                 rospy.loginfo('Importing --> ' + package + '.msg')
                 self.type_handle = import_module(package + '.msg')
-                self.action_service = import_module(package + '.srv')
+                self.service_handle = import_module(package + '.srv')
                 
                 # Capture package for action client
                 self.package = package
@@ -307,11 +303,13 @@ class GenericActionClient(object):
 
 
 class ActionService(GenericActionClient):
-    def __init__(self, mt_action, adapt, data_item_dict):
+    def __init__(self, mt_action, adapt, data_item_dict, service_handle, service_state):
         
         self.mt_action = mt_action
         self.adapt = adapt
         self.data_item_dict = data_item_dict
+        self.service_hndle = service_handle
+        self.service_state = service_state
         
         rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
         self.ss_thread = threading.Thread(target = self.action_service_server)
@@ -320,24 +318,26 @@ class ActionService(GenericActionClient):
         
     def action_service_server(self):
         self.as_name = bridge_library.split_event(self.mt_action)
-        s = rospy.Service(self.mt_action + '/' + 'set_mtconnect_state', SetMTConnectState, self.robot_state_callback)
+        action_service_class = getattr(self.service_hndle, self.service_state)
+        s = rospy.Service(self.mt_action + '/' + 'set_mtconnect_state', action_service_class, self.robot_state_callback)
         rospy.spin()
         return
     
     def robot_state_callback(self, request):
         rospy.loginfo('SERVICE REQUEST --> %s' % request.state_flag)
+        response_service_class = getattr(self.service_hndle, self.service_state + 'Response')
         if request.state_flag == -1: # NOT_READY
             try:
                 bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'NOT_READY'))
-                return SetMTConnectStateResponse(True)
+                return response_service_class(True)
             except:
-                return SetMTConnectStateResponse(False)
+                return response_service_class(False)
         elif request.state_flag == 0: # READY
             try:
                 bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'READY'))
-                return SetMTConnectStateResponse(True)
+                return response_service_class(True)
             except:
-                return SetMTConnectStateResponse(False)
+                return response_service_class(False)
 
 
 if __name__ == '__main__':
