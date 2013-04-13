@@ -290,6 +290,34 @@ bool fromXml(Task & task, TiXmlElement* config)
     }
   }
 
+  // Parsing named points
+  for (TiXmlElement* joint_point_xml = config->FirstChildElement("joint_point"); joint_point_xml; joint_point_xml =
+      joint_point_xml->NextSiblingElement("joint_point"))
+  {
+    JointPoint joint_point;
+    joint_point.clear();
+    if (fromXml(joint_point, joint_point_xml, task.motion_groups_))
+    {
+      if (joint_point.name_.empty())
+      {
+        //It's possible that the joint point might not be used
+        //TODO: MAY WANT TO RECONSIDER WHETHER WE FAIL OR NO
+        ROS_WARN_STREAM("Failed to add joint point to task level, task level points must be named");
+      }
+      else
+      {
+        task.points_[joint_point.name_] = boost::make_shared<JointPoint>(joint_point);
+        ROS_INFO_STREAM("Adding named joint point to task, total size: " << task.points_.size());
+      }
+    }
+    else
+    {
+      //It's possible that the motion group might not be used
+      //TODO: MAY WANT TO RECONSIDER WHETHER WE FAIL OR NO
+      ROS_WARN_STREAM("Failed to parse motion group element of task, ignoring, will fail later if group is needed");
+    }
+  }
+
   // Parsing paths
   for (TiXmlElement* path_xml = config->FirstChildElement("path"); path_xml;
       path_xml = path_xml->NextSiblingElement("path"))
@@ -328,6 +356,5 @@ bool fromXml(Task & task, const std::string & xml)
   TiXmlElement *xml_t = xml_doc.FirstChildElement("task");
   return fromXml(task, xml_t);
 }
-
 
 } //mtconnect
