@@ -48,7 +48,7 @@ CONST
    GRP_OPEN    = 2
    GRP_CLOSE   = 3
    GRP_SZ_REQ  = 16   -- header + data
-   GRP_SZ_RPLY = 12   -- header only
+   GRP_SZ_RPLY = 16   -- header + echo
    GRP_MSG_TYP = 1000 -- gripper message type
 
     
