@@ -38,11 +38,11 @@
   <!-- Will need to replace grasping action nodes with real drivers -->
 	<!-- gripper executer action node -->
 	<remap from="/grasp_execution_action" to="/gripper_action_service"/>
-	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface" output="screen"/>
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface"/>
 
 	<!-- vise executer action node -->
 	<remap from="/grasp_execution_action" to="/vise_action_service"/>
-	<node pkg="object_manipulation_tools" type="grasp_action_service" name="vise_interface" output="screen"/>
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="vise_interface"/>
 	
 	<!-- move arm action server and required arm navigation nodes -->
 	<include file="$(find mtconnect_example_launch)/launch/m16ib20_demonstration_arm_navigation.launch"/>

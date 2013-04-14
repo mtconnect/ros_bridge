@@ -32,20 +32,11 @@ static const std::string KEY_JM_PICK_TO_CHUCK = "JM_PICK_TO_CHUCK";
 static const std::string KEY_JM_CHUCK_TO_DOOR = "JM_CHUCK_TO_DOOR";
 static const std::string KEY_JM_DOOR_TO_HOME = "JM_DOOR_TO_HOME";
 
-/*
-
- static const std::string KEY_JM_READY_TO_APPROACH = "JM_READY_TO_APPROACH";
- static const std::string KEY_JM_PICK_TO_DOOR = "JM_PICK_TO_DOOR";
- static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
- static const std::string KEY_JM_CHUCK_TO_READY = "JM_CHUCK_TO_READY";
-
- static const std::string KEY_JM_READY_TO_DOOR = "JM_READY_TO_DOOR";
- static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
- static const std::string KEY_JM_CHUCK_TO_READY = "JM_CHUCK_TO_READY";
- static const std::string KEY_JM_READY_TO_APPROACH = "JM_READY_TO_APPROACH";
- static const std::string KEY_JM_APPROACH_TO_PICK = "JM_APPROACH_TO_PICK";
- static const std::string KEY_JM_PICK_TO_HOME = "JM_PICK_TO_HOME";
- */
+// Material unload moves
+static const std::string KEY_JM_HOME_TO_DOOR = "JM_HOME_TO_DOOR";
+static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
+static const std::string KEY_JM_CHUCK_TO_DROP = "JM_CHUCK_TO_DROP";
+static const std::string KEY_JM_DROP_TO_HOME = "JM_DROP_TO_HOME";
 
 static const std::string DEFAULT_GRASP_ACTION = "gripper_action_service";
 static const std::string DEFAULT_VISE_ACTION = "vise_action_service";
@@ -165,22 +156,16 @@ bool StateMachine::init()
 void StateMachine::run()
 {
   ROS_INFO_STREAM("Entering blocking run");
-  ros::Rate r(2);
+  ros::Rate r(loop_rate_);
   while (ros::ok())
   {
-    //TODO: Add a rate timer in this loop.
-    ROS_INFO_STREAM_THROTTLE(5, "Begin blocking run loop, state: " << state_);
-    //ROS_INFO_STREAM_THROTTLE(5, "Running state machine");
+    //ROS_INFO_STREAM_THROTTLE(5, "Begin blocking run loop, state: " << state_);
     runOnce();
-    //ROS_INFO_STREAM_THROTTLE(5, "Calling publishers");
     callPublishers();
-    //ROS_INFO_STREAM_THROTTLE(5, "Spinning ROS");
     ros::spinOnce();
-    //ROS_INFO_STREAM_THROTTLE(5, "Performing error checks");
     errorChecks();
-    //ROS_INFO_STREAM_THROTTLE(5, "Performing override checks");
     overrideChecks();
-    ROS_INFO_STREAM_THROTTLE(5, "End blocking run loop, state: " << state_);
+    //ROS_INFO_STREAM_THROTTLE(5, "End blocking run loop, state: " << state_);
     r.sleep();
   }
 
@@ -246,7 +231,7 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::MATERIAL_LOADING:
-      ROS_INFO_STREAM("Starting material load request");
+      ROS_INFO_STREAM("++++++++++++++++++++++++ LOADING MATERIAL ++++++++++++++++++++++++");
       setState(StateTypes::ML_MOVE_PICK_APPROACH);
       break;
 
@@ -360,10 +345,95 @@ void StateMachine::runOnce()
 
 
     case StateTypes::MATERIAL_UNLOADING:
-      ROS_INFO_STREAM("Starting material unload request");
-      ROS_WARN_STREAM("Material unloaded not implemented");
-      setState(StateTypes::MATERIAL_UNLOADED);
+      ROS_INFO_STREAM("++++++++++++++++++++++++ UNLOADING MATERIAL ++++++++++++++++++++++++");
+      setState(StateTypes::MU_MOVE_DOOR);
       break;
+
+    case StateTypes::MU_MOVE_DOOR:
+      moveArm(KEY_JM_HOME_TO_DOOR);
+      openDoor();
+      setState(StateTypes::MU_WAIT_MOVE_DOOR);
+      break;
+
+    case StateTypes::MU_WAIT_MOVE_DOOR:
+      if(isMoveDone() && isDoorOpened())
+      {
+        setState(StateTypes::MU_MOVE_CHUCK);
+      }
+      break;
+
+    case StateTypes::MU_MOVE_CHUCK:
+      moveArm(KEY_JM_DOOR_TO_CHUCK);
+      setState(StateTypes::MU_WAIT_MOVE_CHUCK);
+      break;
+
+    case StateTypes::MU_WAIT_MOVE_CHUCK:
+      if(isMoveDone())
+      {
+        setState(StateTypes::MU_PICK_PART);
+      }
+      break;
+
+    case StateTypes::MU_PICK_PART:
+      closeGripper();
+      setState(StateTypes::MU_WAIT_PICK_PART);
+      break;
+
+    case StateTypes::MU_WAIT_PICK_PART:
+      if(isGripperClosed())
+      {
+        setState(StateTypes::MU_OPEN_CHUCK);
+      }
+      break;
+
+    case StateTypes::MU_OPEN_CHUCK:
+      openChuck();
+      setState(StateTypes::MU_WAIT_OPEN_CHUCK);
+      break;
+
+    case StateTypes::MU_WAIT_OPEN_CHUCK:
+      if(isChuckOpened())
+      {
+        setState(StateTypes::MU_MOVE_DROP);
+      }
+      break;
+
+    case StateTypes::MU_MOVE_DROP:
+      moveArm(KEY_JM_CHUCK_TO_DROP);
+      setState(StateTypes::MU_WAIT_MOVE_DROP);
+      break;
+
+    case StateTypes::MU_WAIT_MOVE_DROP:
+      if(isMoveDone())
+      {
+        setState(StateTypes::MU_DROP);
+      }
+      break;
+
+    case StateTypes::MU_DROP:
+      openGripper();
+      setState(StateTypes::MU_WAIT_DROP);
+      break;
+
+    case StateTypes::MU_WAIT_DROP:
+      if(isGripperOpened())
+      {
+        setState(StateTypes::MU_MOVE_HOME);
+      }
+      break;
+
+    case StateTypes::MU_MOVE_HOME:
+      moveArm(KEY_JM_DROP_TO_HOME);
+      setState(StateTypes::MU_WAIT_MOVE_HOME);
+      break;
+
+    case StateTypes::MU_WAIT_MOVE_HOME:
+      if(isMoveDone())
+      {
+        setState(StateTypes::MATERIAL_UNLOADED);
+      }
+      break;
+
     case StateTypes::MATERIAL_UNLOADED:
       ROS_INFO_STREAM("Material unloaded");
       unload_res.unload_state = "Succeeded";
@@ -769,6 +839,7 @@ bool StateMachine::moveArm(const std::string & move_name)
     {
       if (trajectory_filter_.response.error_code.val == trajectory_filter_.response.error_code.SUCCESS)
       {
+        ROS_INFO_STREAM("======================== MOVING ROBOT ========================");
         ROS_INFO("Trajectory successfully filtered...sending goal");
         joint_traj_goal_.trajectory = trajectory_filter_.response.trajectory;
         ROS_INFO_STREAM("Sending a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
@@ -803,6 +874,7 @@ bool StateMachine::isMoveDone()
 
 void StateMachine::openDoor()
 {
+  ROS_INFO_STREAM("======================== OPENING DOOR ========================");
   mtconnect_msgs::OpenDoorGoal goal;
   goal.open_door = MTCONNECT_ACTION_ACTIVE_FLAG;
   open_door_client_ptr_->sendGoal(goal);
@@ -815,6 +887,7 @@ bool StateMachine::isDoorOpened()
 
 void StateMachine::closeDoor()
 {
+  ROS_INFO_STREAM("======================== CLOSING_DOOR ========================");
   mtconnect_msgs::CloseDoorGoal goal;
   goal.close_door = MTCONNECT_ACTION_ACTIVE_FLAG;
   close_door_client_ptr_->sendGoal(goal);
@@ -827,6 +900,7 @@ bool StateMachine::isDoorClosed()
 
 void StateMachine::openChuck()
 {
+  ROS_INFO_STREAM("======================== OPENING CHUCK ========================");
   // Actual chuck
   mtconnect_msgs::OpenChuckGoal chuck_goal;
   chuck_goal.open_chuck = MTCONNECT_ACTION_ACTIVE_FLAG;
@@ -845,6 +919,7 @@ bool StateMachine::isChuckOpened()
 
 void StateMachine::closeChuck()
 {
+  ROS_INFO_STREAM("======================== CLOSING CHUCK ========================");
   // Actual chuck
   mtconnect_msgs::CloseChuckGoal chuck_goal;
   chuck_goal.close_chuck = MTCONNECT_ACTION_ACTIVE_FLAG;
@@ -864,6 +939,7 @@ bool StateMachine::isChuckClosed()
 
 void StateMachine::openGripper()
 {
+  ROS_INFO_STREAM("======================== OPENING GRIPPER ========================");
   object_manipulation_msgs::GraspHandPostureExecutionGoal goal;
   goal.goal = object_manipulation_msgs::GraspHandPostureExecutionGoal::RELEASE;
   grasp_action_client_ptr_->sendGoal(goal);
@@ -876,6 +952,7 @@ bool StateMachine::isGripperOpened()
 
 void StateMachine::closeGripper()
 {
+  ROS_INFO_STREAM("======================== CLOSING GRIPPER ========================");
   object_manipulation_msgs::GraspHandPostureExecutionGoal goal;
   goal.goal = object_manipulation_msgs::GraspHandPostureExecutionGoal::GRASP;
   grasp_action_client_ptr_->sendGoal(goal);
