@@ -1,0 +1,14 @@
+<package>
+  <description brief="mtconnect_example_launch">
+
+     mtconnect_example_launch
+
+  </description>
+  <author>Shaun M. Edwards</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_example_launch</url>
+
+</package>
+
+

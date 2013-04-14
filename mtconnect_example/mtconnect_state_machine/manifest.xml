@@ -1,34 +1,29 @@
-<?xml version="1.0" ?>
 <package>
-  <description brief="mtconnect_cnc_robot_example">
+  <description brief="mtconnect_state_machine">
 
-     mtconnect_cnc_robot_example
+     mtconnect_state_machine
 
   </description>
-  <author>Jnicho</author>
-  <license>BSD</license>
+  <author>Shaun M. Edwards</author>
+  <license>Apache2</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/mtconnect_cnc_robot_example</url>
+  <url>http://ros.org/wiki/mtconnect_state_machine</url>
+  
   <depend package="actionlib"/>
-  <depend package="arm_navigation_msgs"/>
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
   <depend package="control_msgs"/>
+  <depend package="object_manipulation_msgs"/>
   <depend package="mtconnect_msgs"/>
   <depend package="mtconnect_ros_bridge"/>
   <depend package="mtconnect_task_parser"/>
-  <depend package="nav_msgs"/>
-  <depend package="planning_environment"/>
-  <depend package="object_manipulation_tools"/>
-  <depend package="object_manipulation_msgs"/>
-  <depend package="object_manipulator"/>
+  <depend package="mtconnect_example_msgs"/>
   <depend package="industrial_robot_client"/>
   <depend package="industrial_robot_simulator"/>
   <depend package="industrial_trajectory_filters"/>
-  <depend package="simple_message"/>
   <depend package="abb_common"/>
   <depend package="M16iB20_arm_navigation"/>
-
+  
 </package>
 
 
