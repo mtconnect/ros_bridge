@@ -747,13 +747,13 @@ bool StateMachine::externalCommandCB(mtconnect_example_msgs::StateMachineCmd::Re
     case StateMachineCmd::Request::STOP:
       if (state_ == StateTypes::WAITING)
       {
-        ROS_INFO_STREAM("External command STOP(" << req.command << ") executing");
+        ROS_INFO_STREAM("External command STOP executing");
         setState(StateTypes::IDLE);
         res.accepted = true;
       }
       else
       {
-        ROS_WARN_STREAM("External command STOP(" << req.command << ") ignored, wrong state: " << state_);
+        ROS_WARN_STREAM("External command STOP ignored, wrong state: " << state_);
         res.accepted = false;
       }
       break;
@@ -761,32 +761,32 @@ bool StateMachine::externalCommandCB(mtconnect_example_msgs::StateMachineCmd::Re
     case StateMachineCmd::Request::FAULT_RESET:
       if (state_ == StateTypes::ABORTED)
       {
-        ROS_INFO_STREAM("External command FAULT_RESET(" << req.command << ") executing");
+        ROS_INFO_STREAM("External command FAULT_RESET executing");
         setState(StateTypes::IDLE);
         res.accepted = true;
       }
       else
       {
-        ROS_WARN_STREAM("External command FAULT_RESET(" << req.command << ") ignored, wrong state: " << state_);
+        ROS_WARN_STREAM("External command FAULT_RESET ignored, wrong state: " << state_);
         res.accepted = false;
       }
       break;
     case StateMachineCmd::Request::START:
       if (state_ == StateTypes::IDLE)
       {
-        ROS_INFO_STREAM("External command START(" << req.command << ") executing");
+        ROS_INFO_STREAM("External command START executing");
         setState(StateTypes::INITING);
         res.accepted = true;
       }
       else
       {
-        ROS_WARN_STREAM("External command START(" << req.command << ") ignored, wrong state: " << state_);
+        ROS_WARN_STREAM("External command START ignored, wrong state: " << state_);
         res.accepted = false;
       }
       break;
 
     default:
-      ROS_WARN_STREAM("External command:(" << req.command << ") ignored");
+      ROS_WARN_STREAM("External command: ignored");
       res.accepted = false;
       break;
   }
