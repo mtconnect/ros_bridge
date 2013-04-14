@@ -296,7 +296,7 @@ def action_cb(data):
     adapter, di_dict, data_item, state = data
     
     # Respond that goal is accepted
-    rospy.loginfo("Changing %s to '%s'" % (data_item, state))
+    #rospy.loginfo("Changing %s to '%s'" % (data_item, state))
     adapter.begin_gather()
     di_dict[data_item].set_value(state)
     adapter.complete_gather()
