@@ -1,0 +1,76 @@
+<?xml version="1.0" ?>
+<launch>
+
+    <!-- This launch file executes all ROS side nodes for the MTConnect
+    cnc load/unload demonstration.
+
+    Usage:
+      mtconnect_m16ib20_material_handling.launch [use_rviz:=false]
+        [real_robot:=false] [robot_ip:=<value>] [use_bswap:=<false]
+        
+        use_bswap - true if real(simulated) robot (i.e. Roboguide)
+        false for real robot (i.e. physical hardware)
+    -->
+	<arg name="use_rviz" default="false"/>
+	<arg name="real_robot" default="false"/>
+	<arg name="robot_ip" />
+	<arg name="use_bswap" default="false"/>
+
+
+	<!-- bringup of arm navigation prerequisites -->
+	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+
+    
+    <!-- real robot drivers -->
+    <group if="$(arg real_robot)">
+        <include file="$(find fanuc_common)/launch/robot_interface_streaming_m16iB20.launch">
+            <arg name="robot_ip" value="$(arg robot_ip)"/>
+            <arg name="use_bswap" value="$(arg use_bswap)" />
+        </include>
+    </group>
+
+    <!-- simulated robot drivers -->
+    <group unless="$(arg real_robot)">
+      <include file="$(find industrial_robot_simulator)/launch/robot_interface_simulator.launch"/>
+    </group>
+    
+  
+  <!-- Will need to replace grasping action nodes with real drivers -->
+	<!-- gripper executer action node -->
+	<remap from="/grasp_execution_action" to="/gripper_action_service"/>
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="gripper_interface" output="screen"/>
+
+	<!-- vise executer action node -->
+	<remap from="/grasp_execution_action" to="/vise_action_service"/>
+	<node pkg="object_manipulation_tools" type="grasp_action_service" name="vise_interface" output="screen"/>
+	
+	<!-- move arm action server and required arm navigation nodes -->
+	<include file="$(find mtconnect_example_launch)/launch/m16ib20_demonstration_arm_navigation.launch"/>
+
+
+	<!-- material load/unload server node -->
+	<remap from="/robot_states" to= "/RobotStateTopic"/>
+	<remap from="/robot_spindle" to="/RobotSpindleTopic" />
+	<remap from="/cnc_open_door_action" to= "/OpenDoorClient"/>
+	<remap from="/cnc_close_door_action" to="/CloseDoorClient" />
+	<remap from="/cnc_open_chuck_action" to= "/OpenChuckClient"/>
+	<remap from="/cnc_close_chuck_action" to="/CloseChuckClient" />
+	<remap from="/material_load_action" to= "/MaterialLoadClient"/>
+	<remap from="/material_unload_action" to="/MaterialUnloadClient" />
+
+	<node pkg="mtconnect_state_machine" type="state_machine_node" name="mtconnect_state_machine" output="screen">
+	  <param name="loop_rate" value="2"/>
+		<param name="state_override" value="0"/>
+		<param name="force_fault" value="0"/>
+		<param name="task_description" textfile="$(find mtconnect_example_launch)/config/task_description.xml" />
+		
+		<!-- trajectory filter service -->
+		<remap from="filter_trajectory_with_constraints" to="/trajectory_filter_server/filter_trajectory_with_constraints"/>
+		
+	</node>
+
+	<!-- ros visualization -->
+	<node if="$(arg use_rviz)" pkg="rviz" type="rviz" name="mtconnect_visualization"
+		args="-d $(find mtconnect_example_launch)/vcg/mtconnect_visualization_conf.vcg"/>
+	
+</launch>

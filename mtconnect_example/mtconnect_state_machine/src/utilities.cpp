@@ -26,7 +26,7 @@ using namespace mtconnect_state_machine;
 
 bool mtconnect_state_machine::parseTaskXml(const std::string & xml,
                   std::map<std::string, trajectory_msgs::JointTrajectoryPtr> & paths,
-                  std::map<std::string, boost::shared_ptr<mtconnect::JointPoint> >points)
+                  std::map<std::string, boost::shared_ptr<mtconnect::JointPoint> > & points)
 {
   typedef std::map<std::string, boost::shared_ptr<mtconnect::Path> >::iterator PathMapIter;
   bool rtn;
@@ -35,6 +35,7 @@ bool mtconnect_state_machine::parseTaskXml(const std::string & xml,
 
   if (mtconnect::fromXml(task, xml))
   {
+
     for (PathMapIter iter = task.paths_.begin(); iter != task.paths_.end(); ++iter)
     {
       trajectory_msgs::JointTrajectoryPtr jt(new trajectory_msgs::JointTrajectory());
@@ -55,6 +56,9 @@ bool mtconnect_state_machine::parseTaskXml(const std::string & xml,
     }
     ROS_INFO_STREAM("Converted " << task.paths_.size() << " paths to "
                     << paths.size() << " joint paths");
+
+    ROS_INFO_STREAM("Copying " << task.points_.size() << " to defined points");
+    points = task.points_;
   }
   else
   {

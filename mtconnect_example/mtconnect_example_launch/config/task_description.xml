@@ -60,8 +60,8 @@
 		<joint_move>
 		  <joint_point name="door" joint_values="-1.071 -0.513 0.883 1.779 -0.459 -4.723" group_name="group_1"/>
 		</joint_move>
-  <!-- Close door -->
   </path>
+  <!-- Close door -->
   <path name="JM_DOOR_TO_HOME">
 		<joint_move>
 		  <joint_point name="door" joint_values="-1.071 -0.513 0.883 1.779 -0.459 -4.723" group_name="group_1"/>

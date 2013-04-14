@@ -29,7 +29,7 @@ namespace mtconnect_state_machine
 
 bool parseTaskXml(const std::string & xml,
                   std::map<std::string, trajectory_msgs::JointTrajectoryPtr> & paths,
-                  std::map<std::string, boost::shared_ptr<mtconnect::JointPoint> >points);
+                  std::map<std::string, boost::shared_ptr<mtconnect::JointPoint> > & points);
 
 bool toJointTrajectory(boost::shared_ptr<mtconnect::Path> & path,
                        trajectory_msgs::JointTrajectoryPtr & traj);

@@ -5,9 +5,13 @@
 
   </description>
   <author>Shaun M. Edwards</author>
-  <license>BSD</license>
+  <license>Apache2</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/mtconnect_example_launch</url>
+  
+  <depend package="object_manipulation_tools"/>
+  <depend package="M16iB20_arm_navigation"/>
+  <depend package="mtconnect_state_machine"/>
 
 </package>
 

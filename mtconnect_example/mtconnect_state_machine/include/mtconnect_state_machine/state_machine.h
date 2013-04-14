@@ -159,6 +159,7 @@ protected:
   {
     ROS_INFO_STREAM("Changing state from: " << StateTypes::STATE_MAP[state_] << "(" << state_ << ")"
     " to " << StateTypes::STATE_MAP[state] << "(" << state << ")");
+    state_ = state;
   }
   ;
 
@@ -276,6 +277,8 @@ private:
    *
    */
   StateType state_;
+
+  int loop_rate_;
 
 //////MTConnect specific
 

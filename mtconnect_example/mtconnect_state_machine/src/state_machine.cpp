@@ -22,6 +22,7 @@ using namespace mtconnect_state_machine;
 static const std::string PARAM_TASK_DESCRIPTION = "task_description";
 static const std::string PARAM_FORCE_FAULT_STATE = "force_fault";
 static const std::string PARAM_STATE_OVERRIDE = "state_override";
+static const std::string PARAM_LOOP_RATE = "loop_rate";
 static const std::string KEY_HOME_POSITION = "home";
 
 // Material load moves
@@ -31,23 +32,22 @@ static const std::string KEY_JM_PICK_TO_CHUCK = "JM_PICK_TO_CHUCK";
 static const std::string KEY_JM_CHUCK_TO_DOOR = "JM_CHUCK_TO_DOOR";
 static const std::string KEY_JM_DOOR_TO_HOME = "JM_DOOR_TO_HOME";
 
-
 /*
 
-static const std::string KEY_JM_READY_TO_APPROACH = "JM_READY_TO_APPROACH";
-static const std::string KEY_JM_PICK_TO_DOOR = "JM_PICK_TO_DOOR";
-static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
-static const std::string KEY_JM_CHUCK_TO_READY = "JM_CHUCK_TO_READY";
+ static const std::string KEY_JM_READY_TO_APPROACH = "JM_READY_TO_APPROACH";
+ static const std::string KEY_JM_PICK_TO_DOOR = "JM_PICK_TO_DOOR";
+ static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
+ static const std::string KEY_JM_CHUCK_TO_READY = "JM_CHUCK_TO_READY";
 
-static const std::string KEY_JM_READY_TO_DOOR = "JM_READY_TO_DOOR";
-static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
-static const std::string KEY_JM_CHUCK_TO_READY = "JM_CHUCK_TO_READY";
-static const std::string KEY_JM_READY_TO_APPROACH = "JM_READY_TO_APPROACH";
-static const std::string KEY_JM_APPROACH_TO_PICK = "JM_APPROACH_TO_PICK";
-static const std::string KEY_JM_PICK_TO_HOME = "JM_PICK_TO_HOME";
-*/
+ static const std::string KEY_JM_READY_TO_DOOR = "JM_READY_TO_DOOR";
+ static const std::string KEY_JM_DOOR_TO_CHUCK = "JM_DOOR_TO_CHUCK";
+ static const std::string KEY_JM_CHUCK_TO_READY = "JM_CHUCK_TO_READY";
+ static const std::string KEY_JM_READY_TO_APPROACH = "JM_READY_TO_APPROACH";
+ static const std::string KEY_JM_APPROACH_TO_PICK = "JM_APPROACH_TO_PICK";
+ static const std::string KEY_JM_PICK_TO_HOME = "JM_PICK_TO_HOME";
+ */
 
-static const std::string DEFAULT_GRASP_ACTION = "grasp_action_service";
+static const std::string DEFAULT_GRASP_ACTION = "gripper_action_service";
 static const std::string DEFAULT_VISE_ACTION = "vise_action_service";
 static const std::string DEFAULT_MATERIAL_LOAD_ACTION = "material_load_action";
 static const std::string DEFAULT_MATERIAL_UNLOAD_ACTION = "material_unload_action";
@@ -82,6 +82,12 @@ bool StateMachine::init()
 {
   ros::NodeHandle ph("~");
   std::string task_desc;
+
+  if (!ph.getParam(PARAM_LOOP_RATE, loop_rate_))
+  {
+    ROS_WARN_STREAM("Param: " << PARAM_LOOP_RATE << " not set, using default");
+    loop_rate_ = 10;
+  }
   if (!ph.getParam(PARAM_TASK_DESCRIPTION, task_desc))
   {
     ROS_ERROR("Failed to load task description parameter");
@@ -95,6 +101,13 @@ bool StateMachine::init()
     return false;
   }
 
+  if (points.empty())
+  {
+    ROS_ERROR("Failed to find defined points");
+    return false;
+  }
+
+  ROS_INFO_STREAM("Adding home position from task description");
   home_ = points[KEY_HOME_POSITION];
   if (home_->values_.empty())
   {
@@ -139,7 +152,11 @@ bool StateMachine::init()
   trajectory_filter_client_ = nh_.serviceClient<arm_navigation_msgs::FilterJointTrajectoryWithConstraints>(
       DEFAULT_TRAJECTORY_FILTER_SERVICE);
 
-  setState(StateTypes::INITING);
+  // starting action servers
+  material_load_server_ptr_->start();
+  material_unload_server_ptr_->start();
+
+  setState(StateTypes::IDLE);
 
   return true;
 
@@ -147,19 +164,34 @@ bool StateMachine::init()
 
 void StateMachine::run()
 {
+  ROS_INFO_STREAM("Entering blocking run");
+  ros::Rate r(2);
   while (ros::ok())
   {
-    overrideChecks();
+    //TODO: Add a rate timer in this loop.
+    ROS_INFO_STREAM_THROTTLE(5, "Begin blocking run loop, state: " << state_);
+    //ROS_INFO_STREAM_THROTTLE(5, "Running state machine");
     runOnce();
+    //ROS_INFO_STREAM_THROTTLE(5, "Calling publishers");
     callPublishers();
+    //ROS_INFO_STREAM_THROTTLE(5, "Spinning ROS");
     ros::spinOnce();
+    //ROS_INFO_STREAM_THROTTLE(5, "Performing error checks");
     errorChecks();
+    //ROS_INFO_STREAM_THROTTLE(5, "Performing override checks");
+    overrideChecks();
+    ROS_INFO_STREAM_THROTTLE(5, "End blocking run loop, state: " << state_);
+    r.sleep();
   }
 
 }
 
 void StateMachine::runOnce()
 {
+  //TODO: Remove these variables (they can't be used under a case statement)
+  MaterialLoadServer::Result load_res;
+  MaterialUnloadServer::Result unload_res;
+
   switch (state_)
   {
     case StateTypes::IDLE:
@@ -262,7 +294,7 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::ML_WAIT_MOVE_CHUCK:
-      if(isMoveDone())
+      if (isMoveDone())
       {
         setState(StateTypes::ML_CLOSE_CHUCK);
       }
@@ -274,7 +306,7 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::ML_WAIT_CLOSE_CHUCK:
-      if(isChuckClosed())
+      if (isChuckClosed())
       {
         setState(StateTypes::ML_RELEASE_PART);
       }
@@ -286,7 +318,7 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::ML_WAIT_RELEASE_PART:
-      if(isGripperOpened())
+      if (isGripperOpened())
       {
         setState(StateTypes::ML_MOVE_DOOR);
       }
@@ -295,9 +327,10 @@ void StateMachine::runOnce()
     case StateTypes::ML_MOVE_DOOR:
       moveArm(KEY_JM_CHUCK_TO_DOOR);
       setState(StateTypes::ML_WAIT_MOVE_DOOR);
+      break;
 
     case StateTypes::ML_WAIT_MOVE_DOOR:
-      if(isMoveDone())
+      if (isMoveDone())
       {
         setState(StateTypes::ML_MOVE_HOME);
       }
@@ -310,7 +343,7 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::ML_WAIT_MOVE_HOME:
-      if(isMoveDone() && isDoorClosed())
+      if (isMoveDone() && isDoorClosed())
       {
         setState(StateTypes::MATERIAL_LOADED);
       }
@@ -318,21 +351,25 @@ void StateMachine::runOnce()
 
     case StateTypes::MATERIAL_LOADED:
       ROS_INFO_STREAM("Material loaded");
+      load_res.load_state = "Succeeded";
+      material_load_server_ptr_->setSucceeded(load_res);
       setState(StateTypes::WAITING);
       break;
 
 
 
-    case StateTypes::MATERIAL_UNLOADING:
-          ROS_INFO_STREAM("Starting material unload request");
-          ROS_WARN_STREAM("Material unloaded not implemented");
-          setState(StateTypes::ML_MOVE_PICK_APPROACH);
-          break;
-    case StateTypes::MATERIAL_UNLOADED:
-          ROS_INFO_STREAM("Material unloaded");
-          setState(StateTypes::WAITING);
-          break;
 
+    case StateTypes::MATERIAL_UNLOADING:
+      ROS_INFO_STREAM("Starting material unload request");
+      ROS_WARN_STREAM("Material unloaded not implemented");
+      setState(StateTypes::MATERIAL_UNLOADED);
+      break;
+    case StateTypes::MATERIAL_UNLOADED:
+      ROS_INFO_STREAM("Material unloaded");
+      unload_res.unload_state = "Succeeded";
+      material_unload_server_ptr_->setSucceeded(unload_res);
+      setState(StateTypes::WAITING);
+      break;
 
 
 
@@ -425,11 +462,10 @@ void StateMachine::cancelActionClients()
 
 bool StateMachine::setMatActionsReady()
 {
-
   return setMatLoad(mtconnect_msgs::SetMTConnectState::Request::READY)
       && setMatUnload(mtconnect_msgs::SetMTConnectState::Request::READY);
-
 }
+
 bool StateMachine::setMatActionsNotReady()
 {
   return setMatLoad(mtconnect_msgs::SetMTConnectState::Request::NOT_READY)
@@ -517,7 +553,7 @@ void StateMachine::overrideChecks()
 {
   ros::NodeHandle ph("~");
   int state_override = StateTypes::INVALID;
-  state_override = ph.getParamCached(PARAM_STATE_OVERRIDE, state_override);
+  ph.getParamCached(PARAM_STATE_OVERRIDE, state_override);
 
   int force_fault_state = StateTypes::INVALID;
   ph.getParamCached(PARAM_FORCE_FAULT_STATE, force_fault_state);
@@ -526,11 +562,13 @@ void StateMachine::overrideChecks()
   {
     ROS_WARN_STREAM("Overriding state to: " << StateTypes::STATE_MAP[state_override]);
     setState(StateType(state_override));
+    ph.setParam(PARAM_STATE_OVERRIDE, StateTypes::INVALID);
   }
   if (state_ == force_fault_state)
   {
     ROS_ERROR_STREAM("Forcing fault from state: "<< StateTypes::STATE_MAP[state_]);
     setState(StateTypes::ABORTING);
+    ph.setParam(PARAM_FORCE_FAULT_STATE, StateTypes::INVALID);
   }
 }
 
@@ -550,14 +588,20 @@ void StateMachine::robotStatusPublisher()
   if ((state_ != StateTypes::IDLE) && (state_ != StateTypes::ABORTED))
   {
     robot_state_msg_.avail.val = TriState::ENABLED;
+    robot_state_msg_.mode.val = RobotMode::AUTO;
   }
   else
   {
     robot_state_msg_.avail.val = TriState::DISABLED;
+    robot_state_msg_.mode.val = RobotMode::MANUAL;
   }
-  robot_state_msg_.mode.val = robot_status_msg_.mode.val;
 
-  // TODO: Determine appropriate value remaining items
+  //TODO: Figure out how the mode is supposed to be used
+  //robot_state_msg_.mode.val = robot_status_msg_.mode.val;
+
+  // TODO: Overriding these values until we know what they should be
+  //robot_state_msg_.avail.val = TriState::ENABLED;
+  //robot_state_msg_.mode.val = RobotMode::AUTO;
   robot_state_msg_.rexec.val = TriState::HIGH;
 
   // publishing
@@ -569,7 +613,7 @@ void StateMachine::robotSpindlePublisher()
   using namespace industrial_msgs;
   robot_spindle_msg_.header.stamp = ros::Time::now();
 
-  // TODO: Determine appropriate value remaining items
+  // TODO: Overriding these values until we know what they should be
   robot_spindle_msg_.c_unclamp.val = TriState::HIGH;
   robot_spindle_msg_.s_inter.val = TriState::HIGH;
 
@@ -679,40 +723,40 @@ bool StateMachine::externalCommandCB(mtconnect_example_msgs::StateMachineCmd::Re
   return true;
 }
 
-  bool StateMachine::isActionComplete(int action_state)
+bool StateMachine::isActionComplete(int action_state)
+{
+  bool rtn = false;
+  switch (action_state)
   {
-    bool rtn = false;
-    switch (action_state)
-    {
-      case actionlib::SimpleClientGoalState::PENDING:
-        ROS_INFO_STREAM_THROTTLE(1, "Action request is pending");
-        break;
+    case actionlib::SimpleClientGoalState::PENDING:
+      ROS_INFO_STREAM_THROTTLE(1, "Action request is pending");
+      break;
 
-      case actionlib::SimpleClientGoalState::ACTIVE:
-        ROS_INFO_STREAM_THROTTLE(1, "Action request is active");
-        break;
+    case actionlib::SimpleClientGoalState::ACTIVE:
+      ROS_INFO_STREAM_THROTTLE(1, "Action request is active");
+      break;
 
-      case actionlib::SimpleClientGoalState::SUCCEEDED:
-        rtn = true;
-        break;
+    case actionlib::SimpleClientGoalState::SUCCEEDED:
+      rtn = true;
+      break;
 
-      case actionlib::SimpleClientGoalState::PREEMPTED:
-      case actionlib::SimpleClientGoalState::LOST:
-      case actionlib::SimpleClientGoalState::REJECTED:
-      case actionlib::SimpleClientGoalState::ABORTED:
-        // These states indicate something bad happened
-        ROS_ERROR_STREAM("Bad action state: " << action_state);
-        setState(StateTypes::ABORTING);
-        break;
+    case actionlib::SimpleClientGoalState::PREEMPTED:
+    case actionlib::SimpleClientGoalState::LOST:
+    case actionlib::SimpleClientGoalState::REJECTED:
+    case actionlib::SimpleClientGoalState::ABORTED:
+      // These states indicate something bad happened
+      ROS_ERROR_STREAM("Bad action state: " << action_state);
+      setState(StateTypes::ABORTING);
+      break;
 
-      default:
-        ROS_ERROR_STREAM("Unrecognized action state: " << action_state);
-        setState(StateTypes::ABORTING);
-        break;
-    }
-
-    return rtn;
+    default:
+      ROS_ERROR_STREAM("Unrecognized action state: " << action_state);
+      setState(StateTypes::ABORTING);
+      break;
   }
+
+  return rtn;
+}
 
 bool StateMachine::moveArm(const std::string & move_name)
 {
@@ -814,8 +858,8 @@ void StateMachine::closeChuck()
 
 bool StateMachine::isChuckClosed()
 {
-  return isActionComplete(close_chuck_client_ptr_->getState().state_) &&
-      isActionComplete(grasp_action_client_ptr_->getState().state_);
+  return isActionComplete(close_chuck_client_ptr_->getState().state_)
+      && isActionComplete(grasp_action_client_ptr_->getState().state_);
 }
 
 void StateMachine::openGripper()
