@@ -170,6 +170,8 @@ TEST(Task, from_xml)
   using namespace mtconnect;
 
   const string xml_string = "<task>"
+      "<joint_point name=home joint_values=\"1 2 3\" group_name=\"group_1\"/>"
+      "<joint_point name=safe joint_values=\"4 5 6\" group_name=\"group_2\"/>"
       "<motion_group name=\"group_1\" joint_names=\"joint_1 joint_2 joint_3\"/>"
       "<motion_group name=\"group_2\" joint_names=\"joint_4 joint_5 joint_6\"/>"
       "<path name=\"path_1\">"
@@ -197,6 +199,7 @@ TEST(Task, from_xml)
 
   ASSERT_TRUE(fromXml(task, xml_t));
 
+  ASSERT_EQ(2, task.points_.size());
   ASSERT_EQ(2, task.motion_groups_.size());
   ASSERT_EQ(2, task.paths_.size());
 
@@ -205,6 +208,9 @@ TEST(Task, from_xml)
 
   boost::shared_ptr<Path> path_ptr = task.paths_["path_1"];
   ASSERT_EQ(path_ptr->moves_.front().point_->group_, group_ptr);
+
+  boost::shared_ptr<JointPoint> joint_point_ptr = task.points_["home"];
+  ASSERT_TRUE(joint_point_ptr);
 
   ASSERT_TRUE(fromXml(task, xml_string));
 

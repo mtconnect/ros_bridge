@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2013 Southwest Research Institute
 
@@ -14,16 +15,24 @@
    limitations under the License.
  */
 
-#include <mtconnect_cnc_robot_example/state_machine/state_machine.h>
-using namespace mtconnect_cnc_robot_example::state_machine;
+#ifndef UTILITIES_H_
+#define UTILITIES_H_
 
-int main(int argc,char** argv)
+#include <sensor_msgs/JointState.h>
+#include <trajectory_msgs/JointTrajectory.h>
+#include <mtconnect_task_parser/task.h>
+
+namespace mtconnect_state_machine
 {
-	ros::init(argc,argv,"mtconnect_state_machine_server");
-	ros::NodeHandle nh;
 
-	StateMachineInterface::Ptr s(new StateMachine());
-	s->run();
 
-	return 0;
+
+bool parseTaskXml(const std::string & xml,
+                  std::map<std::string, trajectory_msgs::JointTrajectoryPtr> & paths,
+                  std::map<std::string, boost::shared_ptr<mtconnect::JointPoint> > & points);
+
+bool toJointTrajectory(boost::shared_ptr<mtconnect::Path> & path,
+                       trajectory_msgs::JointTrajectoryPtr & traj);
 }
+
+#endif /* UTILITIES_H_ */
