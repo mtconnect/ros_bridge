@@ -276,6 +276,8 @@ class GenericActionClient(object):
             # Only grab XML elements for machine tool action requests 
             _, elements, self.action_goals = bridge_library.xml_components(chunk, self.ns, self.action_list, get_goal = True, action_goals = self.action_goals)
 
+            """
+            # REMOVED -- REPLACE WITH TEST CODE BELOW ONCE TESTING IS COMPLETE
             if elements:
                 # Check for existing handshake, reverse elements to make sure existing handshake goes first
                 # TODO: Only works for two action items, change to ensure handshake executes first
@@ -294,7 +296,29 @@ class GenericActionClient(object):
                     elif e.text == 'READY' and e.attrib['name'] == self.handshake:
                         # Send hand shake signal
                         bridge_library.action_cb((self.adapter, self.di_dict, e.attrib['name'], 'READY'))
-                        self.handshake = None
+                        self.handshake = None"""
+            
+            if elements:
+                # Check for existing handshake
+                if self.handshake:
+                    for e in elements:
+                        if self.handshake == e.attrib['name'] and e.text == 'READY':
+                            # Send hand shake signal
+                            bridge_library.action_cb((self.adapter, self.di_dict, e.attrib['name'], 'READY'))
+                            self.handshake = None
+                            elements.remove(e)
+                    if self.handshake != None:
+                        rospy.logerr('DID NOT RECEIVE READY HANDSHAKE FROM MACHINE TOOL') 
+                # Process remaining action requests
+                for e in elements:
+                    # Remove XML namespace string from the element tag for hash tables
+                    action_text = re.findall(r'(?<=\})\w+',e.tag)[0]
+                    
+                    # Check if machine tool is requesting an action, if so, run action client
+                    if e.text == 'ACTIVE':
+                        self.action_client((action_text, self.action_goals[action_text], self.type_handle))
+                        self.handshake = e.attrib['name']
+                    
         except Exception as e:
             rospy.logerr("Generic Action Client: Process XML callback failed: %s, releasing lock" % e)
         finally:
