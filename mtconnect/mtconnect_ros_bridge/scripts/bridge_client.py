@@ -276,30 +276,8 @@ class GenericActionClient(object):
             # Only grab XML elements for machine tool action requests 
             _, elements, self.action_goals = bridge_library.xml_components(chunk, self.ns, self.action_list, get_goal = True, action_goals = self.action_goals)
 
-            """
-            # REMOVED -- REPLACE WITH TEST CODE BELOW ONCE TESTING IS COMPLETE
             if elements:
-                # Check for existing handshake, reverse elements to make sure existing handshake goes first
-                # TODO: Only works for two action items, change to ensure handshake executes first
-                if self.handshake != elements[0].attrib['name']:
-                    # Reverse element order
-                    elements = elements[::-1]
-                for e in elements:
-                    # Remove XML namespace string from the element tag for hash tables
-                    action_text = re.findall(r'(?<=\})\w+',e.tag)[0]
-                    
-                    # Check if machine tool is requesting an action, if so, run action client
-                    if e.text == 'ACTIVE':
-                        self.action_client((action_text, self.action_goals[action_text], self.type_handle))
-                        self.handshake = e.attrib['name']
-                    # Check if machine tool is submitting a handshake request
-                    elif e.text == 'READY' and e.attrib['name'] == self.handshake:
-                        # Send hand shake signal
-                        bridge_library.action_cb((self.adapter, self.di_dict, e.attrib['name'], 'READY'))
-                        self.handshake = None"""
-            
-            if elements:
-                # Check for existing handshake
+                # Check for existing handshake, execute it first
                 if self.handshake:
                     for e in elements:
                         if self.handshake == e.attrib['name'] and e.text == 'READY':
