@@ -93,7 +93,7 @@
 	<remap from="/material_unload_action" to="/MaterialUnloadClient" />
 
 	<node pkg="mtconnect_state_machine" type="state_machine_node" name="mtconnect_state_machine" output="screen">
-	  <param name="loop_rate" value="2"/>
+	  <param name="loop_rate" value="10"/>
 		<param name="state_override" value="0"/>
 		<param name="force_fault" value="0"/>
 		<param name="task_description" textfile="$(find mtconnect_example_launch)/config/task_description.xml" />
