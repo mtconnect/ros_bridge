@@ -233,7 +233,7 @@ class GenericActionServer():
                         root = ElementTree.fromstring(chunk)
                         element_list = root.findall('.//m:' + self.server_name[action], namespaces = self.ns)
                         if len(element_list) > 1:
-                            rospy.loginfo('XML --> %s' % chunk)
+                            rospy.logdebug('XML --> %s' % chunk)
                         if element_list:
                             # Must iterate -- multiple elements possible for a single tag
                             for element in element_list:
@@ -303,7 +303,7 @@ class GenericActionServer():
             if self.capture_xml == True:
                 self.XML_queue.put(chunk)
                 if self.XML_queue.qsize() > 1:
-                    rospy.loginfo('STORED XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
+                    rospy.logdebug('STORED XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
         except Exception as e:
             rospy.logerr("Bridge Server: Process XML callback failed: %s, releasing lock" % e)
         finally:

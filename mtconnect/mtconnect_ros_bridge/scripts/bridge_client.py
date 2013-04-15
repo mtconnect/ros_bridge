@@ -105,7 +105,7 @@ class GenericActionClient(object):
         self.setup_topic_data()
         
         # Add data items to the MTConnect Adapter - must be unique data items
-        bridge_library.add_event((self.adapter, self.action_list, self.di_dict, True))
+        bridge_library.add_event((self.adapter, self.action_list, self.di_dict, False))
         
         # Start the adapter
         rospy.loginfo('Start the Robot Link adapter')
@@ -258,10 +258,11 @@ class GenericActionClient(object):
         if result == 3: # SUCCEEDED from actionlib_msgs.msg.GoalStatus
             rospy.loginfo('Sending COMPLETE flag')
             bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'COMPLETE'))
+            return name
         elif result == 4: # ABORTED from actionlib_msgs.msg.GoalStatus
             rospy.loginfo('%s ABORTED, terminating action request' % data_item)
             bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'FAIL'))
-        return
+            return None
 
     ## @brief Callback function that launches a ROS action client if the machine
     ## tool data item tag is 'ACTIVE'.  Once the action is completed, it completes
@@ -294,8 +295,8 @@ class GenericActionClient(object):
                     
                     # Check if machine tool is requesting an action, if so, run action client
                     if e.text == 'ACTIVE':
-                        self.action_client((action_text, self.action_goals[action_text], self.type_handle))
-                        self.handshake = e.attrib['name']
+                        self.handshake = self.action_client((action_text, self.action_goals[action_text], self.type_handle))
+                        #self.handshake = e.attrib['name']
                     
         except Exception as e:
             rospy.logerr("Generic Action Client: Process XML callback failed: %s, releasing lock" % e)
