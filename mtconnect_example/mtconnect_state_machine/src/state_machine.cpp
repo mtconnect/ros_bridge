@@ -58,6 +58,9 @@ static const std::string DEFAULT_TRAJECTORY_FILTER_SERVICE = "filter_trajectory_
 
 static const std::string MTCONNECT_ACTION_ACTIVE_FLAG = "ACTIVE";
 
+//convienence typdef for getting to mtconnect state (i.e. ready, not, ready, etc...)
+typedef mtconnect_msgs::SetMTConnectState::Request MtConnectState;
+
 StateMachine::StateMachine() :
     nh_()
 {
@@ -465,12 +468,17 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::RESETTING:
-      setState(StateTypes::WAIT_FOR_HOME);
+      setState(StateTypes::R_WAIT_FOR_HOME);
       break;
 
-    case StateTypes::WAIT_FOR_HOME:
+    case StateTypes::R_WAIT_FOR_HOME:
       //TODO: Ignoring check for home
       ROS_WARN_STREAM("Ignoring check for home after fault");
+      setState(StateTypes::R_SET_MAT_ACTIONS_NOT_READY);
+      break;
+
+    case StateTypes::R_SET_MAT_ACTIONS_NOT_READY:
+      setMatActionsNotReady();
       setState(StateTypes::IDLE);
       break;
 
@@ -698,6 +706,7 @@ void StateMachine::materialLoadGoalCB(/*const MaterialLoadServer::GoalConstPtr &
     case StateTypes::WAITING:
       ROS_INFO_STREAM("Accepting material load request");
       material_load_server_ptr_->acceptNewGoal();
+      //setMatUnload(MtConnectState::NOT_READY);
       setState(StateTypes::MATERIAL_LOADING);
       break;
     default:
@@ -716,6 +725,7 @@ void StateMachine::materialUnloadGoalCB(/*const MaterialUnloadServer::GoalConstP
     case StateTypes::WAITING:
       ROS_INFO_STREAM("Accepting material unload request");
       material_unload_server_ptr_->acceptNewGoal();
+      //setMatLoad(MtConnectState::NOT_READY);
       setState(StateTypes::MATERIAL_UNLOADING);
       break;
     default:
@@ -762,7 +772,7 @@ bool StateMachine::externalCommandCB(mtconnect_example_msgs::StateMachineCmd::Re
       if (state_ == StateTypes::ABORTED)
       {
         ROS_INFO_STREAM("External command FAULT_RESET executing");
-        setState(StateTypes::IDLE);
+        setState(StateTypes::RESETTING);
         res.accepted = true;
       }
       else

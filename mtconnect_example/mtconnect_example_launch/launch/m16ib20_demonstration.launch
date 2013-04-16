@@ -42,19 +42,19 @@
 	<!-- real gripper drivers -->
     <group if="$(arg real_grasps)">
   
-      <remap from="/grasp_execution_action" to="/gripper_action_service"/>
+      <remap from="/gripper_action_service/grasp_execution_action" to="/gripper_action_service"/>
       <include file="$(find mtconnect_example_launch)/launch/mtconnect_grasp_action.launch">
           <arg name="robot_ip" value="$(arg robot_ip)"/>
           <arg name="port" value="11010"/>
-          <arg name="node_name" value="gripper_interface"/>
+          <arg name="node_name" value="gripper_action_service"/>
           <arg name="use_bswap" value="$(arg use_bswap)" />
       </include>
       
-      <remap from="/grasp_execution_action" to="/vise_action_service"/>
+      <remap from="/vise_action_service/grasp_execution_action" to="/vise_action_service"/>
       <include file="$(find mtconnect_example_launch)/launch/mtconnect_grasp_action.launch">
           <arg name="robot_ip" value="$(arg robot_ip)"/>
           <arg name="port" value="11011"/>
-          <arg name="node_name" value="vise_interface"/>
+          <arg name="node_name" value="vise_action_service"/>
           <arg name="use_bswap" value="$(arg use_bswap)" />
       </include>
         
