@@ -28,7 +28,7 @@ class Robot
     @adapter = Adapter.new(port)
     @cnc = cnc
 
-    @adapter.data_items << (@availability = DataItem.new('avail'))
+    @adapter.data_items << (@avail = DataItem.new('avail'))
     @adapter.data_items << (@system = SimpleCondition.new('system'))
 
     @adapter.data_items << (@controller_mode = DataItem.new('mode'))
