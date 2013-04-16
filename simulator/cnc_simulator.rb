@@ -32,7 +32,8 @@ thread = streamer.start do |name, value, code = nil, text = nil|
   end
 end
 
-streamer = MTConnect::Streamer.new(ARGV[1] || 'http://localhost:5000/cnc')
+streamer = MTConnect::Streamer.new(ARGV[1] || 'http://localhost:5000/cnc',
+                filter: '//DataItem[@type="CONTROLLER_MODE"or@type="EXECUTION"or@type="CHUCK_STATE"or@type="AVAILABILITY"or@category="CONDITION"]')
 thread = streamer.start do |name, value, code = nil, text = nil|
   begin
     context.event('cnc', name, value, code, text)

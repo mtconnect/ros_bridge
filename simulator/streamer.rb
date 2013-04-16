@@ -20,8 +20,9 @@ require 'time'
 
 module MTConnect
   class Streamer
-    def initialize(url)
+    def initialize(url, filter: nil)
       @url = url
+      @filter = filter
       @reader = nil
     end
     
@@ -69,8 +70,9 @@ module MTConnect
           puts "Connecting..."
           client = Net::HTTP.new(dest.host, dest.port)
           nxt, instance = current(client, rootPath, &block)
-          
-          path = rootPath + "sample?interval=0&count=1000&from=#{nxt}&heartbeat=1000"
+
+          filter = "&path=#@filter" if @filter
+          path = rootPath + "sample?interval=0&count=1000&from=#{nxt}&heartbeat=1000#{filter}"
           puller = LongPull.new(client)
           puller.long_pull(path) do |xml|
             nxt = parse(xml, &block)
