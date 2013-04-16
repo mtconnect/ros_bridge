@@ -7,15 +7,20 @@
     Usage:
       mtconnect_m16ib20_material_handling.launch [use_rviz:=false]
         [real_robot:=false] [robot_ip:=<value>] [use_bswap:=<false]
+        [home_check:=true]
         
         use_bswap - true if real(simulated) robot (i.e. Roboguide)
         false for real robot (i.e. physical hardware)
+        
+        home_check - true if home should be checked before start
+        and fault reset.
     -->
 	<arg name="use_rviz" default="false"/>
 	<arg name="real_robot" default="false"/>
 	<arg name="real_grasps" default="false"/>
 	<arg name="robot_ip" />
 	<arg name="use_bswap" default="false"/>
+	<arg name="home_check" default="true"/>
 
 
 	<!-- bringup of arm navigation prerequisites -->
@@ -107,6 +112,7 @@
 	  <param name="loop_rate" value="10"/>
 		<param name="state_override" value="0"/>
 		<param name="force_fault" value="0"/>
+		<param name="home_check" value="$(arg home_check)"/>
 		<param name="task_description" textfile="$(find mtconnect_example_launch)/config/task_description.xml" />
 		
 		<!-- trajectory filter service -->

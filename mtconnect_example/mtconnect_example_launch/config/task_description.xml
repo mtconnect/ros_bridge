@@ -1,6 +1,7 @@
 <task>
 	<motion_group name="group_1" joint_names="joint_1 joint_2 joint_3 joint_4 joint_5 joint_6"/>
   <joint_point name="home" joint_values="-0.545 -0.725 0.679 3.137 -1.609 -5.255" group_name="group_1"/>
+	<!--joint_point name="home" joint_values="0 0 0 0 0 0" group_name="group_1"/-->
 			
 	
 	

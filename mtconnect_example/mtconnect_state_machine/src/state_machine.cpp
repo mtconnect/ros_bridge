@@ -16,6 +16,7 @@
 
 #include <mtconnect_state_machine/state_machine.h>
 #include <mtconnect_state_machine/utilities.h>
+#include <industrial_robot_client/utils.h>
 
 using namespace mtconnect_state_machine;
 
@@ -23,6 +24,8 @@ static const std::string PARAM_TASK_DESCRIPTION = "task_description";
 static const std::string PARAM_FORCE_FAULT_STATE = "force_fault";
 static const std::string PARAM_STATE_OVERRIDE = "state_override";
 static const std::string PARAM_LOOP_RATE = "loop_rate";
+static const std::string PARAM_CHECK_ENABLED = "home_check";
+static const std::string PARAM_HOME_TOL = "home_tol";
 static const std::string KEY_HOME_POSITION = "home";
 
 // Material load moves
@@ -81,6 +84,16 @@ bool StateMachine::init()
   {
     ROS_WARN_STREAM("Param: " << PARAM_LOOP_RATE << " not set, using default");
     loop_rate_ = 10;
+  }
+  if (!ph.getParam(PARAM_CHECK_ENABLED, home_check_))
+  {
+    ROS_WARN_STREAM("Param: " << PARAM_CHECK_ENABLED << "not set, setting enabled");
+    home_check_ = true;
+  }
+  if (!ph.getParam(PARAM_HOME_TOL, home_tol_))
+  {
+    ROS_WARN_STREAM("Param: " << PARAM_HOME_TOL << " not set, using default");
+    home_tol_ = 0.1; //radians
   }
   if (!ph.getParam(PARAM_TASK_DESCRIPTION, task_desc))
   {
@@ -190,9 +203,16 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::CHECK_HOME:
-      //TODO: Incorporate check for home
-      ROS_WARN_STREAM("Ignoring check for home");
-      setState(StateTypes::WAIT_FOR_ACTIONS);
+      if ( isHome())
+      {
+        ROS_INFO_STREAM("Robot start home check passed");
+        setState(StateTypes::WAIT_FOR_ACTIONS);
+      }
+      else
+      {
+        ROS_ERROR_STREAM("Robot not in home state on start");
+        setState(StateTypes::ABORTING);
+      }
       break;
 
     case StateTypes::WAIT_FOR_ACTIONS:
@@ -472,9 +492,15 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::R_WAIT_FOR_HOME:
-      //TODO: Ignoring check for home
-      ROS_WARN_STREAM("Ignoring check for home after fault");
-      setState(StateTypes::R_SET_MAT_ACTIONS_NOT_READY);
+      if( isHome())
+      {
+        setState(StateTypes::R_SET_MAT_ACTIONS_NOT_READY);
+      }
+      else
+      {
+        ROS_ERROR_STREAM("Robot not in home state for FAULT RESET");
+        setState(StateTypes::ABORTING);
+      }
       break;
 
     case StateTypes::R_SET_MAT_ACTIONS_NOT_READY:
@@ -973,3 +999,21 @@ bool StateMachine::isGripperClosed()
   return isActionComplete(grasp_action_client_ptr_->getState().state_);
 }
 
+bool StateMachine::isHome()
+{
+  bool rtn = false;
+
+  if( home_check_ )
+  {
+    ROS_INFO_STREAM("Home checking ENABLED, returning range check");
+    rtn = industrial_robot_client::utils::isWithinRange(home_->group_->joint_names_, home_->values_,
+                                                      joint_state_msg_.name, joint_state_msg_.position, home_tol_);
+  }
+  else
+  {
+    ROS_WARN_STREAM("Home checking DISABLED, returning true");
+    rtn = true;
+  }
+
+  return rtn;
+}

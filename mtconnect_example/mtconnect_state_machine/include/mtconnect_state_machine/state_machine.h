@@ -331,6 +331,9 @@ protected:
   // Override checking
   void overrideChecks();
 
+  // Home checking
+  bool isHome();
+
 private:
 
 ///////General state
@@ -341,10 +344,22 @@ private:
   StateType state_;
 
   /**
-     * \brief Main loop rate
-     *
-     */
+   * \brief Main loop rate
+   *
+   */
   int loop_rate_;
+
+  /**
+   * \brief enables/disables home checking
+   *
+   */
+  bool home_check_;
+
+  /**
+   * \brief home position tolerance
+   *
+   */
+  double home_tol_;
 
 //////MTConnect specific
 

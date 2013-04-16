@@ -30,4 +30,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(example ${PROJECT_NAME})
 
 rosbuild_add_executable(state_machine_node src/state_machine_node.cpp src/state_machine.cpp src/utilities.cpp)
+target_link_libraries(state_machine_node industrial_robot_client)
 
