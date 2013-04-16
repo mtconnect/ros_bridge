@@ -919,7 +919,7 @@ void StateMachine::openChuck()
   // Simulated chuck
   object_manipulation_msgs::GraspHandPostureExecutionGoal vise_goal;
   vise_goal.goal = object_manipulation_msgs::GraspHandPostureExecutionGoal::RELEASE;
-  grasp_action_client_ptr_->sendGoal(vise_goal);
+  vise_action_client_ptr_->sendGoal(vise_goal);
 }
 
 bool StateMachine::isChuckOpened()
@@ -938,7 +938,7 @@ void StateMachine::closeChuck()
   // Simulated chuck
   object_manipulation_msgs::GraspHandPostureExecutionGoal vise_goal;
   vise_goal.goal = object_manipulation_msgs::GraspHandPostureExecutionGoal::GRASP;
-  grasp_action_client_ptr_->sendGoal(vise_goal);
+  vise_action_client_ptr_->sendGoal(vise_goal);
 }
 
 bool StateMachine::isChuckClosed()
