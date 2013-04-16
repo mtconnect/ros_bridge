@@ -20,6 +20,17 @@
 
 	<!-- bringup of arm navigation prerequisites -->
 	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+	
+	<!-- additional state publishers for envrionment and tools-->
+	<param name="env_description" textfile="$(find mtconnect_example_launch)/urdf/mtconnect_m16ib20_demo_env.urdf" />
+	<node pkg="robot_state_publisher" name="evn_pub" type="state_publisher">
+	  <remap from="robot_description" to="env_description"/>
+	</node>
+	
+	<param name="tool_description" textfile="$(find mtconnect_example_launch)/urdf/mtconnect_m16ib20_demo_tool.urdf" />
+	<node pkg="robot_state_publisher" name="tool_pub" type="state_publisher">
+	  <remap from="robot_description" to="tool_description"/>
+	</node>
 
     
     <!-- real robot drivers -->

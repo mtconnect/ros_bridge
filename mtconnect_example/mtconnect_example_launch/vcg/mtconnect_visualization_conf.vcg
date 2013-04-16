@@ -1,9 +1,9 @@
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=-0.190205 3.10076 3.52898 0.709941 0.970957 0.882236
+Camera\ Config=0.00479538 2.01575 8.22486 -0.360768 2.82633 2.00229
 Camera\ Type=rviz::OrbitViewController
-Fixed\ Frame=/base_link
+Fixed\ Frame=/world_frame
 Grid.Alpha=0.5
 Grid.Cell\ Size=0.5
 Grid.ColorB=0.898039
@@ -15,12 +15,12 @@ Grid.Line\ Width=0.03
 Grid.Normal\ Cell\ Count=0
 Grid.OffsetX=0
 Grid.OffsetY=0
-Grid.OffsetZ=0
+Grid.OffsetZ=-0.5
 Grid.Plane=0
 Grid.Plane\ Cell\ Count=10
-Grid.Reference\ Frame=<Fixed Frame>
+Grid.Reference\ Frame=/world_frame
 Property\ Grid\ Splitter=743,78
-Property\ Grid\ State=expanded=.Global Options,Grid.Enabled,TF.Enabled,TF.Frames;splitterratio=0.5
+Property\ Grid\ State=expanded=.Global Options,Grid.Enabled,TF.Enabled,TF.Frames,RobotModel.Enabled,RobotModel2.Enabled;splitterratio=0.5
 QMainWindow=000000ff00000000fd00000003000000000000011d00000387fc0200000001fb000000100044006900730070006c006100790073010000001d00000387000000ee00ffffff0000000100000130000001b9fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000036000000790000006700fffffffb0000000a00560069006500770073000000003600000108000000bb00fffffffb0000001200530065006c0065006300740069006f006e0000000036000001b90000006700ffffff00000003000005000000003efc0100000001fb0000000800540069006d0065010000000000000500000002bf00ffffff000003dd0000038700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 Robot\ Model.Alpha=1
 Robot\ Model.Collision\ Enabled=0
@@ -57,6 +57,32 @@ Robot\:\ Robot\ Model\ Link\ link_6Alpha=1
 Robot\:\ Robot\ Model\ Link\ link_6Enabled=1
 Robot\:\ Robot\ Model\ Link\ link_6Show\ Axes=0
 Robot\:\ Robot\ Model\ Link\ link_6Show\ Trail=0
+Robot\:\ RobotModel\ Link\ cnc_linkAlpha=1
+Robot\:\ RobotModel\ Link\ cnc_linkEnabled=1
+Robot\:\ RobotModel\ Link\ cnc_linkShow\ Axes=0
+Robot\:\ RobotModel\ Link\ cnc_linkShow\ Trail=0
+Robot\:\ RobotModel\ Link\ robot_platform_linkAlpha=1
+Robot\:\ RobotModel\ Link\ robot_platform_linkEnabled=1
+Robot\:\ RobotModel\ Link\ robot_platform_linkShow\ Axes=0
+Robot\:\ RobotModel\ Link\ robot_platform_linkShow\ Trail=0
+Robot\:\ RobotModel2\ Link\ end_effector_linkAlpha=1
+Robot\:\ RobotModel2\ Link\ end_effector_linkEnabled=1
+Robot\:\ RobotModel2\ Link\ end_effector_linkShow\ Axes=0
+Robot\:\ RobotModel2\ Link\ end_effector_linkShow\ Trail=0
+RobotModel.Alpha=1
+RobotModel.Collision\ Enabled=0
+RobotModel.Enabled=1
+RobotModel.Robot\ Description=env_description
+RobotModel.TF\ Prefix=
+RobotModel.Update\ Interval=0
+RobotModel.Visual\ Enabled=1
+RobotModel2.Alpha=1
+RobotModel2.Collision\ Enabled=0
+RobotModel2.Enabled=1
+RobotModel2.Robot\ Description=tool_description
+RobotModel2.TF\ Prefix=
+RobotModel2.Update\ Interval=0
+RobotModel2.Visual\ Enabled=1
 TF.All\ Enabled=0
 TF.Enabled=0
 TF.Frame\ Timeout=15
@@ -77,6 +103,12 @@ Name=Robot Model
 [Display2]
 ClassName=rviz::TFDisplay
 Name=TF
+[Display3]
+ClassName=rviz::RobotModelDisplay
+Name=RobotModel
+[Display4]
+ClassName=rviz::RobotModelDisplay
+Name=RobotModel2
 [Window]
 Height=1000
 Width=1280
