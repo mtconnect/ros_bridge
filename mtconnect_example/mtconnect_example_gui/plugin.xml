@@ -1,0 +1,20 @@
+<library path="src">
+  <class name="SMInterfaceGUI" type="mtconnect_example_gui.sm_interface.SMInterfaceGUI" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      An interface to the mtconnect state machine (modeled on traditional industrial panels)
+    </description>
+    <qtgui>
+      <!-- optional grouping...
+      <group>
+        <label>Group</label>
+      </group>
+      <group>
+        <label>Subgroup</label>
+      </group>
+      -->
+      <label>State Macine Interface</label>
+      <icon type="theme">system-help</icon>
+      <statustip>MTConnect state machine interface.</statustip>
+    </qtgui>
+  </class>
+</library>
