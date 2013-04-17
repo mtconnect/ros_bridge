@@ -156,7 +156,6 @@ module Cnc
     def activate
       if @faults.empty? and @cnc_controller_mode == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
-          (@robot_material_load == 'READY' or @robot_material_unload == 'READY') and
           @robot_execution == 'ACTIVE' and @system.normal? and @robot_availability == 'AVAILABLE'
         puts "Becomming operational"
         @statemachine.make_operational
@@ -249,7 +248,7 @@ module Cnc
     def load_failed
       @adapter.gather do
         @material_load.value = 'FAIL'
-        @system.add('FAULT', "Load failed", "LOAD")
+        #@system.add('FAULT', "Load failed", "LOAD")
       end
       @load_failed_timer = Thread.new do
         sleep @load_failed_time_limit
@@ -277,7 +276,7 @@ module Cnc
     def unload_failed
       @adapter.gather do
         @material_unload.value = 'FAIL'
-        @system.add('FAULT', "Unload failed", "UNLOAD")
+        #@system.add('FAULT', "Unload failed", "UNLOAD")
       end
       @unload_failed_timer = Thread.new do
         sleep @unload_failed_time_limit
@@ -383,6 +382,7 @@ module Cnc
                 on_entry :load_failed
                 default :material_load_failed
 
+                event :robot_material_load_not_ready, :material_load
                 event :robot_material_load_fail, :material_load_failed
                 event :robot_material_load_ready, :material_load, :stop_load_failed_timer
                 event :material_load_failed_timeout, :disabled

@@ -251,9 +251,9 @@ describe "Cnc" do
         @cnc.material_load.value.should == 'FAIL'
 
         @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
-        @cnc.statemachine.state.should == :not_ready
-        @cnc.material_load.value.should == 'NOT_READY'
-        @cnc.system.should_not be_normal
+        @cnc.statemachine.state.should == :material_load
+        @cnc.material_load.value.should == 'ACTIVE'
+        @cnc.system.should be_normal
       end
 
       it "should fail a material unload if the robot fails and return to active when ready" do
@@ -410,7 +410,7 @@ describe "Cnc" do
         it "should make material load not ready when it is active and the robot material load is not ready" do
           @cnc.material_load.value.should == 'ACTIVE'
           @cnc.event('robot', 'MaterialLoad', "NOT_READY")
-          @cnc.material_load.value.should == 'NOT_READY'
+          @cnc.material_load.value.should == 'ACTIVE'
         end
 
         it "should keep material unload ready when it is ready and the robot material load is not ready" do
@@ -427,10 +427,10 @@ describe "Cnc" do
 
           @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
           @cnc.material_unload.value.should == 'READY'
-          @cnc.material_load.value.should == 'NOT_READY'
+          @cnc.material_load.value.should == 'ACTIVE'
         end
 
-        it "should go back to loading material is not available to the robot and then restored" do
+        it "should go back to loading material if it is not available to the robot was reset or filled" do
           @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
           @cnc.event('robot', 'MaterialLoad', 'FAIL')
           @cnc.material_load.value.should == 'FAIL'
@@ -438,9 +438,7 @@ describe "Cnc" do
 
           @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
           @cnc.material_unload.value.should == 'READY'
-          @cnc.material_load.value.should == 'NOT_READY'
-
-          sleep 0.5
+          @cnc.material_load.value.should == 'ACTIVE'
 
           @cnc.event('robot', 'MaterialLoad', 'READY')
           @cnc.material_unload.value.should == 'READY'
