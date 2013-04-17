@@ -32,7 +32,7 @@ module Cnc
     attr_accessor :cnc_controller_mode, :cnc_execution, :cnc_availability, :cnc_chuck_state
 
     attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
-                :material_load, :material_unload, :link
+                :material_load, :material_unload, :link, :system
 
     attr_accessor :cycle_time, :unload_failed_time_limit, :load_time_limit, :unload_time_limit,
                   :load_failed_time_limit
@@ -156,7 +156,7 @@ module Cnc
     def activate
       if @faults.empty? and @cnc_controller_mode == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
-          @robot_material_load == 'READY' and @robot_material_unload == 'READY' and
+          (@robot_material_load == 'READY' or @robot_material_unload == 'READY') and
           @robot_execution == 'ACTIVE' and @system.normal? and @robot_availability == 'AVAILABLE'
         puts "Becomming operational"
         @statemachine.make_operational
@@ -249,6 +249,7 @@ module Cnc
     def load_failed
       @adapter.gather do
         @material_load.value = 'FAIL'
+        @system.add('FAULT', "Load failed", "LOAD")
       end
       @load_failed_timer = Thread.new do
         sleep @load_failed_time_limit
@@ -276,6 +277,7 @@ module Cnc
     def unload_failed
       @adapter.gather do
         @material_unload.value = 'FAIL'
+        @system.add('FAULT', "Unload failed", "UNLOAD")
       end
       @unload_failed_timer = Thread.new do
         sleep @unload_failed_time_limit

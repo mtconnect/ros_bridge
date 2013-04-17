@@ -253,6 +253,7 @@ describe "Cnc" do
         @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
         @cnc.statemachine.state.should == :not_ready
         @cnc.material_load.value.should == 'NOT_READY'
+        @cnc.system.should_not be_normal
       end
 
       it "should fail a material unload if the robot fails and return to active when ready" do
@@ -365,6 +366,86 @@ describe "Cnc" do
 
         @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
         @cnc.statemachine.state.should == :material_unload
+      end
+
+      it "should be operational when material load is not ready (out of material) but can still unload" do
+        @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+        @cnc.event('robot', 'CloseDoor', 'ACTIVE')
+        @cnc.event('robot', 'CloseChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.event('cnc', 'ChuckState', 'CLOSED')
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.cnc_chuck_state.should == 'CLOSED'
+        @cnc.event('robot', 'CloseDoor', 'READY')
+        @cnc.event('robot', 'CloseChuck', 'READY')
+
+        @cnc.event('robot', 'MaterialLoad', 'COMPLETE')
+        @cnc.event('robot', 'MaterialLoad', 'READY')
+
+        # Out of material...
+        @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
+
+        @cnc.statemachine.state.should == :cycle_start
+        @cnc.event('cnc', 'Execution', 'READY')
+        @cnc.statemachine.state.should == :material_unload
+
+        @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
+        @cnc.event('robot', 'OpenDoor', 'ACTIVE')
+        @cnc.event('robot', 'OpenChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.event('cnc','ChuckState', 'OPEN')
+        @cnc.event('robot', 'OpenDoor', 'READY')
+        @cnc.event('robot', 'OpenChuck', 'READY')
+        @cnc.door_state.value.should == 'OPEN'
+        @cnc.cnc_chuck_state.should == 'OPEN'
+
+        @cnc.event('robot', 'MaterialUnload', 'COMPLETE')
+        @cnc.event('robot', 'MaterialUnload', 'READY')
+        @cnc.statemachine.state.should == :material_load
+        @cnc.material_load.value.should == 'ACTIVE'
+      end
+
+
+      context "and robot is out of material" do
+        it "should make material load not ready when it is active and the robot material load is not ready" do
+          @cnc.material_load.value.should == 'ACTIVE'
+          @cnc.event('robot', 'MaterialLoad', "NOT_READY")
+          @cnc.material_load.value.should == 'NOT_READY'
+        end
+
+        it "should keep material unload ready when it is ready and the robot material load is not ready" do
+          @cnc.material_unload.value.should == 'READY'
+          @cnc.event('robot', 'MaterialLoad', "NOT_READY")
+          @cnc.material_unload.value.should == 'READY'
+        end
+
+        it "should fail if material load is not ready and current state is material load" do
+          @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+          @cnc.event('robot', 'MaterialLoad', 'FAIL')
+          @cnc.material_load.value.should == 'FAIL'
+          @cnc.material_unload.value.should == 'READY'
+
+          @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
+          @cnc.material_unload.value.should == 'READY'
+          @cnc.material_load.value.should == 'NOT_READY'
+        end
+
+        it "should go back to loading material is not available to the robot and then restored" do
+          @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+          @cnc.event('robot', 'MaterialLoad', 'FAIL')
+          @cnc.material_load.value.should == 'FAIL'
+          @cnc.material_unload.value.should == 'READY'
+
+          @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
+          @cnc.material_unload.value.should == 'READY'
+          @cnc.material_load.value.should == 'NOT_READY'
+
+          sleep 0.5
+
+          @cnc.event('robot', 'MaterialLoad', 'READY')
+          @cnc.material_unload.value.should == 'READY'
+          @cnc.material_load.value.should == 'ACTIVE'
+        end
       end
     end
   end
