@@ -43,7 +43,7 @@ bool evalXmlParse(bool parse_rtn, bool required, std::string name)
     }
     else
     {
-      ROS_INFO_STREAM("Failed to parse OPTIONAL attribute: " << name);
+      ROS_DEBUG_STREAM("Failed to parse OPTIONAL attribute: " << name);
       rtn = true;
     }
   }
@@ -53,23 +53,23 @@ bool evalXmlParse(bool parse_rtn, bool required, std::string name)
 template<typename T>
   bool attrFromXml(TiXmlElement* config, std::string name, T & member, bool required = true)
   {
-    ROS_INFO_STREAM("XML element: " << config->Value());
+    ROS_DEBUG_STREAM("XML element: " << config->Value());
 
     int txml_code = config->QueryValueAttribute(name, &member);
     bool txml_bool = false;
     switch (txml_code)
     {
       case TIXML_SUCCESS:
-        ROS_INFO_STREAM(
+        ROS_DEBUG_STREAM(
             "Element: " << config->Value() << " successfully parsed attribute: " << name << " to " << member);
         txml_bool = true;
         break;
       case TIXML_WRONG_TYPE:
-        ROS_INFO_STREAM("Element: " << config->Value() << " failed to parse attribute: " << name << " , wrong type");
+        ROS_DEBUG_STREAM("Element: " << config->Value() << " failed to parse attribute: " << name << " , wrong type");
         txml_bool = false;
         break;
       case TIXML_NO_ATTRIBUTE:
-        ROS_INFO_STREAM(
+        ROS_DEBUG_STREAM(
             "Element: " << config->Value() << " failed to parse attribute: " << name << ", attribute missing");
         txml_bool = false;
         break;
@@ -100,7 +100,7 @@ template<typename T>
         {
           try
           {
-            ROS_INFO_STREAM(
+            ROS_DEBUG_STREAM(
                 "Element: " << config->Value() << " appending item: " << pieces[i] << " to " << name << " list");
             list.push_back(boost::lexical_cast<T>(pieces[i].c_str()));
             txml_rtn = true;
@@ -124,7 +124,7 @@ template<typename T>
 bool fromXml(MotionGroup & motion_group, TiXmlElement* config)
 {
 
-  ROS_INFO_STREAM("MotionGroup::from XML element");
+  ROS_DEBUG_STREAM("MotionGroup::from XML element");
 
   motion_group.clear();
 
@@ -143,7 +143,7 @@ bool fromXml(MotionGroup & motion_group, TiXmlElement* config)
 bool fromXml(JointPoint & joint_point, TiXmlElement* config,
              const std::map<std::string, boost::shared_ptr<MotionGroup> >& motion_groups)
 {
-  ROS_INFO_STREAM("JointPoint::from XML element");
+  ROS_DEBUG_STREAM("JointPoint::from XML element");
   joint_point.clear();
 
   bool rtn = attrFromXml(config, "name", joint_point.name_, false)
@@ -195,7 +195,7 @@ bool fromXml(JointMove & joint_move, TiXmlElement* config,
 {
   bool rtn = false;
 
-  ROS_INFO_STREAM("JointMove::from XML element");
+  ROS_DEBUG_STREAM("JointMove::from XML element");
   joint_move.clear();
   joint_move.point_ = boost::make_shared<JointPoint>();
 
@@ -227,7 +227,7 @@ bool fromXml(JointMove & joint_move, TiXmlElement* config,
 bool fromXml(Path & path, TiXmlElement* config,
              const std::map<std::string, boost::shared_ptr<MotionGroup> >& motion_groups)
 {
-  ROS_INFO_STREAM("Path::from XML element");
+  ROS_DEBUG_STREAM("Path::from XML element");
 
   path.clear();
 
@@ -242,7 +242,7 @@ bool fromXml(Path & path, TiXmlElement* config,
       if (fromXml(move, joint_move_xml, motion_groups))
       {
         path.moves_.push_back(move);
-        ROS_INFO_STREAM("Adding move to path, total size: " << path.moves_.size());
+        ROS_DEBUG_STREAM("Adding move to path, total size: " << path.moves_.size());
         rtn = true;
       }
       else
@@ -265,7 +265,7 @@ bool fromXml(Path & path, TiXmlElement* config,
 
 bool fromXml(Task & task, TiXmlElement* config)
 {
-  ROS_INFO_STREAM("Task::from XML element");
+  ROS_DEBUG_STREAM("Task::from XML element");
 
   task.clear();
 
@@ -280,7 +280,7 @@ bool fromXml(Task & task, TiXmlElement* config)
     if (fromXml(motion_group, motion_group_xml))
     {
       task.motion_groups_[motion_group.name_] = boost::make_shared<MotionGroup>(motion_group);
-      ROS_INFO_STREAM("Adding motion group to task, total size: " << task.motion_groups_.size());
+      ROS_DEBUG_STREAM("Adding motion group to task, total size: " << task.motion_groups_.size());
     }
     else
     {
@@ -307,7 +307,7 @@ bool fromXml(Task & task, TiXmlElement* config)
       else
       {
         task.points_[joint_point.name_] = boost::make_shared<JointPoint>(joint_point);
-        ROS_INFO_STREAM("Adding named joint point to task, total size: " << task.points_.size());
+        ROS_DEBUG_STREAM("Adding named joint point to task, total size: " << task.points_.size());
       }
     }
     else
@@ -327,7 +327,7 @@ bool fromXml(Task & task, TiXmlElement* config)
     if (fromXml(path, path_xml, task.motion_groups_))
     {
       task.paths_[path.name_] = boost::make_shared<Path>(path);
-      ROS_INFO_STREAM("Adding path to task, total size: " << task.paths_.size());
+      ROS_DEBUG_STREAM("Adding path to task, total size: " << task.paths_.size());
       rtn = true;
     }
     else

@@ -43,7 +43,7 @@ bool mtconnect_state_machine::parseTaskXml(const std::string & xml,
       if (toJointTrajectory(iter->second, jt))
       {
         paths[iter->first] = jt;
-        ROS_INFO_STREAM("Converted path: " << iter->first << " to joint trajectory");
+        ROS_DEBUG_STREAM("Converted path: " << iter->first << " to joint trajectory");
         rtn = true;
       }
       else
@@ -54,10 +54,10 @@ bool mtconnect_state_machine::parseTaskXml(const std::string & xml,
       }
 
     }
-    ROS_INFO_STREAM("Converted " << task.paths_.size() << " paths to "
+    ROS_DEBUG_STREAM("Converted " << task.paths_.size() << " paths to "
                     << paths.size() << " joint paths");
 
-    ROS_INFO_STREAM("Copying " << task.points_.size() << " to defined points");
+    ROS_DEBUG_STREAM("Copying " << task.points_.size() << " to defined points");
     points = task.points_;
   }
   else
@@ -81,11 +81,11 @@ bool mtconnect_state_machine::toJointTrajectory(boost::shared_ptr<mtconnect::Pat
   traj->points.clear();
   for (JointMovesIter iter = path->moves_.begin(); iter != path->moves_.end(); iter++)
   {
-    ROS_INFO("Converting point to joint trajectory point");
+    ROS_DEBUG("Converting point to joint trajectory point");
     trajectory_msgs::JointTrajectoryPoint jt_point;
     jt_point.positions = iter->point_->values_;
     traj->points.push_back(jt_point);
-    ROS_INFO_STREAM("Added point to trajectory, new size: " << traj->points.size());
+    ROS_DEBUG_STREAM("Added point to trajectory, new size: " << traj->points.size());
 
   }
   return true;

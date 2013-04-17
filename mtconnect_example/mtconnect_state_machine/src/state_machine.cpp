@@ -835,11 +835,11 @@ bool StateMachine::isActionComplete(int action_state)
   switch (action_state)
   {
     case actionlib::SimpleClientGoalState::PENDING:
-      ROS_INFO_STREAM_THROTTLE(1, "Action request is pending");
+      //ROS_INFO_STREAM_THROTTLE(1, "Action request is pending");
       break;
 
     case actionlib::SimpleClientGoalState::ACTIVE:
-      ROS_INFO_STREAM_THROTTLE(1, "Action request is active");
+      //ROS_INFO_STREAM_THROTTLE(1, "Action request is active");
       break;
 
     case actionlib::SimpleClientGoalState::SUCCEEDED:
@@ -867,7 +867,7 @@ bool StateMachine::isActionComplete(int action_state)
 bool StateMachine::moveArm(const std::string & move_name)
 {
   joint_traj_goal_.trajectory = *joint_paths_[move_name];
-  ROS_INFO_STREAM("Filtering a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
+  //ROS_INFO_STREAM("Filtering a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
   trajectory_filter_.request.trajectory = joint_traj_goal_.trajectory;
   if (!joint_traj_goal_.trajectory.points.empty())
   {
