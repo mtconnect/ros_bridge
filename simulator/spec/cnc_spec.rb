@@ -332,6 +332,40 @@ describe "Cnc" do
         sleep 1.2
         @cnc.statemachine.state.should == :not_ready
       end
+
+      it "should not fail a load if unload becomes not ready" do
+        @cnc.unload_time_limit = 1
+
+        @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+        @cnc.material_unload.value.should == "READY"
+
+        @cnc.event('robot', 'MaterialUnload', 'NOT_READY')
+        @cnc.statemachine.state.should == :material_load
+      end
+
+      it "should not fail an unload if load becomes not ready" do
+        @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+        @cnc.event('robot', 'CloseDoor', 'ACTIVE')
+        @cnc.event('robot', 'CloseChuck', 'ACTIVE')
+        sleep 1.2
+        @cnc.event('cnc', 'ChuckState', 'CLOSED')
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.cnc_chuck_state.should == 'CLOSED'
+        @cnc.event('robot', 'CloseDoor', 'READY')
+        @cnc.event('robot', 'CloseChuck', 'READY')
+
+        @cnc.event('robot', 'MaterialLoad', 'COMPLETE')
+        @cnc.event('robot', 'MaterialLoad', 'READY')
+
+        @cnc.statemachine.state.should == :cycle_start
+        @cnc.event('cnc', 'Execution', 'READY')
+        @cnc.statemachine.state.should == :material_unload
+
+        @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
+
+        @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
+        @cnc.statemachine.state.should == :material_unload
+      end
     end
   end
 end

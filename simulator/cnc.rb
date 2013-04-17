@@ -373,6 +373,7 @@ module Cnc
                 event :robot_material_load_fail, :material_load_failed
                 event :robot_material_load_not_ready, :activated, :reset_history
                 event :robot_material_unload_ready, :material_load
+                event :robot_material_unload_not_ready, :material_load
                 event :material_load_timeout, :material_load_failed
               end
 
@@ -394,6 +395,7 @@ module Cnc
                 event :robot_material_unload_not_ready, :activated, :reset_history
                 event :robot_material_unload_fail, :material_unload_failed
                 event :robot_material_unload_ready, :material_unload
+                event :robot_material_load_not_ready, :material_unload
                 event :material_unload_timeout, :material_unload_failed
               end
 
