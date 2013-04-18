@@ -45,12 +45,12 @@
 	
 	<!-- joint definitions -->
 	<joint name="world_to_platform_joint" type ="fixed">
-		<origin xyz="0.2 0 2" rpy="3.1417 0 0"/>
+		<origin xyz="0 0 3" rpy="3.1417 0 0"/>
 		<parent link="world_frame"/>
 		<child link="robot_platform_link"/>
 	</joint>
 	<joint name="world_to_cnc_joint" type ="fixed">
-		<origin xyz="3.0 1.325 -0.45" rpy="1.5708 0 -1.5708"/>
+		<origin xyz="-0.75 2.0 0" rpy="1.5708 0 0"/>
 		<parent link="world_frame"/>
 		<child link="cnc_link"/>
 	</joint>
