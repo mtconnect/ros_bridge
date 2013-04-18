@@ -268,13 +268,13 @@ void StateMachine::runOnce()
     case StateTypes::ML_WAIT_MOVE_PICK_APPROACH:
       if (isMoveDone() && isGripperOpened())
       {
-        setState(StateTypes::ML_PICK);
+        setState(StateTypes::ML_MOVE_PICK);
       }
       break;
 
     case StateTypes::ML_MOVE_PICK:
       moveArm(KEY_JM_APPROACH_TO_PICK);
-      setState(StateTypes::ML_WAIT_PICK);
+      setState(StateTypes::ML_WAIT_MOVE_PICK);
       break;
 
     case StateTypes::ML_WAIT_MOVE_PICK:

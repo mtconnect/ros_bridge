@@ -49,7 +49,7 @@
     <child link="robot_platform_link"/>
   </joint>
   <joint name="world_to_cnc_joint" type="fixed">
-    <origin rpy="1.5708 0 -1.5708" xyz="2.6 1.325 -0.45"/>
+    <origin rpy="1.5708 0 -1.5708" xyz="3.0 1.325 -0.45"/>
     <parent link="world_frame"/>
     <child link="cnc_link"/>
   </joint>
