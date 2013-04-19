@@ -37,10 +37,10 @@ class LongPull
       
       # Create a timeout thread to kill the read in case the agent becomes unresponsive...
       ct = Thread.current
-      chunk_time = Time.now
+      @chunk_time = Time.now
       tot = Thread.start {
         while true
-          nap = timeout - (Time.now - chunk_time)
+          nap = timeout - (Time.now - @chunk_time)
           if nap > 0.0
             sleep nap 
           else
@@ -56,21 +56,22 @@ class LongPull
 
           while document.rest_size >= length
             if header
-              if !document.check(/^#{boundary}/)
+              unless document.check(/^#{boundary}/)
                 puts document.rest
                 raise "Framing error"
               end
-                        
-              break unless head = document.scan_until(/\r\n\r\n/)
-              bound, *rest = head.split(/\r\n/)
+
+              head = document.scan_until(/\r\n\r\n/)
+              break unless head
+              _bound, *rest = head.split(/\r\n/)
             
               fields = Hash[*rest.map { |s| s.split(/:\s*/) }.flatten]
               length = fields['Content-length'].to_i
               header = false
             else
-              # We have now received a complete chunk from the server, so we'll mark time here to 
+              # We have now received a complete chunk from the server, so we'll mark time here to
               # make the timeout thread happy.
-              chunk_time = Time.now
+              @chunk_time = Time.now
               rest = document.rest
             
               # Slice off the chunk we need

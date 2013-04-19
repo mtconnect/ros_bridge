@@ -7,3 +7,5 @@ gem "statemachine", '~> 2.2.0'
 gem 'rspec-core', :group => :test
 gem 'rspec-mocks', :group => :test
 gem 'rspec-expectations', :group => :test
+
+gem 'cucumber', :group => :test

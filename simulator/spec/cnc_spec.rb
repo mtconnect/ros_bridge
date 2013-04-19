@@ -18,7 +18,6 @@ require 'cnc'
 describe "Cnc" do
   before(:each) do
     @cnc = Cnc::CncContext.new
-    @cnc.cycle_time = 1
   end
 
   context "operating" do

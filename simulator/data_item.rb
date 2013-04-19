@@ -46,7 +46,7 @@ module MTConnect
 
     def values(all = false)
       v = @value ? @value : 'UNAVAILABLE'
-      ["|#@name|#{v}"]
+      ["|#{@name}|#{v}"]
     end
   end
 
@@ -86,7 +86,7 @@ module MTConnect
       def changed?; @changed end
 
       def to_s
-        "#@level|#@code|#@severity|#@qualifier|#@text"
+        "#{@level}|#{@code}|#{@severity}|#{@qualifier}|#{@text}"
       end
     end
 
@@ -143,20 +143,20 @@ module MTConnect
       if @value
         active, cleared = @active.partition { |a| a.marked? }
         if active.empty?
-          ["|#@name|normal||||"]
+          ["|#{@name}|normal||||"]
         elsif all
           active.map do |a|
-            "|#@name|#{a}"
+            "|#{@name}|#{a}"
           end
         else
           cleared.map do |a|
-            "|#@name|normal|#{a.code}|||"
+            "|#{@name}|normal|#{a.code}|||"
           end.concat(active.map do |a|
-            "|#@name|#{a}" if a.changed?
+            "|#{@name}|#{a}" if a.changed?
           end).delete_if { |e| e.nil? }
         end
       else
-        ["|#@name|UNAVAILABLE||||"]
+        ["|#{@name}|UNAVAILABLE||||"]
       end
     end
   end

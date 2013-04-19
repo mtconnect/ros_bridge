@@ -22,8 +22,9 @@ context = Cnc::CncContext.new
 context.statemachine.tracer = STDOUT
 context.start
 
-streamer = MTConnect::Streamer.new(ARGV[0] || 'http://localhost:5000/Robot')
-thread = streamer.start do |name, value, code = nil, text = nil|
+url = ARGV[0] || 'http://localhost:5000/Robot'
+streamer = MTConnect::Streamer.new(url)
+robot_thread = streamer.start do |name, value, code = nil, text = nil|
   begin
     context.event('robot', name, value, code, text)
   rescue
@@ -32,9 +33,10 @@ thread = streamer.start do |name, value, code = nil, text = nil|
   end
 end
 
-streamer = MTConnect::Streamer.new(ARGV[1] || 'http://localhost:5000/cnc',
+url = ARGV[1] || 'http://localhost:5000/cnc'
+streamer = MTConnect::Streamer.new(url,
                 filter: '//DataItem[@type="CONTROLLER_MODE"or@type="EXECUTION"or@type="CHUCK_STATE"or@type="AVAILABILITY"or@category="CONDITION"]')
-thread = streamer.start do |name, value, code = nil, text = nil|
+cnc_thread = streamer.start do |name, value, code = nil, text = nil|
   begin
     context.event('cnc', name, value, code, text)
   rescue
@@ -66,4 +68,5 @@ while true
   end
 end
 
-thread.join
+robot_thread.join
+cnc_thread.join

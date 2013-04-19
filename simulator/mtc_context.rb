@@ -20,24 +20,34 @@ module ThreadSafeStateMachine
   def statemachine=(statemachine)
     @statemachine = statemachine
     class << @statemachine
-      @@event_mutex = Mutex.new
-      @@thread = nil
-
       alias _process_event process_event
 
       # Make event processing thread safe
       def process_event(event, *args)
-        if @@thread != Thread.current
+        thread = nil
+
+        # Thread safe creation of event mutex for this state
+        # machine first time we come through
+        unless defined? @event_mutex
+          Thread.exclusive do
+            unless @event_mutex
+              @event_mutex = Mutex.new
+              @thread = nil
+            end
+          end
+        end
+
+        if @thread != Thread.current
           # puts "**** Waiting for lock ****"
-          @@event_mutex.lock
-          thread = @@thread = Thread.current
+          @event_mutex.lock
+          thread = @thread = Thread.current
         end
         _process_event(event, *args)
       ensure
         if thread
           # puts "**** Releasing lock ****"
-          @@thread = nil
-          @@event_mutex.unlock
+          @thread = nil
+          @event_mutex.unlock
         end
       end
     end

@@ -26,7 +26,7 @@ require 'material'
 module Cnc
   class CncContext < MTConnect::Context  
     include MTConnect
-    attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload, :robot_controller_mode,
+    attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload,
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door,
                   :robot_execution, :robot_availability
 
@@ -34,13 +34,20 @@ module Cnc
 
     attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
                 :material_load, :material_unload, :link, :system, :has_material,
-                :material_load_interface, :material_unload_interface
+                :material_load_interface, :material_unload_interface,
+                :open_chuck_interface, :close_chuck_interface,
+                :open_door_interface, :close_door_interface
 
-    attr_accessor :cycle_time, :has_material
+    attr_accessor :has_material
 
 
     def initialize(port = 7879)
       super(port)
+
+      # Initilize robot instance variables
+      @robot_controller_mode = @robot_material_load = @robot_material_unload = @robot_open_chuck =
+        @robot_close_chuck = @robot_open_door = @robot_close_door =
+            @robot_execution = @robot_availability = nil
 
       @adapter.data_items << (@availability = DataItem.new('avail'))
 
@@ -80,7 +87,6 @@ module Cnc
       @material_load_interface = MaterialLoad.new(self)
       @material_unload_interface = MaterialUnload.new(self)
 
-      @cycle_time = 1
       @has_material = false
 
       load_time_limit(5 * 60)
@@ -184,7 +190,7 @@ module Cnc
         puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
         puts "  System condition is not normal" unless @system.normal?
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
-        puts "  Robot is not available: #@robot_availability" unless @robot_availability == 'AVAILABLE'
+        puts "  Robot is not available: #{@robot_availability}" unless @robot_availability == 'AVAILABLE'
         @statemachine.still_not_ready
       end
       true

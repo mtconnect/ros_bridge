@@ -25,7 +25,7 @@ server = TCPServer.new((ARGV[0] || 7880).to_i)
 loop do
   socket = server.accept
   Thread.new do
-    while (select([socket], nil, nil))
+    while select([socket], nil, nil)
       begin
         if (r = socket.read_nonblock(256)) =~ /\* PING/
           puts "Received #{r.strip}, responding with pong" if verbose
@@ -36,6 +36,7 @@ loop do
           puts "Received '#{r.strip}'"
         end
       rescue
+        puts $!
       end
     end
   end
