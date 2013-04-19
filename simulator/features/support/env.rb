@@ -39,7 +39,7 @@ module CncHelper
 
   def machine_for(name)
     case name
-    when "top"
+    when "machine"
       cnc.statemachine
 
     when "open door"
@@ -54,10 +54,10 @@ module CncHelper
     when "close chuck"
       cnc.close_chuck_interface.statemachine
 
-    when "load material"
+    when "material load"
       cnc.material_load_interface.statemachine
 
-    when "unload material"
+    when "material unload"
       cnc.material_unload_interface.statemachine
     end
   end

@@ -16,18 +16,7 @@ Feature: Load Material
   As a Machine Tool I can ask the robot to load material
 
   Background: Machine Tool and Robot are operational
-    Given robot Availability is Available
-    And robot ControllerMode is Automatic
-    And robot Execution is Active
-    And robot MaterialLoad is Ready
-    And robot MaterialUnload is Ready
-    And robot OpenDoor is Ready
-    And robot CloseDoor is Ready
-    And robot OpenChuck is Ready
-    And robot CloseChuck is Ready
-    And cnc ControllerMode is Automatic
-    Then cnc MaterialLoad should be Active
-    And cnc MaterialUnload should be Not_Ready
+    Given Devices are in initial state
 
   Scenario: Robot asks Cnc to Open Door
     Given cnc MaterialLoad should be Active
@@ -44,11 +33,13 @@ Feature: Load Material
 
   Scenario: Cnc asks Robot to Load Material
     Given cnc MaterialLoad should be Active
+    When robot MaterialLoad becomes Active
+    Then material load state should be processing
+
     And cnc DoorState should be Open
     And cnc ChuckState becomes Open
     And cnc ChuckState should be Open
-    When robot MaterialLoad becomes Active
-    Then top state should be loading
+    Then machine state should be loading
 
     When robot CloseChuck becomes Active
     Then cnc CloseChuck should be Active
@@ -63,7 +54,8 @@ Feature: Load Material
     And cnc DoorState should be Closed
 
     When robot MaterialLoad becomes Complete
-    Then top state should be cycle_start
+    And robot MaterialLoad becomes Ready
+    Then machine state should be cycle_start
     And cnc MaterialLoad should be Not_Ready
     And robot MaterialLoad becomes Ready
 

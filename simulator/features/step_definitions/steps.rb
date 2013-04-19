@@ -12,11 +12,47 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+Given(/^Devices are in initial state$/) do
+  steps %Q{
+    Given robot Availability is Available
+    And robot ControllerMode is Automatic
+    And robot Execution is Active
+    And robot MaterialLoad is Ready
+    And robot MaterialUnload is Ready
+    And robot OpenDoor is Ready
+    And robot CloseDoor is Ready
+    And robot OpenChuck is Ready
+    And robot CloseChuck is Ready
+    And cnc ControllerMode is Automatic
+    Then cnc MaterialLoad should be Active
+    And cnc MaterialUnload should be Not_Ready
+  }
+end
+
+
+Given(/^Chuck is closed$/) do
+  steps %Q{
+    Given robot CloseChuck becomes Active
+    And cnc ChuckState becomes Closed
+    And robot CloseChuck becomes Ready
+    Then cnc ChuckState should be Closed
+  }
+end
+
+Given(/^Door is closed$/) do
+  steps %Q{
+    Given robot CloseDoor becomes Active
+    Then after 1.2 seconds cnc CloseDoor should be Complete
+    And robot CloseDoor becomes Ready
+    Then cnc DoorState should be Closed
+  }
+end
+
 Given(/^(cnc|robot) ([A-Za-z]+) (?>is|becomes) ([A-Za-z_]+)$/) do |target, item, value|
   cnc.event(target, item, value.upcase)
 end
 
-Then(/^(top|(?>open|close) (?>door|chuck)|(?>load|unload) material) state should be ([a-z_]+)$/) do |machine, state|
+Then(/^(machine|(?>open|close) (?>door|chuck)|material (?>load|unload)) state should be ([a-z_]+)$/) do |machine, state|
   sm = machine_for(machine)
   sm.state.should == state.to_sym
 end
