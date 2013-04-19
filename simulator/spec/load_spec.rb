@@ -84,8 +84,8 @@ describe "MaterialLoad" do
     @load.statemachine.active
     @load.statemachine.failure
     @load.statemachine.not_ready
-    @load.statemachine.state.should == :not_ready
-    @material_load.value.should == "NOT_READY"
+    @load.statemachine.state.should == :ready
+    @material_load.value.should == "READY"
   end
 
   it "should not be active if the response is not ready" do
@@ -119,8 +119,8 @@ describe "MaterialLoad" do
 
     sleep 1.2
 
-    @load.statemachine.state.should == :not_ready
-    @material_load.value.should == "NOT_READY"
+    @load.statemachine.state.should == :ready
+    @material_load.value.should == "READY"
   end
 
   it "should fail processing after processing timeout" do
@@ -135,7 +135,7 @@ describe "MaterialLoad" do
     @material_load.value.should == "FAIL"
 
     @load.statemachine.not_ready
-    @load.statemachine.state.should == :not_ready
-    @material_load.value.should == "NOT_READY"
+    @load.statemachine.state.should == :ready
+    @material_load.value.should == "READY"
   end
 end

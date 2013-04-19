@@ -184,7 +184,6 @@ module MTConnect
 
     def send_to_client(client, text)
       @mutex.synchronize do
-        $logger.debug('send_to_client') { "Sending #{text} to #{client.inspect}" }
         client.write text
         client.flush
       end
@@ -195,6 +194,7 @@ module MTConnect
 
     def send(time, text, clients)
       line =  format_line(time, text)
+      $logger.debug('send') { line }
       clients.reverse_each do |sock|
         send_to_client(sock, line)
       end

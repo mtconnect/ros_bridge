@@ -26,6 +26,7 @@ module Cnc
       @related = nil
       @active = true
       @simulate = simulate
+      @failing = false
 
       @fail_time_limit = 1.0
       @processing_time_limit = 600.0
@@ -40,11 +41,15 @@ module Cnc
     end
 
     def deactivate
-      @statemachine.deactivate
+      @statemachine.deactivate unless @failing
     end
 
     def idle
       @statemachine.idle
+    end
+
+    def state
+      @statemachine.state
     end
 
     def start_timer(timeout)
@@ -93,8 +98,16 @@ module Cnc
       @adapter.gather do
         @interface.value = 'FAIL'
       end
-      @parent.failed(self)
       start_timer(@fail_time_limit)
+    end
+
+    def complete_failed
+      @failing = true
+      kill_timer
+      @parent.failed(self)
+
+    ensure
+      @failing = false
     end
 
     def create_statemachine
@@ -143,10 +156,8 @@ module Cnc
 
           state :fail do
             on_entry :failure
-            on_exit :kill_timer
-
-            default :not_ready
-            event :timeout, :not_ready
+            on_exit :complete_failed
+            default :ready
           end
         end
 

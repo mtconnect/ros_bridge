@@ -33,7 +33,8 @@ module Cnc
     attr_accessor :cnc_controller_mode, :cnc_execution, :cnc_availability, :cnc_chuck_state
 
     attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
-                :material_load, :material_unload, :link, :system, :has_material
+                :material_load, :material_unload, :link, :system, :has_material,
+                :material_load_interface, :material_unload_interface
 
     attr_accessor :cycle_time, :has_material
 
@@ -372,6 +373,7 @@ module Cnc
 
             state :idle do
               on_entry :idle
+              default :idle
 
               event :robot_material_load_ready, :idle, :exiting_idle
               event :robot_material_unload_ready, :idle, :exiting_idle
