@@ -637,16 +637,16 @@ void StateMachine::errorChecks()
 
   if (robot_status_msg_.e_stopped.val == TriState::TRUE)
   {
-    ROS_ERROR_STREAM("Robot estopped(" << robot_status_msg_.e_stopped << " aborting");
+    ROS_ERROR_STREAM_THROTTLE(5, "Robot estopped(" << robot_status_msg_.e_stopped << " aborting");
     error = true;
   }
   if (robot_status_msg_.in_error.val == TriState::TRUE)
   {
-    ROS_ERROR_STREAM("General robot error(" << robot_status_msg_.in_error << " aborting");
+    ROS_ERROR_STREAM_THROTTLE(5, "General robot error(" << robot_status_msg_.in_error << " aborting");
     error = true;
   }
 
-  if (error)
+  if (error && !(StateTypes::ABORTING >= state_ && state_ <= StateType::ABORTED))
   {
     ROS_INFO_STREAM("One or more general errors detected, aborting");
     setState(StateTypes::ABORTING);
