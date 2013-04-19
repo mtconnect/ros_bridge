@@ -100,7 +100,7 @@ module Cnc
     end
 
 
-    def fail
+    def failure
       @adapter.gather do
         @interface.value = 'FAIL'
       end
@@ -137,7 +137,7 @@ module Cnc
             event :active, :active
             event :unavailable, :not_ready
             event :not_ready, :not_ready
-            event :fail, :fail
+            event :failure, :fail
             default :ready
           end
 
@@ -154,9 +154,9 @@ module Cnc
           # This requires CNC ack the fail with a FAIL. When we get the fail, we
           # transition to a ready
           state :fail do
-            on_entry :fail
+            on_entry :failure
             default :fail
-            event :fail, :not_ready
+            event :failure, :not_ready
             event :not_ready, :not_ready
           end
 

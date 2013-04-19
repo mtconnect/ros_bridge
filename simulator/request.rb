@@ -16,23 +16,35 @@ require 'mtc_context'
 
 module Cnc
   class Request
-    attr_accessor :statemachine, :fail_timeout, :processing_timeout
-    attr_reader :interface, :state, :related
+    attr_accessor :statemachine, :fail_time_limit, :processing_time_limit
+    attr_reader :interface, :related
     include ThreadSafeStateMachine
 
-    def initialize(adapter, interface, rel, simulate: false)
-      @adapter, @interface = adapter, interface
+    def initialize(parent, adapter, interface, rel, simulate: false)
+      @parent, @adapter, @interface = parent, adapter, interface
 
       @related = nil
       @active = true
       @simulate = simulate
 
-      @fail_timeout = 1.0
-      @processing_timeout = 600.0
+      @fail_time_limit = 1.0
+      @processing_time_limit = 600.0
 
       @timer = nil
 
       self.related = rel if rel
+    end
+
+    def activate
+      @statemachine.activate
+    end
+
+    def deactivate
+      @statemachine.deactivate
+    end
+
+    def idle
+      @statemachine.idle
     end
 
     def start_timer(timeout)
@@ -69,14 +81,20 @@ module Cnc
     end
 
     def processing
-      start_timer @processing_timeout
+      start_timer @processing_time_limit
     end
 
-    def fail
+    def complete
+      @parent.completed(self)
+      true
+    end
+
+    def failure
       @adapter.gather do
         @interface.value = 'FAIL'
       end
-      start_timer(@fail_timeout)
+      @parent.failed(self)
+      start_timer(@fail_time_limit)
     end
 
     def create_statemachine
@@ -86,25 +104,31 @@ module Cnc
         superstate :base do
           startstate :not_ready
           event :unavailable, :not_ready
-          event :disable, :not_ready
+          event :deactivate, :not_ready
 
           state :not_ready do
             on_entry :not_ready
+            default :not_ready
 
-            event :ready, :ready
+            event :activate, :active
+            event :idle, :ready
           end
 
           state :ready do
             on_entry :ready
+            default :ready
 
-            event :not_ready, :not_ready
+            event :ready, :active
             event :activate, :active
           end
 
           state :active do
             on_entry :active
+            default :active
 
-            event :fail, :fail
+            event :idle, :ready
+            event :not_ready, :ready
+            event :failure, :fail
             event :active, :processing
           end
 
@@ -112,14 +136,13 @@ module Cnc
           state :processing do
             on_entry :processing
             on_exit :kill_timer
+            default :fail
 
-            event :timeout, :fail
-            event :fail, :fail
-            event :complete, :not_ready
+            event :complete, :not_ready, :complete
           end
 
           state :fail do
-            on_entry :fail
+            on_entry :failure
             on_exit :kill_timer
 
             default :not_ready

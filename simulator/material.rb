@@ -20,14 +20,14 @@ require 'request'
 module Cnc
   class MaterialLoad < Request
     def initialize(cnc, rel = nil)
-      super(cnc.adapter, cnc.material_load, rel)
+      super(cnc, cnc.adapter, cnc.material_load, rel)
       create_statemachine
     end
   end
 
   class MaterialUnload < Request
     def initialize(cnc, rel = nil)
-      super(cnc.adapter, cnc.material_unload, rel)
+      super(cnc, cnc.adapter, cnc.material_unload, rel)
       create_statemachine
     end
   end

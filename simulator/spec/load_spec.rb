@@ -10,7 +10,9 @@
 #    distributed under the License is distributed on an "AS IS" BASIS,
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
-#    limitations under the License.require "rspec"
+#    limitations under the License.
+
+$: << File.dirname(__FILE__) + '/..'
 
 require 'data_item'
 require 'material'
@@ -24,10 +26,12 @@ describe "MaterialLoad" do
     @adapter.stub(:gather).and_yield
     @cnc.stub(:material_load) { @material_load }
     @cnc.stub(:adapter) { @adapter }
+    @cnc.stub(:completed) { }
+    @cnc.stub(:failed) { }
     @load = Cnc::MaterialLoad.new(@cnc)
 
-    @load.fail_timeout = 1.0
-    @load.processing_timeout = 1.0
+    @load.fail_time_limit = 1.0
+    @load.processing_time_limit = 1.0
   end
 
   it "should not be ready" do
@@ -35,8 +39,8 @@ describe "MaterialLoad" do
     @material_load.value.should == "NOT_READY"
   end
 
-  it "should transition to ready when ready" do
-    @load.statemachine.ready
+  it "should transition to ready when idle" do
+    @load.statemachine.idle
     @load.statemachine.state.should == :ready
     @material_load.value.should == "READY"
   end
@@ -69,7 +73,7 @@ describe "MaterialLoad" do
     @load.statemachine.ready
     @load.statemachine.activate
     @load.statemachine.active
-    @load.statemachine.fail
+    @load.statemachine.failure
     @load.statemachine.state.should == :fail
     @material_load.value.should == "FAIL"
   end
@@ -78,17 +82,40 @@ describe "MaterialLoad" do
     @load.statemachine.ready
     @load.statemachine.activate
     @load.statemachine.active
-    @load.statemachine.fail
+    @load.statemachine.failure
     @load.statemachine.not_ready
     @load.statemachine.state.should == :not_ready
     @material_load.value.should == "NOT_READY"
   end
 
+  it "should not be active if the response is not ready" do
+    @load.statemachine.ready
+    @load.statemachine.activate
+    @material_load.value.should == "ACTIVE"
+
+    @load.statemachine.not_ready
+    @material_load.value.should == "READY"
+  end
+
+
+  it "should not return to active once the response is ready again" do
+    @load.statemachine.ready
+    @load.statemachine.activate
+    @material_load.value.should == "ACTIVE"
+
+    @load.statemachine.not_ready
+    @material_load.value.should == "READY"
+
+    @load.statemachine.ready
+    @material_load.value.should == "ACTIVE"
+  end
+
+
   it "should transition to not_ready after timeout" do
     @load.statemachine.ready
     @load.statemachine.activate
     @load.statemachine.active
-    @load.statemachine.fail
+    @load.statemachine.failure
 
     sleep 1.2
 

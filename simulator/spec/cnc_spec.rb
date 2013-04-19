@@ -10,7 +10,7 @@
 #    distributed under the License is distributed on an "AS IS" BASIS,
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
-#    limitations under the License.require "rspec"
+#    limitations under the License.
 
 $: << File.dirname(__FILE__) + '/..'
 
@@ -33,6 +33,7 @@ describe "Cnc" do
     end
 
     it 'should become ready when the link is enabled, all interfaces are ready, and the robot and machine tool are in automatic' do
+      @cnc.has_material = false
       @cnc.event('cnc', 'ControllerMode', 'AUTOMATIC')
       @cnc.event('robot', 'Availability', 'AVAILABLE')
       @cnc.event('robot', 'ControllerMode', 'AUTOMATIC')
@@ -44,7 +45,7 @@ describe "Cnc" do
       @cnc.event('robot', 'OpenChuck', 'READY')
       @cnc.event('robot', 'CloseChuck', 'READY')
 
-      @cnc.statemachine.state.should == :material_load
+      @cnc.statemachine.state.should == :loading
     end
 
     context "when loading material" do
@@ -79,10 +80,15 @@ describe "Cnc" do
       end
 
       it "should begin a part after material load is complete" do
+        @cnc.has_material.should be_false
+        @cnc.statemachine.state.should == :loading
+
         @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
         @cnc.event('robot', 'OpenDoor', 'ACTIVE')
         @cnc.event('robot', 'OpenChuck', 'ACTIVE')
+
         sleep 1.2
+
         @cnc.event('cnc','ChuckState', 'OPEN')
         @cnc.door_state.value.should == 'OPEN'
         @cnc.cnc_chuck_state.should == 'OPEN'
@@ -91,21 +97,34 @@ describe "Cnc" do
 
         @cnc.event('robot', 'CloseDoor', 'ACTIVE')
         @cnc.event('robot', 'CloseChuck', 'ACTIVE')
+
         sleep 1.2
+
         @cnc.event('cnc','ChuckState', 'CLOSED')
         @cnc.door_state.value.should == 'CLOSED'
         @cnc.cnc_chuck_state.should == 'CLOSED'
+
         @cnc.event('robot', 'OpenDoor', 'READY')
         @cnc.event('robot', 'OpenChuck', 'READY')
+
+        @cnc.statemachine.state.should == :loading
 
         @cnc.event('robot', 'MaterialLoad', 'COMPLETE')
         @cnc.event('robot', 'MaterialLoad', 'READY')
 
+        @cnc.has_material.should be_true
         @cnc.statemachine.state.should == :cycle_start
+
+        @cnc.material_load.value.should == 'NOT_READY'
+        @cnc.material_unload.value.should == 'NOT_READY'
+
+
         @cnc.event('cnc', 'Execution', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+
+        @cnc.statemachine.state.should == :unloading
+
+        @cnc.material_load.value.should == 'NOT_READY'
         @cnc.material_unload.value.should == 'ACTIVE'
-        @cnc.material_load.value.should == 'READY'
       end
 
       it 'should unload when after the machine has cut a part' do
@@ -123,10 +142,13 @@ describe "Cnc" do
         @cnc.event('robot', 'MaterialLoad', 'READY')
 
         @cnc.statemachine.state.should == :cycle_start
+
         @cnc.event('cnc', 'Execution', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+
+        @cnc.statemachine.state.should == :unloading
+
         @cnc.material_unload.value.should == 'ACTIVE'
-        @cnc.material_load.value.should == 'READY'
+        @cnc.material_load.value.should == 'NOT_READY'
 
         @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
         @cnc.event('robot', 'OpenDoor', 'ACTIVE')
@@ -140,8 +162,10 @@ describe "Cnc" do
 
         @cnc.event('robot', 'MaterialUnload', 'COMPLETE')
         @cnc.event('robot', 'MaterialUnload', 'READY')
-        @cnc.statemachine.state.should == :material_load
+
+        @cnc.statemachine.state.should == :loading
         @cnc.material_load.value.should == 'ACTIVE'
+        @cnc.material_unload.value.should == 'NOT_READY'
       end
 
       it "should be not ready when machine goes into manual mode" do
@@ -172,7 +196,7 @@ describe "Cnc" do
         @cnc.statemachine.state.should == :fault
         @cnc.event('robot', 'SYSTEM', 'Normal')
         @cnc.material_load.value.should == 'ACTIVE'
-        @cnc.statemachine.state.should == :material_load
+        @cnc.statemachine.state.should == :loading
       end
 
       it "should be ready after a single fault clears" do
@@ -181,8 +205,9 @@ describe "Cnc" do
         @cnc.material_load.value.should == 'NOT_READY'
         @cnc.statemachine.state.should == :fault
         @cnc.event('robot', 'SYSTEM', 'Normal', '1', '')
+
         @cnc.material_load.value.should == 'ACTIVE'
-        @cnc.statemachine.state.should == :material_load
+        @cnc.statemachine.state.should == :loading
       end
 
       it "should fail if the chuck is open when it tries to cycle start" do
@@ -227,11 +252,11 @@ describe "Cnc" do
         @cnc.event('robot', 'CloseChuck', 'READY')
 
         @cnc.event('robot', 'MaterialLoad', 'FAIL')
-        @cnc.statemachine.state.should == :material_load_failed
-        @cnc.material_load.value.should == 'FAIL'
+        @cnc.statemachine.state.should == :idle
+        @cnc.material_load.value.should == 'READY'
 
         @cnc.event('robot', 'MaterialLoad', 'READY')
-        @cnc.statemachine.state.should == :material_load
+        @cnc.statemachine.state.should == :loading
         @cnc.material_load.value.should == 'ACTIVE'
       end
 
@@ -247,11 +272,15 @@ describe "Cnc" do
         @cnc.event('robot', 'CloseChuck', 'READY')
 
         @cnc.event('robot', 'MaterialLoad', 'FAIL')
-        @cnc.statemachine.state.should == :material_load_failed
-        @cnc.material_load.value.should == 'FAIL'
+        @cnc.statemachine.state.should == :idle
+        @cnc.material_load.value.should == 'READY'
 
         @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
-        @cnc.statemachine.state.should == :material_load
+        @cnc.statemachine.state.should == :idle
+
+        @cnc.event('robot', 'MaterialLoad', 'READY')
+        @cnc.statemachine.state.should == :loading
+
         @cnc.material_load.value.should == 'ACTIVE'
         @cnc.system.should be_normal
       end
@@ -271,31 +300,32 @@ describe "Cnc" do
         @cnc.event('robot', 'MaterialLoad', 'READY')
 
         @cnc.statemachine.state.should == :cycle_start
+
         @cnc.event('cnc', 'Execution', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+        @cnc.statemachine.state.should == :unloading
 
         @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
 
         @cnc.event('robot', 'MaterialUnload', 'FAIL')
-        @cnc.statemachine.state.should == :material_unload_failed
-        @cnc.material_unload.value.should == 'FAIL'
+        @cnc.statemachine.state.should == :idle
+        @cnc.material_unload.value.should == 'READY'
 
         @cnc.event('robot', 'MaterialUnload', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+        @cnc.statemachine.state.should == :unloading
         @cnc.material_unload.value.should == 'ACTIVE'
       end
 
       it "should fail if the load active does not complete in a certain amount of time" do
-        @cnc.load_time_limit = 1
+        @cnc.load_time_limit 1
         @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
         sleep 1.2
 
-        @cnc.statemachine.state.should == :material_load_failed
-        @cnc.material_load.value.should == 'FAIL'
+        @cnc.statemachine.state.should == :idle
+        @cnc.material_load.value.should == 'READY'
       end
 
       it "should fail if the unload active does not complete in a certain amount of time" do
-        @cnc.unload_time_limit = 1
+        @cnc.unload_time_limit 1
 
         @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
         @cnc.event('robot', 'CloseDoor', 'ACTIVE')
@@ -312,36 +342,36 @@ describe "Cnc" do
 
         @cnc.statemachine.state.should == :cycle_start
         @cnc.event('cnc', 'Execution', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+        @cnc.statemachine.state.should == :unloading
 
         @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
         sleep 1.2
 
-        @cnc.statemachine.state.should == :material_unload_failed
-        @cnc.material_unload.value.should == 'FAIL'
+        @cnc.statemachine.state.should == :idle
+        @cnc.material_unload.value.should == 'READY'
       end
 
       it "should fault if the load fail is not resolved in a certain amount of time" do
-        @cnc.load_time_limit = 1
-        @cnc.load_failed_time_limit = 1
+        @cnc.load_time_limit 1
+        @cnc.load_failed_time_limit 1
         @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
         sleep 1.2
 
-        @cnc.statemachine.state.should == :material_load_failed
-        @cnc.material_load.value.should == 'FAIL'
+        @cnc.statemachine.state.should == :idle
+        @cnc.material_load.value.should == 'READY'
 
         sleep 1.2
         @cnc.statemachine.state.should == :not_ready
       end
 
       it "should not fail a load if unload becomes not ready" do
-        @cnc.unload_time_limit = 1
+        @cnc.unload_time_limit 1
 
         @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
-        @cnc.material_unload.value.should == "READY"
+        @cnc.material_unload.value.should == "NOT_READY"
 
         @cnc.event('robot', 'MaterialUnload', 'NOT_READY')
-        @cnc.statemachine.state.should == :material_load
+        @cnc.statemachine.state.should == :loading
       end
 
       it "should not fail an unload if load becomes not ready" do
@@ -360,12 +390,12 @@ describe "Cnc" do
 
         @cnc.statemachine.state.should == :cycle_start
         @cnc.event('cnc', 'Execution', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+        @cnc.statemachine.state.should == :unloading
 
         @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
 
         @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
-        @cnc.statemachine.state.should == :material_unload
+        @cnc.statemachine.state.should == :unloading
       end
 
       it "should be operational when material load is not ready (out of material) but can still unload" do
@@ -387,7 +417,7 @@ describe "Cnc" do
 
         @cnc.statemachine.state.should == :cycle_start
         @cnc.event('cnc', 'Execution', 'READY')
-        @cnc.statemachine.state.should == :material_unload
+        @cnc.statemachine.state.should == :unloading
 
         @cnc.event('robot', 'MaterialUnload', 'ACTIVE')
         @cnc.event('robot', 'OpenDoor', 'ACTIVE')
@@ -401,7 +431,7 @@ describe "Cnc" do
 
         @cnc.event('robot', 'MaterialUnload', 'COMPLETE')
         @cnc.event('robot', 'MaterialUnload', 'READY')
-        @cnc.statemachine.state.should == :material_load
+        @cnc.statemachine.state.should == :loading
         @cnc.material_load.value.should == 'ACTIVE'
       end
 
@@ -410,38 +440,55 @@ describe "Cnc" do
         it "should make material load not ready when it is active and the robot material load is not ready" do
           @cnc.material_load.value.should == 'ACTIVE'
           @cnc.event('robot', 'MaterialLoad', "NOT_READY")
-          @cnc.material_load.value.should == 'ACTIVE'
+          @cnc.material_load.value.should == 'READY'
         end
 
         it "should keep material unload ready when it is ready and the robot material load is not ready" do
-          @cnc.material_unload.value.should == 'READY'
+          @cnc.material_load.value.should == 'ACTIVE'
+
+          @cnc.door_state.value = "CLOSED"
+          @cnc.cnc_chuck_state = "CLOSED"
+          @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+          @cnc.event('robot', 'MaterialLoad', 'COMPLETE')
+          @cnc.event('robot', 'MaterialLoad', 'READY')
+
+          @cnc.event('cnc', 'Execution', 'READY')
+
+          @cnc.material_unload.value.should == 'ACTIVE'
           @cnc.event('robot', 'MaterialLoad', "NOT_READY")
-          @cnc.material_unload.value.should == 'READY'
+          @cnc.material_load.value.should == 'NOT_READY'
+          @cnc.material_unload.value.should == 'ACTIVE'
         end
 
         it "should fail if material load is not ready and current state is material load" do
           @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
           @cnc.event('robot', 'MaterialLoad', 'FAIL')
-          @cnc.material_load.value.should == 'FAIL'
-          @cnc.material_unload.value.should == 'READY'
 
-          @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
-          @cnc.material_unload.value.should == 'READY'
+          @cnc.has_material.should_not be_true
+
+          @cnc.material_load.value.should == 'READY'
+          @cnc.material_unload.value.should == 'NOT_READY'
+
+          @cnc.event('robot', 'MaterialLoad', 'READY')
+          @cnc.material_unload.value.should == 'NOT_READY'
           @cnc.material_load.value.should == 'ACTIVE'
         end
 
         it "should go back to loading material if it is not available to the robot was reset or filled" do
           @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
           @cnc.event('robot', 'MaterialLoad', 'FAIL')
-          @cnc.material_load.value.should == 'FAIL'
-          @cnc.material_unload.value.should == 'READY'
+
+          @cnc.has_material.should_not be_true
+
+          @cnc.material_load.value.should == 'READY'
+          @cnc.material_unload.value.should == 'NOT_READY'
 
           @cnc.event('robot', 'MaterialLoad', 'NOT_READY')
-          @cnc.material_unload.value.should == 'READY'
-          @cnc.material_load.value.should == 'ACTIVE'
+          @cnc.material_unload.value.should == 'NOT_READY'
+          @cnc.material_load.value.should == 'READY'
 
           @cnc.event('robot', 'MaterialLoad', 'READY')
-          @cnc.material_unload.value.should == 'READY'
+          @cnc.material_unload.value.should == 'NOT_READY'
           @cnc.material_load.value.should == 'ACTIVE'
         end
       end
