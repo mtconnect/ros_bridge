@@ -25,7 +25,8 @@ from python_qt_binding import loadUi
 from python_qt_binding.QtGui import QWidget
 
 
-from mtconnect_example_msgs.srv import *
+from mtconnect_example_msgs.srv import StateMachineCmd
+from mtconnect_example_msgs.msg import StateMachineStatus
 
 class SMInterfaceGUI(Plugin):
 
@@ -69,9 +70,12 @@ class SMInterfaceGUI(Plugin):
         self._widget.start_button.clicked[bool].connect(self.__handle_start_clicked)
         self._widget.stop_button.clicked[bool].connect(self.__handle_stop_clicked)
         self._widget.reset_button.clicked[bool].connect(self.__handle_reset_clicked)
+        
         self.cmd_service = rospy.ServiceProxy('external_command', StateMachineCmd)
+        self.sm_status_sub = rospy.Subscriber('state_machine_status', StateMachineStatus, self.__sm_status_callback)
 
     def shutdown_plugin(self):
+        self.sm_status_sub.unregister()
         # TODO unregister all publishers here
         pass
 
@@ -95,6 +99,10 @@ class SMInterfaceGUI(Plugin):
     def __handle_reset_clicked(self, checked):
         self.cmd_service(1)
 
+    def __sm_status_callback(self, msg):
+        self._widget.state_name.setText(msg.state_name + '(' + str(msg.state) + ')')
+        
+        
     #def trigger_configuration(self):
         # Comment in to signal that the plugin has a way to configure it
         # Usually used to open a configuration dialog

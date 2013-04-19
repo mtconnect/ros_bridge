@@ -54,6 +54,7 @@ static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
 static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
+static const std::string DEFAULT_SM_STATUS_TOPIC = "state_machine_status";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
 static const std::string DEFAULT_MATERIAL_LOAD_SET_STATE_SERVICE = "/MaterialLoad/set_mtconnect_state";
 static const std::string DEFAULT_MATERIAL_UNLOAD_SET_STATE_SERVICE = "/MaterialUnload/set_mtconnect_state";
@@ -141,6 +142,7 @@ bool StateMachine::init()
   // initializing publishers
   robot_states_pub_ = nh_.advertise<mtconnect_msgs::RobotStates>(DEFAULT_ROBOT_STATES_TOPIC, 1);
   robot_spindle_pub_ = nh_.advertise<mtconnect_msgs::RobotSpindle>(DEFAULT_ROBOT_SPINDLE_TOPIC, 1);
+  state_machine_pub_ = nh_.advertise<mtconnect_example_msgs::StateMachineStatus>(DEFAULT_SM_STATUS_TOPIC, 1);
 
   // initializing subscribers
   robot_status_sub_ = nh_.subscribe(DEFAULT_ROBOT_STATUS_TOPIC, 1, &StateMachine::robotStatusCB, this);
@@ -646,7 +648,7 @@ void StateMachine::errorChecks()
     error = true;
   }
 
-  if (error && !(StateTypes::ABORTING >= state_ && state_ <= StateType::ABORTED))
+  if (error && !(StateTypes::ABORTING >= state_ && state_ <= StateTypes::ABORTED))
   {
     ROS_INFO_STREAM("One or more general errors detected, aborting");
     setState(StateTypes::ABORTING);
@@ -681,6 +683,7 @@ void StateMachine::callPublishers()
 {
   robotStatusPublisher();
   robotSpindlePublisher();
+  stateMachineStatusPublisher();
 }
 void StateMachine::robotStatusPublisher()
 {
@@ -723,6 +726,17 @@ void StateMachine::robotSpindlePublisher()
 
   robot_spindle_pub_.publish(robot_spindle_msg_);
 }
+
+
+void StateMachine::stateMachineStatusPublisher()
+{
+  state_machine_stat_msg_.header.stamp = ros::Time::now();
+  state_machine_stat_msg_.state = state_;
+  state_machine_stat_msg_.state_name = StateTypes::STATE_MAP[state_];
+
+  state_machine_pub_.publish(state_machine_stat_msg_);
+}
+
 
 //Callbacks
 void StateMachine::materialLoadGoalCB(/*const MaterialLoadServer::GoalConstPtr &gh*/)

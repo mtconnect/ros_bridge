@@ -15,3 +15,13 @@ mac_robot_sim/Build
 *Feedback.msg
 *Result.msg
 *Goal.msg
+.cproject
+.pydevproject
+.project
+bin
+build
+lib
+msg_gen
+srv_gen
+_gtest_from_src
+cmake_install.cmake

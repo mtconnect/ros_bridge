@@ -44,6 +44,7 @@
 #include <mtconnect_msgs/RobotStates.h>
 
 #include <mtconnect_example_msgs/StateMachineCmd.h>
+#include <mtconnect_example_msgs/StateMachineStatus.h>
 
 #include <mtconnect_msgs/SetMTConnectState.h>
 
@@ -303,6 +304,7 @@ protected:
   void callPublishers();
   void robotStatusPublisher();
   void robotSpindlePublisher();
+  void stateMachineStatusPublisher();
 
   // Action wrappers
 
@@ -382,6 +384,7 @@ private:
 // topic publishers (ros bridge components wait for these topics)
   ros::Publisher robot_states_pub_;
   ros::Publisher robot_spindle_pub_;
+  ros::Publisher state_machine_pub_;
 
 // topic subscribers
   ros::Subscriber robot_status_sub_;
@@ -398,6 +401,7 @@ private:
 // pub messages
   mtconnect_msgs::RobotStates robot_state_msg_;
   mtconnect_msgs::RobotSpindle robot_spindle_msg_;
+  mtconnect_example_msgs::StateMachineStatus state_machine_stat_msg_;
 
 // sub messages
   sensor_msgs::JointState joint_state_msg_;
