@@ -361,7 +361,7 @@ describe "Cnc" do
         @cnc.material_load.value.should == 'READY'
 
         sleep 1.2
-        @cnc.statemachine.state.should == :not_ready
+        @cnc.statemachine.state.should == :idle
       end
 
       it "should not fail a load if unload becomes not ready" do
