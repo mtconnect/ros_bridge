@@ -1,0 +1,36 @@
+PROGRAM ROS_Start
+%COMMENT ='STATUS & RELAY'
+%STACKSIZE=4000
+%NOLOCKGROUP
+%NOPAUSE=ERROR+COMMAND+TPENABLE 
+-------------------------------------------------------
+VAR
+  s : INTEGER
+-------------------------------ROS_Start.kl
+-- this file initiates the other files
+
+BEGIN
+  FORCE_SPMENU(TP_PANEL,SPI_TPUSER,1)
+  WRITE (CHR(128),'ROS_Start ver1  '); DELAY 100
+s=0
+  RUN_TASK('RAIL_2300' ,0,FALSE,FALSE,0,s); -- sets the bridge joint
+  WRITE(CR,'moving to rail position')
+  DELAY 1000  
+  
+  RUN_TASK('ROS_GRIPPER' ,0,FALSE,FALSE,0,s); -- sends status back
+  WRITE(CR,'ROS_GRIPPER called ',s);
+  DELAY 1000
+  
+  RUN_TASK('ROS_VISE' ,0,FALSE,FALSE,0,s); -- sends status back
+  WRITE(CR,'ROS_VISE called ',s);
+  DELAY 1000
+  
+  RUN_TASK('ROS_STATE' ,0,FALSE,FALSE,0,s); -- sends status back
+  WRITE(CR,'ROS_STATE called ',s);
+  DELAY 1000
+  
+  RUN_TASK('ROS_RELAY'  ,0,FALSE,FALSE,1,s); -- reads cell commands  
+  WRITE(CR,'ROS_RELAY called ',s,CR)     
+  DELAY(2000)
+  WRITE(CR,'ROS_start exiting ',CR)
+END ROS_Start

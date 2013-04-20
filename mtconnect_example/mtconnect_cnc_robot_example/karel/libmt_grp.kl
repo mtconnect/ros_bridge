@@ -1,0 +1,183 @@
+--   Copyright 2013 Southwest Research Institute
+--
+--   Licensed under the Apache License, Version 2.0 (the "License");
+--   you may not use this file except in compliance with the License.
+--  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+--   Unless required by applicable law or agreed to in writing, software
+--   distributed under the License is distributed on an "AS IS" BASIS,
+--   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--   See the License for the specific language governing permissions and
+--   limitations under the License.
+
+
+PROGRAM libmt_grp
+--------------------------------------------------------------------------------
+-- 
+-- Library routines for creating / processing ROS packets
+-- 
+-- 
+-- author: Shaun Edwards
+-- 
+--------------------------------------------------------------------------------
+%NOLOCKGROUP
+%NOPAUSE= COMMAND + TPENABLE + ERROR
+%COMMENT = 'ROS Ind Robot Gripper Packets'
+
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- local types & constants
+-- 
+--------------------------------------------------------------------------------
+%INCLUDE libmt_grp_t
+%INCLUDE libind_pkt_t
+
+CONST
+	LOG_PFIX     = 'MT_GRP '  -- 
+
+--------------------------------------------------------------------------------
+-- 
+-- remote routine prototypes
+-- 
+--------------------------------------------------------------------------------
+
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- local routine prototypes
+-- 
+--------------------------------------------------------------------------------
+%INCLUDE libmt_grp_h
+%INCLUDE libind_hdr_h
+%INCLUDE libind_log_h
+
+
+
+--------------------------------------------------------------------------------
+-- 
+-- Empty body
+-- 
+--------------------------------------------------------------------------------
+BEGIN
+END libmt_grp
+
+
+
+
+ROUTINE mtgrp_ctor
+BEGIN
+	mtgrp_reset(this)
+END mtgrp_ctor
+
+
+
+
+ROUTINE mtgrp_reset
+BEGIN
+
+	USING this DO
+    
+	        ihdr_reset(header_)
+	        header_.msg_type_ = GRP_MSG_TYP
+	        
+	        cmd_               = GRP_UNKWN
+
+	ENDUSING
+END mtgrp_reset
+
+
+
+
+
+ROUTINE mtgrp_rqdsrl
+VAR
+	stat__     : INTEGER
+BEGIN
+	--
+	stat__ = 0
+
+   -- reset message
+   mtgrp_reset(this)
+   
+   -- read in header
+   stat__ = ihdr_dsrlse(this.header_, fd)
+   
+   IF stat__ <> 0 THEN RETURN (-stat__); ENDIF
+   
+   IF(( this.header_.length_ = GRP_SZ_REQ) AND( this.header_.msg_type_ = GRP_MSG_TYP) AND( this.header_.comm_type_ = RI_CT_SVCREQ)) THEN
+      READ fd(this.cmd_)
+      stat__ = IO_STATUS(fd)
+   ELSE
+      -- should probably flush the buffer (length - header size)
+      -- should probably return an error
+      log_error(LOG_PFIX + 'Invalid request header')
+       log_error(ihdr_tostr( this.header_))
+      mtgrp_reset(this)
+   ENDIF
+   
+   RETURN (-stat__)
+   
+END mtgrp_rqdsrl
+
+
+
+
+ROUTINE mtgrp_rpsrl
+VAR
+	stat__     : INTEGER
+BEGIN
+   --
+   stat__ = 0
+
+   -- reset message
+   mtgrp_reset(this)
+   this.header_.length_     = GRP_SZ_RPLY
+   this.header_.comm_type_ = RI_CT_SVCRPL
+   this.header_.reply_type_= reply_code 
+   this.cmd_ = cmd_echo
+   stat__ = ihdr_srlise(this.header_, fd)
+
+   IF stat__ <> 0 THEN RETURN (-stat__); ENDIF
+
+   -- write out all fields ..
+   WRITE fd( this.cmd_)
+   stat__ = IO_STATUS(fd)
+
+   RETURN (-stat__)
+   
+END mtgrp_rpsrl
+   
+   
+
+
+
+ROUTINE mtgrp_tostr
+VAR
+	cmd_str__  : STRING[20]
+
+BEGIN
+	CNV_INT_STR(this.cmd_            , 1, 10, cmd_str__)
+
+	-- done
+	RETURN ('grp(c):' + cmd_str__)
+   
+END mtgrp_tostr
+
+
+
+
+ROUTINE mtgrp_dump
+BEGIN
+	WRITE fd(ihdr_tostr(this.header_), CR)
+	WRITE fd(mtgrp_tostr(this), CR)
+END mtgrp_dump
+
+
+

@@ -1,0 +1,18 @@
+<package>
+  <description brief="mtconnect_grasp_action">
+
+     mtconnect_grasp_action
+
+  </description>
+  <author>Shaun M. Edwards</author>
+  <license>Apache2</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_grasp_action</url>
+
+  <depend package="actionlib"/>
+  <depend package="object_manipulation_msgs"/>
+  <depend package="simple_message"/>
+  
+</package>
+
+

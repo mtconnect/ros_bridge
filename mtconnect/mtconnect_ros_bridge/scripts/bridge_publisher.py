@@ -214,7 +214,7 @@ class BridgePublisher():
         di_list = [di_val for di_list in self.data_items for di_val in di_list]
         
         if elements:
-            rospy.loginfo('***********XML -->*************\n%s' % xml)
+            rospy.logdebug('***********XML -->*************\n%s' % xml)
             for e in elements:
                 for d_item in di_list:
                     if e.attrib['name'] == bridge_library.split_event(d_item):
@@ -279,7 +279,7 @@ class BridgePublisher():
             _, self.di_changed = self.process_xml(chunk)
             if self.di_changed is not None:
                 self.XML_queue.put(self.di_changed)
-                rospy.loginfo('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
+                rospy.logdebug('PUTTING XML INTO QUEUE %s\tNUMBER OF QUEUED OBJECTS %s' % (self.XML_queue, self.XML_queue.qsize()))
                 if self.XML_queue.qsize() > 1:
                     rospy.loginfo('STORED XML INTO QUEUE, WAITING ON ROS PUBLISHER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
         except Exception as e:

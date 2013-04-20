@@ -113,6 +113,7 @@ public:
   {
     this->clear();
   }
+  std::map<std::string, boost::shared_ptr<JointPoint> >points_;
   std::map<std::string, boost::shared_ptr<MotionGroup> >motion_groups_;
   std::map<std::string, boost::shared_ptr<Path> >paths_;
   void clear()

@@ -135,14 +135,14 @@ def xml_get_response(data):
     url, url_port, port, conn, req = data
     
     # Get response from url    
-    rospy.loginfo('Attempting HTTP connection on url: %s:%s\tPort:%s' % (url, url_port, port))
+    rospy.logdebug('Attempting HTTP connection on url: %s:%s\tPort:%s' % (url, url_port, port))
     conn.request("GET", req)
     response = conn.getresponse()
     if response.status != 200:
-        rospy.loginfo("Request failed: %s - %d" % (response.reason, response.status))
+        rospy.logerror("Request failed: %s - %d" % (response.reason, response.status))
         sys.exit(0)
     else:
-        rospy.loginfo('Request --> %s, Status --> %s' % (response.reason, response.status))
+        rospy.logdebug('Request --> %s, Status --> %s' % (response.reason, response.status))
     return response
 
 ## @brief xml_components Function documentation

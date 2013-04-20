@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<robot name="NIST_Robot" xmlns:xacro="http://ros.org/wiki/xacro">
+	
+	<!-- parameters -->
+	<xacro:property name="platform_thickness" value="0.1"/>
+
+	<!-- color definitions -->
+  <material name="blue">
+    <color rgba="0 0 1 1"/>
+  </material>
+  <material name="yellow">
+    <color rgba="1 1 0 1"/>
+  </material>
+  <material name="orange">
+    <color rgba="1 0.66 0.48 1"/>
+  </material>
+  <material name="red">
+    <color rgba="1 0 0 1"/>
+  </material>
+  <material name="light_blue">
+    <color rgba="0.78 0.94 0.965 1"/>
+  </material>
+
+  <!-- robot definitions, also defined in robot urdf -->
+	<link name="base_link"/>
+	<!-- link definitions -->
+	<link name="world_frame"/>
+	<link name="robot_platform_link">
+		<visual>
+			<origin xyz="0.0 0.0 -${platform_thickness * 0.5}" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.5 0.5 ${platform_thickness}"/>
+			</geometry>
+			<material name="orange"/>
+		</visual>
+	</link>
+	<link name="cnc_link">
+		<visual>
+			<geometry>
+        <mesh filename="package://mtconnect_example_launch/meshes/cnc_lathe.STL"/>
+			</geometry>
+			<material name="red"/>
+		</visual>
+	</link>
+	
+	<!-- joint definitions -->
+	<joint name="world_to_platform_joint" type ="fixed">
+		<origin xyz="0 0 3" rpy="3.1417 0 0"/>
+		<parent link="world_frame"/>
+		<child link="robot_platform_link"/>
+	</joint>
+	<joint name="world_to_cnc_joint" type ="fixed">
+		<origin xyz="-0.75 2.0 0" rpy="1.5708 0 0"/>
+		<parent link="world_frame"/>
+		<child link="cnc_link"/>
+	</joint>
+	<joint name="platform_to_base_joint" type ="fixed">
+		<origin xyz="0 0 0" rpy="0 0 0"/>
+		<parent link="robot_platform_link"/>
+		<child link="base_link"/>
+	</joint>
+	
+</robot>

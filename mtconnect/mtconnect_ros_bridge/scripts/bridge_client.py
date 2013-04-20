@@ -23,6 +23,7 @@ import optparse
 import yaml
 import operator
 import thread
+import threading
 import re
 import time
 import socket
@@ -68,7 +69,7 @@ import actionlib
 ## setup_topic_data -- utilizes introspection to set up class instance variables.
 ## action_client -- function triggered by the xml_callback that executes a ROS action.
 ## xml_callback -- parses xml stream and launches action client.  Completes 'READY' handshake with machine tool.
-class GenericActionClient():
+class GenericActionClient(object):
     ## @brief Constructor for a GenericActionClient
     def __init__(self):
         # Initialize ROS generic client node
@@ -76,12 +77,13 @@ class GenericActionClient():
         
         # Setup MTConnect to ROS Conversion
         self.config = bridge_library.obtain_dataMap()
-        self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace', 'adapter_port']
+        self.msg_parameters = ['url', 'url_port', 'machine_tool', 'xml_namespace', 'adapter_port', 'service']
         self.url = self.config[self.msg_parameters[0]]
         self.url_port = self.config[self.msg_parameters[1]]
         self.mtool = self.config[self.msg_parameters[2]]
         self.ns = dict(m = self.config[self.msg_parameters[3]])
         self.port = self.config[self.msg_parameters[4]]
+        self.service = self.config[self.msg_parameters[5]]
         
         # Check for url connectivity, dwell until system timeout
         bridge_library.check_connectivity((1,self.url,self.url_port))
@@ -103,11 +105,16 @@ class GenericActionClient():
         self.setup_topic_data()
         
         # Add data items to the MTConnect Adapter - must be unique data items
-        bridge_library.add_event((self.adapter, self.action_list, self.di_dict, True))
+        bridge_library.add_event((self.adapter, self.action_list, self.di_dict, False))
         
         # Start the adapter
         rospy.loginfo('Start the Robot Link adapter')
         self.adapter.start()
+        
+        # Create robot Service Server thread for each machine tool action
+        self.action_service = []
+        for mt_action in self.action_goals.keys():
+            self.action_service.append(ActionService(mt_action, self.adapter, self.di_dict, self.service_handle, self.service))
         
         # Establish XML connection, read in current XML
         while True:
@@ -132,6 +139,8 @@ class GenericActionClient():
         # Create XML polling thread
         lp = LongPull(response)
         lp.long_pull(self.xml_callback) # Runs until user interrupts
+        
+        
 
     ## @brief This function captures the topic package, type, action goals, and action
     ## state conversion from ROS to MTConnect as required for the ROS action client.
@@ -155,6 +164,7 @@ class GenericActionClient():
                 # Import module
                 rospy.loginfo('Importing --> ' + package + '.msg')
                 self.type_handle = import_module(package + '.msg')
+                self.service_handle = import_module(package + '.srv')
                 
                 # Capture package for action client
                 self.package = package
@@ -248,10 +258,11 @@ class GenericActionClient():
         if result == 3: # SUCCEEDED from actionlib_msgs.msg.GoalStatus
             rospy.loginfo('Sending COMPLETE flag')
             bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'COMPLETE'))
+            return name
         elif result == 4: # ABORTED from actionlib_msgs.msg.GoalStatus
             rospy.loginfo('%s ABORTED, terminating action request' % data_item)
             bridge_library.action_cb((self.adapter, self.di_dict, data_item, 'FAIL'))
-        return
+            return None
 
     ## @brief Callback function that launches a ROS action client if the machine
     ## tool data item tag is 'ACTIVE'.  Once the action is completed, it completes
@@ -263,33 +274,75 @@ class GenericActionClient():
         #rospy.loginfo('*******************In PROCESS_XML callback***************')
         self.lock.acquire()
         try:
-            # Only grab XML elements for CNC action requests 
+            # Only grab XML elements for machine tool action requests 
             _, elements, self.action_goals = bridge_library.xml_components(chunk, self.ns, self.action_list, get_goal = True, action_goals = self.action_goals)
 
             if elements:
-                # Check for existing handshake, reverse elements if necessary
-                if self.handshake != elements[0].attrib['name']:
-                    # Reverse element order
-                    elements = elements[::-1]
+                # Check for existing handshake, execute it first
+                if self.handshake:
+                    for e in elements:
+                        if self.handshake == e.attrib['name'] and e.text == 'READY':
+                            # Send hand shake signal
+                            bridge_library.action_cb((self.adapter, self.di_dict, e.attrib['name'], 'READY'))
+                            self.handshake = None
+                            elements.remove(e)
+                    if self.handshake != None:
+                        rospy.logerr('DID NOT RECEIVE READY HANDSHAKE FROM MACHINE TOOL') 
+                # Process remaining action requests
                 for e in elements:
                     # Remove XML namespace string from the element tag for hash tables
                     action_text = re.findall(r'(?<=\})\w+',e.tag)[0]
                     
-                    # Check if CNC is requesting an action, if so, run action client
+                    # Check if machine tool is requesting an action, if so, run action client
                     if e.text == 'ACTIVE':
-                        self.action_client((action_text, self.action_goals[action_text], self.type_handle))
-                        self.handshake = e.attrib['name']
-                    # Check if CNC is submitting a handshake request
-                    elif e.text == 'READY' and e.attrib['name'] == self.handshake:
-                        # Send hand shake signal
-                        bridge_library.action_cb((self.adapter, self.di_dict, e.attrib['name'], 'READY'))
-                        self.handshake = None
+                        self.handshake = self.action_client((action_text, self.action_goals[action_text], self.type_handle))
+                        #self.handshake = e.attrib['name']
+                    
         except Exception as e:
             rospy.logerr("Generic Action Client: Process XML callback failed: %s, releasing lock" % e)
         finally:
             self.lock.release()
         #rospy.loginfo('*******************Done with PROCESS_XML callback***************')
         return
+
+
+class ActionService(GenericActionClient):
+    def __init__(self, mt_action, adapt, data_item_dict, service_handle, service_state):
+        
+        self.mt_action = mt_action
+        self.adapt = adapt
+        self.data_item_dict = data_item_dict
+        self.service_hndle = service_handle
+        self.service_state = service_state
+        
+        rospy.loginfo('STARTED %s SERVICE SERVER THREAD' % mt_action)
+        self.ss_thread = threading.Thread(target = self.action_service_server)
+        self.ss_thread.daemon = True
+        self.ss_thread.start()
+        
+    def action_service_server(self):
+        self.as_name = bridge_library.split_event(self.mt_action)
+        action_service_class = getattr(self.service_hndle, self.service_state)
+        s = rospy.Service(self.mt_action + '/' + 'set_mtconnect_state', action_service_class, self.robot_state_callback)
+        rospy.spin()
+        return
+    
+    def robot_state_callback(self, request):
+        rospy.loginfo('SERVICE REQUEST --> %s' % request.state_flag)
+        response_service_class = getattr(self.service_hndle, self.service_state + 'Response')
+        if request.state_flag == -1: # NOT_READY
+            try:
+                bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'NOT_READY'))
+                return response_service_class(True)
+            except:
+                return response_service_class(False)
+        elif request.state_flag == 0: # READY
+            try:
+                bridge_library.action_cb((self.adapt, self.data_item_dict, self.as_name, 'READY'))
+                return response_service_class(True)
+            except:
+                return response_service_class(False)
+
 
 if __name__ == '__main__':
     try:

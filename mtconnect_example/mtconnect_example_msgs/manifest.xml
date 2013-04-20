@@ -1,0 +1,14 @@
+<package>
+  <description brief="mtconnect_example_msgs">
+
+     mtconnect_example_msgs
+
+  </description>
+  <author>Shaun M. Edwards</author>
+  <license>Apache2</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mtconnect_example_msgs</url>
+
+</package>
+
+

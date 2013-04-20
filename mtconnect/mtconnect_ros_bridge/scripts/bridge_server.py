@@ -199,74 +199,98 @@ class GenericActionServer():
         # Empty function -- assumes action was successful
         rospy.loginfo('In %s Callback -- determining action request result.' % self.server_name[action])
         
-        # Submit goal value to MTConnect via agent (i.e. goal.open_door = 'ACTIVE')
-        bridge_library.action_cb((self.adapter, self.di_dict, action, 'ACTIVE'))
+        # Check to make sure machine tool is READY, if not, ABORT the robot action request
         
-        robot_hold = 0 # Used to make sure you only change robot state once after 'COMPLETE' received from CNC
+        # Change to XML Tag format
+        tokens = re.findall(r'([A-Z][a-z]*)', self.server_name[action])
+        tokenlist = [val.upper() for val in tokens]
+        di_tag = tokenlist[0] + '_' + tokenlist[1]
         
-        # Start capturing XML
-        self.capture_xml = True
+        # Check current status of XML Tag
+        check_response = bridge_library.xml_get_response((self.url, self.url_port, self.port, self.conn, self.mtool + "/current?path=//DataItem[@type='" + di_tag + "']"))
+        body = check_response.read()
+        _, element = bridge_library.xml_components(body, self.ns, {self.server_name[action]:self.server_name[action]})
         
-        # While loop to poll CNC XML until READY is received for Robot action request
-        dwell = True
-        while dwell == True:
-            try:
-                # Obtain XML chunk
-                if not self.XML_queue.empty():
-                    chunk = self.XML_queue.get()
-                    
-                    # Parse the XML and determine the current sequence and XML Event elements
-                    root = ElementTree.fromstring(chunk)
-                    element_list = root.findall('.//m:' + self.server_name[action], namespaces = self.ns)
-                    if len(element_list) > 1:
-                        rospy.loginfo('XML --> %s' % chunk)
-                    if element_list:
-                        # Must iterate -- multiple elements possible for a single tag
-                        for element in element_list:
-                            if element.text == 'ACTIVE':
-                                # Set accepted back to action client
-                                pass
-                            
-                            # While polling monitor CNC response for COMPLETE, submit READY handshake
-                            elif element.text == 'COMPLETE' and robot_hold == 0:
-                                bridge_library.action_cb((self.adapter, self.di_dict, action, 'READY'))
-                                robot_hold = 1
-                            
-                            elif element.text == 'READY' and robot_hold == 1:
-                                dwell = False
-                                self.capture_xml = False
+        # Complete the action request
+        if element[0].text == 'READY': # Execute the action request
+            # Submit goal value to MTConnect via agent (i.e. goal.open_door = 'ACTIVE')
+            bridge_library.action_cb((self.adapter, self.di_dict, action, 'ACTIVE'))
+            
+            robot_hold = 0 # Used to make sure you only change robot state once after 'COMPLETE' received from CNC
+            
+            # Start capturing XML
+            self.capture_xml = True
+            
+            # While loop to poll CNC XML until READY is received for Robot action request
+            dwell = True
+            while dwell == True:
+                try:
+                    # Obtain XML chunk
+                    if not self.XML_queue.empty():
+                        chunk = self.XML_queue.get()
+                        
+                        # Parse the XML and determine the current sequence and XML Event elements
+                        root = ElementTree.fromstring(chunk)
+                        element_list = root.findall('.//m:' + self.server_name[action], namespaces = self.ns)
+                        if len(element_list) > 1:
+                            rospy.logdebug('XML --> %s' % chunk)
+                        if element_list:
+                            # Must iterate -- multiple elements possible for a single tag
+                            for element in element_list:
+                                if element.text == 'ACTIVE':
+                                    # Set accepted back to action client
+                                    pass
                                 
-                                # When response is READY, set server result and communicate as below:
-                                # Extract action attribute
-                                result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+                                # While polling monitor CNC response for COMPLETE, submit READY handshake
+                                elif element.text == 'COMPLETE' and robot_hold == 0:
+                                    bridge_library.action_cb((self.adapter, self.di_dict, action, 'READY'))
+                                    robot_hold = 1
                                 
-                                # Set the attribute per the ROS to MTConnect conversion
-                                setattr(self._resultDict[self.server_name[action]], result_attribute, 'READY')
+                                elif element.text == 'READY' and robot_hold == 1:
+                                    dwell = False
+                                    self.capture_xml = False
+                                    
+                                    # When response is READY, set server result and communicate as below:
+                                    # Extract action attribute
+                                    result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+                                    
+                                    # Set the attribute per the ROS to MTConnect conversion
+                                    setattr(self._resultDict[self.server_name[action]], result_attribute, 'READY')
+                                    
+                                    # Indicate a successful action
+                                    self._as[self.server_name[action]].set_succeeded(self._resultDict[self.server_name[action]])
+                                    rospy.loginfo('In %s Callback -- action succeeded.' % self.server_name[action])
                                 
-                                # Indicate a successful action
-                                self._as[self.server_name[action]].set_succeeded(self._resultDict[self.server_name[action]])
-                                rospy.loginfo('In %s Callback -- action succeeded.' % self.server_name[action])
-                            
-                            elif element.text == 'FAIL':
-                                bridge_library.action_cb((self.adapter, self.di_dict, action, 'FAIL'))
-                                dwell = False
-                                self.capture_xml = False
-                                
-                                # When response is FAIL, set server result and communicate as below:
-                                # Extract action attribute.  For CNC Actions, only one result --> i.e. OpenDoorResult.__slots__[0] = 'door_ready'
-                                result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
-                                
-                                # Set the attribute per the ROS to MTConnect conversion
-                                setattr(self._resultDict[self.server_name[action]], result_attribute, 'FAIL')
-                                
-                                # Indicate a successful action
-                                self._as[self.server_name[action]].set_aborted(self._resultDict[self.server_name[action]])
-                                rospy.loginfo('In %s Callback -- action aborted by CNC.' % self.server_name[action])
-                    
-                    # Release the queue
-                    self.XML_queue.task_done()
-            except rospy.ROSInterruptException:
-                rospy.loginfo('program interrupted before completion')
+                                elif element.text == 'FAIL':
+                                    bridge_library.action_cb((self.adapter, self.di_dict, action, 'FAIL'))
+                                    dwell = False
+                                    self.capture_xml = False
+                                    
+                                    # When response is FAIL, set server result and communicate as below:
+                                    # Extract action attribute.  For CNC Actions, only one result --> i.e. OpenDoorResult.__slots__[0] = 'door_ready'
+                                    result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+                                    
+                                    # Set the attribute per the ROS to MTConnect conversion
+                                    setattr(self._resultDict[self.server_name[action]], result_attribute, 'FAIL')
+                                    
+                                    # Indicate an aborted action
+                                    self._as[self.server_name[action]].set_aborted(self._resultDict[self.server_name[action]])
+                                    rospy.loginfo('In %s Callback -- action aborted by CNC.' % self.server_name[action])
+                        
+                        # Release the queue
+                        self.XML_queue.task_done()
+                except rospy.ROSInterruptException:
+                    rospy.loginfo('program interrupted before completion')
+        else: # Abort the action request, machine tool not ready or faulted
+            # Extract action attribute.  For CNC Actions, only one result --> i.e. OpenDoorResult.__slots__[0] = 'door_ready'
+            result_attribute = self._resultDict[self.server_name[action]].__slots__[0]
+            
+            # Set the attribute per the ROS to MTConnect conversion
+            setattr(self._resultDict[self.server_name[action]], result_attribute, 'NOT_READY')
+            
+            # Indicate an aborted action
+            self._as[self.server_name[action]].set_aborted(self._resultDict[self.server_name[action]])
+            rospy.loginfo('In %s Callback -- action aborted, machine tool NOT_READY, FAULTED, or UNAVAILABLE.' % self.server_name[action])
         return
 
     ## @brief Processes the xml chunk provided by the LongPull class instance and stores the result
@@ -279,7 +303,7 @@ class GenericActionServer():
             if self.capture_xml == True:
                 self.XML_queue.put(chunk)
                 if self.XML_queue.qsize() > 1:
-                    rospy.loginfo('STORED XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
+                    rospy.logdebug('STORED XML INTO QUEUE, WAITING ON ROS ACTION SERVER, QUEUE SIZE --> %s' % self.XML_queue.qsize())
         except Exception as e:
             rospy.logerr("Bridge Server: Process XML callback failed: %s, releasing lock" % e)
         finally:

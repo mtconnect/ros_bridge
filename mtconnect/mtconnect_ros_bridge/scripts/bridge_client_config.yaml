@@ -3,6 +3,7 @@ url_port: 5000
 machine_tool: '/cnc'
 xml_namespace: 'urn:mtconnect.org:MTConnectStreams:1.2'
 adapter_port: 7882
+service: 'SetMTConnectState'
 
 mtconnect_msgs:
     MaterialLoad:

@@ -1,0 +1,148 @@
+<task>
+	<motion_group name="group_1" joint_names="joint_1 joint_2 joint_3 joint_4 joint_5 joint_6"/>
+  <joint_point name="home" joint_values="-0.709 -0.455 -0.755 -0.001 1.869 -2.280" group_name="group_1"/>
+	<!--joint_point name="home" joint_values="0 0 0 0 0 0" group_name="group_1"/-->
+			
+	
+	
+	<!-- ==================== BEGIN MATERIAL LOAD PATH ==================== -->
+	<!-- Open gripper -->
+	<!-- Open door -->
+	<path name="JM_HOME_TO_APPROACH">
+		<joint_move>
+			<joint_point name="home" joint_values="-0.709 -0.455 -0.755 -0.001 1.869 -2.280" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="pick_approach" joint_values="0.741 -0.370 -0.399 0 1.600 -0.829" group_name="group_1"/>
+		</joint_move>
+	</path>
+	<!-- Gripper opened -->
+	<!-- Approach to pick -->
+	<path name="JM_APPROACH_TO_PICK">
+		<joint_move>
+			<joint_point name="pick_approach" joint_values="0.741 -0.370 -0.399 0 1.600 -0.829" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="pick" joint_values="0.741 -0.343 -0.226 0 1.453 -0.829" group_name="group_1"/>
+		</joint_move>
+	</path>
+	<!-- Close gripper -->
+	<!-- Gripper closed -->
+	<!-- Door opened -->
+	<!-- Pick to chuck -->
+	<path name="JM_PICK_TO_CHUCK">
+		<joint_move>
+			<joint_point name="pick" joint_values="0.741 -0.343 -0.226 0 1.453 -0.829" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="pick_approach" joint_values="0.741 -0.370 -0.399 0 1.600 -0.829" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="pick_clear" joint_values="0.327 -0.554 -0.498 0 1.514 -1.243" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="door" joint_values="-1.103 -0.490 0.052 -1.376 0.396 -1.514" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="chuck_approach" joint_values="-1.453 0.215 0.570 -0.425 0.239 -2.663" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="chuck_load" joint_values="-1.521 0.207 0.560 -0.189 0.222 -2.930" group_name="group_1"/>
+		</joint_move>
+	</path>
+	<!-- Close chuck -->
+	<!-- Chuck closed -->
+	<!-- Open gripper -->
+	<!-- Gipper opened -->
+	<path name="JM_CHUCK_TO_DOOR">
+		<joint_move>
+		  <joint_point name="chuck_load" joint_values="-1.521 0.207 0.560 -0.189 0.222 -2.930" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="chuck_approach" joint_values="-1.453 0.215 0.570 -0.425 0.239 -2.663" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="door" joint_values="-1.103 -0.490 0.052 -1.376 0.396 -1.514" group_name="group_1"/>
+		</joint_move>
+  </path>
+  <!-- Close door -->
+  <path name="JM_DOOR_TO_HOME">
+		<joint_move>
+		  <joint_point name="door" joint_values="-1.103 -0.490 0.052 -1.376 0.396 -1.514" group_name="group_1"/>
+		</joint_move>
+	  <joint_move>
+			<joint_point name="home" joint_values="-0.709 -0.455 -0.755 -0.001 1.869 -2.280" group_name="group_1"/>
+		</joint_move>
+  </path>
+  <!-- Door closed -->
+	<!-- ==================== END MATERIAL LOAD PATH ==================== -->
+	
+	
+	
+	
+	<!-- ==================== BEGIN MATERIAL UNLOAD PATH ==================== -->
+	<!-- Open door -->
+	<path name="JM_HOME_TO_DOOR">
+	  <joint_move>
+			<joint_point name="home" joint_values="-0.709 -0.455 -0.755 -0.001 1.869 -2.280" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="door" joint_values="-1.103 -0.490 0.052 -1.376 0.396 -1.514" group_name="group_1"/>
+		</joint_move>
+	</path>
+	
+	<!-- Door opened -->
+	<path name="JM_DOOR_TO_CHUCK">
+		<joint_move>
+		  <joint_point name="door" joint_values="-1.103 -0.490 0.052 -1.376 0.396 -1.514" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="chuck_approach" joint_values="-1.453 0.215 0.570 -0.425 0.239 -2.663" group_name="group_1"/>
+		</joint_move>
+	  <joint_move>
+		  <joint_point name="chuck_load" joint_values="-1.521 0.207 0.560 -0.189 0.222 -2.930" group_name="group_1"/>
+		</joint_move>
+ </path>
+	<!-- Close gripper -->
+	<!-- Gripper closed -->
+	<!-- Open chuck -->
+	<!-- Chuck opened -->
+	<path name="JM_CHUCK_TO_DROP">
+		<joint_move>
+		  <joint_point name="chuck_load" joint_values="-1.521 0.207 0.560 -0.189 0.222 -2.930" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="chuck_approach" joint_values="-1.453 0.215 0.570 -0.425 0.239 -2.663" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="door" joint_values="-1.103 -0.490 0.052 -1.376 0.396 -1.514" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+		  <joint_point name="drop_clear" joint_values="0.327 -0.554 -0.498 0 1.514 -1.243" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="drop_approach" joint_values="0.741 -0.370 -0.399 0 1.600 -0.829" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="drop" joint_values="0.741 -0.343 -0.226 0 1.453 -0.829" group_name="group_1"/>
+		</joint_move>
+	</path>
+	<!-- Open gripper -->
+	<!-- Gripper opened -->
+	<path name="JM_DROP_TO_HOME">
+		<joint_move>
+			<joint_point name="drop" joint_values="0.741 -0.343 -0.226 0 1.453 -0.829" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="drop_approach" joint_values="0.741 -0.370 -0.399 0 1.600 -0.829" group_name="group_1"/>
+		</joint_move>
+		<joint_move>
+			<joint_point name="home" joint_values="-0.709 -0.455 -0.755 -0.001 1.869 -2.280" group_name="group_1"/>
+		</joint_move>
+	</path>
+	
+	
+	<!-- ==================== END MATERIAL UNLOAD PATH ==================== -->
+	
+	
+</task>
