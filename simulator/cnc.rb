@@ -232,14 +232,18 @@ module Cnc
     end
 
     def loading
-      @material_unload_interface.deactivate
-      @material_load_interface.activate
+      unless @has_material
+        @material_unload_interface.deactivate
+        @material_load_interface.activate
+      end
       true
     end
 
     def unloading
-      @material_load_interface.deactivate
-      @material_unload_interface.activate
+      if @has_material
+        @material_load_interface.deactivate
+        @material_unload_interface.activate
+      end
       true
     end
 
@@ -351,7 +355,6 @@ module Cnc
           # failure
           event :fault, :fault
 
-
           superstate :disabled do
             default :not_ready
             default_history :not_ready
@@ -360,7 +363,6 @@ module Cnc
             # Some robot transitions to get us going again
             event :robot_material_load_ready, :activated
             event :robot_material_unload_ready, :activated
-
 
             # Ways to transition out of not ready state...
             state :not_ready do
@@ -406,6 +408,7 @@ module Cnc
 
               event :cnc_execution_ready, :unloading
               event :fault, :fault
+              event :cnc_fault, :fault
             end
 
             state :loading do

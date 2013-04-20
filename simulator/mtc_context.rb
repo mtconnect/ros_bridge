@@ -78,6 +78,10 @@ module MTConnect
         @faults[key] = true
         action = "#{source}_#{name.downcase}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
+
+        @statemachine.send(action) if @statemachine.respond_to? action
+
+        action = "#{source}_fault".to_sym
         @statemachine.send(action) if @statemachine.respond_to? action
         @connected = true
     
