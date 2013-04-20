@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 require 'net/http'
-require './long_pull.rb'
+require 'long_pull'
 require 'socket'
 require 'rexml/document'
 require 'time'
@@ -79,7 +79,7 @@ module MTConnect
             break unless @running
           end
         rescue 
-          block.call('DISCONNECTED', nil)
+          block.call('Connection', 'DISCONNECTED')
           puts "Error occurred: #{$!}\n retrying..."
           puts $!.backtrace.join("\n")
           sleep 1
