@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-$: << File.dirname(__FILE__) + '/..'
+$: << File.dirname(__FILE__) + '/../src'
 
 module Helpers
   def unloading

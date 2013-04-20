@@ -13,6 +13,7 @@
 #    limitations under the License.
 
 $: << '.'
+$: << './src'
 
 require 'cnc'
 require 'streamer'
