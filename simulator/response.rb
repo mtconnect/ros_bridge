@@ -14,19 +14,22 @@
 
 module Cnc
   class Response
-    attr_accessor :statemachine
+    attr_accessor :statemachine, :fail_reset_delay, :simulated_duration
     attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 
-    def initialize(adapter, interface, state, prefix, dest_state, transition_state,
+    def initialize(parent, adapter, interface, state, prefix, dest_state, transition_state,
         rel, simulate: false)
       @adapter, @interface, @state, @prefix, @dest_state,
         @transition_state = adapter, interface, state,
           prefix, dest_state, transition_state
 
+      @parent = parent
       @related = nil
       @active = true
       @simulate = simulate
+      @fail_reset_delay = 5.0
+      @simulated_duration = 1.0
 
       self.related = rel if rel
     end
@@ -84,7 +87,7 @@ module Cnc
         end
         if @simulate
           Thread.new do
-            sleep 1
+            sleep @simulated_duration
             @statemachine.complete
           end
         end
@@ -97,6 +100,7 @@ module Cnc
         @interface.value = 'COMPLETE'
         @state.value = @dest_state if @simulate
       end
+      @parent.completed(self)
     end
 
 
@@ -104,8 +108,9 @@ module Cnc
       @adapter.gather do
         @interface.value = 'FAIL'
       end
+      @parent.failed(self)
       Thread.new do
-        sleep 1
+        sleep @fail_reset_delay
         @statemachine.not_ready
       end
     end

@@ -32,6 +32,8 @@ describe "Interface" do
       @cnc.stub(:open_chuck) { @open_chuck }
       @cnc.stub(:cnc_chuck_state) { @cnc_chuck_state }
       @cnc.stub(:adapter) { @adapter }
+      @cnc.stub!(:failed) { }
+      @cnc.stub!(:completed) { }
       @chuck = Cnc::OpenChuck.new(@cnc)
     end
 
@@ -97,6 +99,7 @@ describe "Interface" do
 
     context 'operating incorrectly' do
       it 'should fail if not ready and receives an active from request' do
+        @chuck.fail_reset_delay = 1.0
         @chuck.statemachine.state.should == :not_ready
         @open_chuck.value.should == 'NOT_READY'
         @chuck.statemachine.active
@@ -108,6 +111,7 @@ describe "Interface" do
       end
 
       it "should not transition to ready if the cnc is disabled" do
+        @chuck.fail_reset_delay = 1.0
         @chuck.deactivate
         @chuck.statemachine.state.should == :not_ready
         @open_chuck.value.should == 'NOT_READY'

@@ -90,6 +90,8 @@ module MTConnect
       end
     end
 
+    attr_reader :active
+
     def initialize(name)
       super(name)
       @active = []

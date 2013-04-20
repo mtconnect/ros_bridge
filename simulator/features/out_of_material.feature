@@ -16,11 +16,13 @@ Feature: Robot Out of Material
   As a Cnc I ask the Robot to load material, but there is no
   material to be had
 
-  Background:
+  Background: Machine Tool and Robot are operational
     Given Devices are in initial state
 
   Scenario: Cnc asks Robot to Load Material
     Given robot MaterialLoad becomes Active
+    Then material load state should be processing
+
     When robot faults FILL_LEVEL with "No Material"
     And robot MaterialLoad becomes Fail
     Then cnc MaterialLoad should be Fail

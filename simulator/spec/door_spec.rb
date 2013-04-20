@@ -34,6 +34,8 @@ describe "Response" do
       @cnc.stub(:open_door) { @open_door }
       @cnc.stub(:door_state) { @door_state }
       @cnc.stub(:adapter) { @adapter }
+      @cnc.stub!(:failed) { }
+      @cnc.stub!(:completed) { }
       @door = Cnc::OpenDoor.new(@cnc)
     end
 
@@ -92,6 +94,7 @@ describe "Response" do
 
     context 'operating incorrectly' do
       it 'should fail if not ready and receives an active from request' do
+        @door.fail_reset_delay = 1.0
         @door.statemachine.state.should == :not_ready
         @open_door.value.should == 'NOT_READY'
         @door.statemachine.active
@@ -103,6 +106,7 @@ describe "Response" do
       end
 
       it "should not transition to ready if the cnc is disabled" do
+        @door.fail_reset_delay = 1.0
         @door.deactivate
         @door.statemachine.state.should == :not_ready
         @open_door.value.should == 'NOT_READY'

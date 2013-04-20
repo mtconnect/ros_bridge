@@ -60,7 +60,6 @@ When(/^(robot|cnc) clears ([A-Za-z_]+)$/) do |target, item|
   cnc.event(target, item, 'Normal', item)
 end
 
-
 Then(/^(machine|(?>open|close) (?>door|chuck)|material (?>load|unload)) state should be ([a-z_]+)$/) do |machine, state|
   sm = machine_for(machine)
   sm.state.should == state.to_sym
@@ -71,5 +70,23 @@ Then(/^(?>after ([0-9.]+) second(?>s)? )?(cnc|robot) ([A-Za-z]+) should be ([A-Z
   value_for(source, item).should == value.upcase
 end
 
+Then(/^cnc should have fault$/) do
+  cond = cnc.system
+  cond.should_not be_normal
+end
 
+When(/^cnc is reset$/) do
+  cnc.statemachine.reset_cnc
+end
 
+When(/^faults are cleared$/) do
+  @cnc.adapter.gather do
+    cnc.system.normal
+  end
+end
+
+Then(/^cnc fault should have code "(.*?)"$/) do |code|
+  cond = cnc.system
+  cond.active.first.should_not be_nil
+  cond.active.first.code.should == code
+end

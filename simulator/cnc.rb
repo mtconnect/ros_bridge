@@ -305,12 +305,24 @@ module Cnc
 
     def completed(child)
       puts "** Received completed from #{child.class}"
-      @statemachine.complete
+      case child
+      when Request
+        @statemachine.complete
+      end
     end
 
     def failed(child)
       puts "** Received failed from #{child.class}"
-      @statemachine.failed
+      case child
+      when Request
+        @statemachine.failed
+
+      when Response
+        @adapter.gather do
+          @system.add('FAULT', "#{child.class.name} Failed", child.class.name)
+        end
+        @statemachine.fault
+      end
     end
 
     def create_statemachine
@@ -335,6 +347,9 @@ module Cnc
           event :disable, :activated, :disable
           event :enable, :activated, :enable
           event :reset_cnc, :activated, :reset_cnc
+
+          # failure
+          event :fault, :fault
 
 
           superstate :disabled do

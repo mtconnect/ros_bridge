@@ -14,7 +14,7 @@
 Feature: Unload Material
   As a Machine Tool I would like to unload material
 
-  Background:
+  Background: Devices are have completed loading
     Given Devices are in initial state
     And robot MaterialLoad becomes Active
     And Chuck is closed
