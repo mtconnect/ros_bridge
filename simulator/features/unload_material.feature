@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 Feature: Unload Material
-  As a Machine Tool I would like to unload material
+  The robot successfully unloads material from the cnc
 
   Background: Devices are have completed loading
     Given Devices are in initial state

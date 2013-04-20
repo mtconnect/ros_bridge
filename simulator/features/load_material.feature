@@ -13,7 +13,7 @@
 #    limitations under the License.
 
 Feature: Load Material
-  As a Machine Tool I can ask the robot to load material
+  The Machine Tool successfully load material
 
   Background: Machine Tool and Robot are operational
     Given Devices are in initial state

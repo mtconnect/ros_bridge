@@ -13,8 +13,8 @@
 #    limitations under the License.
 
 Feature: Robot Out of Material
-  As a Cnc I ask the Robot to load material, but there is no
-  material to be had
+  The robot begins to load material and signals an alarms
+  after it begins and discovers there is not material
 
   Background: Machine Tool and Robot are operational
     Given Devices are in initial state
