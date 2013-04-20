@@ -52,6 +52,15 @@ Given(/^(cnc|robot) ([A-Za-z]+) (?>is|becomes) ([A-Za-z_]+)$/) do |target, item,
   cnc.event(target, item, value.upcase)
 end
 
+When(/^(robot|cnc) faults ([A-Za-z_]+) with "(.*?)"$/) do |target, item, message|
+  cnc.event(target, item, 'Fault', item, message)
+end
+
+When(/^(robot|cnc) clears ([A-Za-z_]+)$/) do |target, item|
+  cnc.event(target, item, 'Normal', item)
+end
+
+
 Then(/^(machine|(?>open|close) (?>door|chuck)|material (?>load|unload)) state should be ([a-z_]+)$/) do |machine, state|
   sm = machine_for(machine)
   sm.state.should == state.to_sym
@@ -59,7 +68,8 @@ end
 
 Then(/^(?>after ([0-9.]+) second(?>s)? )?(cnc|robot) ([A-Za-z]+) should be ([A-Za-z_]+)$/) do |delay, source, item, value|
   sleep delay.to_f if delay
-
   value_for(source, item).should == value.upcase
 end
+
+
 

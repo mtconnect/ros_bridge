@@ -30,8 +30,6 @@ Feature: Unload Material
     And cnc MaterialLoad should be Not_Ready
     And machine state should be unloading
 
-
-
   Scenario: Cnc asks Robot to Unload Material
     Given machine state should be unloading
 
