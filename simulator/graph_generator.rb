@@ -32,4 +32,15 @@ Dir.chdir('graph') do
       system("dot -Tpng -o #{File.basename(f, '.dot')}.svg #{f}")
     end
   end
+
+  Dir.mkdir('request') unless File.exist?('request')
+  resp = Cnc::MaterialLoad.new(context)
+  resp.create_statemachine
+  resp.statemachine.to_dot(:output => 'request')
+  Dir.chdir('request') do
+    system('dot -Tpng -o main.png main.dot')
+    Dir['*.dot'].each do |f|
+      system("dot -Tpng -o #{File.basename(f, '.dot')}.svg #{f}")
+    end
+  end
 end
