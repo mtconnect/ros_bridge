@@ -89,6 +89,8 @@ module Cnc
 
       @has_material = false
 
+      @events = []
+
       load_time_limit(5 * 60)
       unload_time_limit(5 * 60)
 
@@ -104,6 +106,20 @@ module Cnc
   
     def stop
       @adapter.stop
+    end
+
+    def status
+      return <<EOT
+Cnc state  = #{@statemachine.state}
+Load Material state = #{@material_load_interface.state}
+Unload Material state = #{@material_unload_interface.state}
+Open Chuck state = #{@open_chuck_interface.statemachine.state}
+Close Chuck state = #{@close_chuck_interface.statemachine.state}
+Open Door state = #{@open_door_interface.statemachine.state}
+Close Door state = #{@close_door_interface.statemachine.state}
+Events:
+\t#{@events.join("\n\t")}
+EOT
     end
 
     def load_time_limit(limit)
@@ -124,6 +140,9 @@ module Cnc
 
     def event(source, name, value, code = nil, text = nil)
       puts "CNC Received #{name} #{value} from #{source}"
+      @events.push "#{source}: #{name} #{value} '#{code}' '#{text}'"
+      @events.shift if @events.length > 25
+
       action_name = value.downcase
       if action_name == 'fail'
         action = :failure

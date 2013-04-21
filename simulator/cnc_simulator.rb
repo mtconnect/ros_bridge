@@ -24,8 +24,8 @@ context.statemachine.tracer = STDOUT
 context.start
 
 url = ARGV[0] || 'http://localhost:5000/Robot'
-streamer = MTConnect::Streamer.new(url)
-robot_thread = streamer.start do |name, value, code = nil, text = nil|
+robot_streamer = MTConnect::Streamer.new(url)
+robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
   begin
     context.event('robot', name, value, code, text)
   rescue
@@ -35,9 +35,9 @@ robot_thread = streamer.start do |name, value, code = nil, text = nil|
 end
 
 url = ARGV[1] || 'http://localhost:5000/cnc'
-streamer = MTConnect::Streamer.new(url,
+cnc_streamer = MTConnect::Streamer.new(url,
                 filter: '//DataItem[@type="CONTROLLER_MODE"or@type="EXECUTION"or@type="CHUCK_STATE"or@type="AVAILABILITY"or@category="CONDITION"]')
-cnc_thread = streamer.start do |name, value, code = nil, text = nil|
+cnc_thread = cnc_streamer.start do |name, value, code = nil, text = nil|
   begin
     context.event('cnc', name, value, code, text)
   rescue
@@ -46,19 +46,87 @@ cnc_thread = streamer.start do |name, value, code = nil, text = nil|
   end
 end
 
-# Command processor
+# Start a socket based command processor
+server = TCPServer.new(3000)
+while true
+  sock = server.accept
+  Thread.new(sock) do |client|
+    while true
+      client.write("> ")
+      client.flush
+
+      line = client.readline
+      if line.nil? or line.empty? or line[0] == "\04"
+        break
+      end
+
+      begin
+        case line.strip
+        when "shutdown"
+          context.stop
+          robot_streamer.stop
+          cnc_streamer.stop
+          server.close
+          exit(0)
+
+        when "quit"
+          break
+
+        when "status"
+          client.puts context.status
+
+        when "help", "?"
+          client.puts <<EOT
+shutdown          - Stop the state machine
+status            - Display state of state machines
+event <source> <item> <value> [<alarm code>] [alarm text]
+                  - Send an event to the context
+<event>           - Send an event to the cnc statemachine
+^D or quit        - Stop this session
+EOT
+
+        when "event[ ]+(.+)$"
+          args = $1.split(/[ ]+/, 5)
+          context.event(*args)
+
+        when /^([a-z_]+)$/i
+          # State machine event
+          event = $1.to_sym
+
+          # send the line as an event...
+          if context.statemachine.respond_to? event
+            context.statemachine.send(event)
+          else
+            client.puts "CNC does does not recognize #{event} in state #{context.state}"
+          end
+
+        else
+          client.puts "Unrecognized command #{line.inspect}"
+        end
+      rescue
+        client.puts "Error: #{$!}"
+      end
+      client.flush
+    end
+    client.close
+  end
+end
+
 while true
   begin
-    line = Readline.readline('> ', true)    
-    if line.nil? or line == 'quit'
+    line = Readline.readline('> ', true)
+
+    if line.nil? or line.strip == "quit"
       context.stop
-      streamer.stop
+      robot_streamer.stop
+      cnc_streamer.stop
+      server.close
       exit 0
     end
     next if line.empty?
-    
-    # send the line as an event...
     event = line.strip.to_sym
+
+    # send the line as an event...
     if context.statemachine.respond_to? event
       context.statemachine.send(event)
     else
