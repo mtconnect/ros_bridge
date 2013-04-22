@@ -68,7 +68,12 @@ typedef mtconnect_msgs::SetMTConnectState::Request MtConnectState;
 StateMachine::StateMachine() :
     nh_()
 {
+  // Setting default class values
   state_ = StateTypes::INVALID;
+  loop_rate_ = 0;
+  home_check_ = false;
+  home_tol_ = 0.0;
+  cycle_stop_req_= false;
 }
 
 StateMachine::~StateMachine()
@@ -253,6 +258,11 @@ void StateMachine::runOnce()
 
     case StateTypes::WAITING:
       ROS_INFO_STREAM_THROTTLE(20, "Waiting for request");
+      if(cycle_stop_req_)
+      {
+        cycle_stop_req_ = false;
+        setState(StateTypes::STOPPING);
+      }
       break;
 
     case StateTypes::MATERIAL_LOADING:
@@ -487,6 +497,21 @@ void StateMachine::runOnce()
 
     case StateTypes::ABORTED:
       ROS_INFO_STREAM_THROTTLE(30, "Robot in ABORTED state");
+      break;
+
+    case StateTypes::STOPPING:
+      ROS_INFO_STREAM("Beginning system stop");
+      setState(StateTypes::S_SET_MAT_ACTIONS_NOT_READY);
+      break;
+
+    case StateTypes::S_SET_MAT_ACTIONS_NOT_READY:
+      setMatActionsNotReady();
+      setState(StateTypes::STOPPED);
+      break;
+
+    case StateTypes::STOPPED:
+      ROS_INFO_STREAM("Completing stop");
+      setState(StateTypes::IDLE);
       break;
 
     case StateTypes::RESETTING:
@@ -795,10 +820,10 @@ bool StateMachine::externalCommandCB(mtconnect_example_msgs::StateMachineCmd::Re
   switch (req.command)
   {
     case StateMachineCmd::Request::STOP:
-      if (state_ == StateTypes::WAITING)
+      if (state_ >= StateTypes::CYCLE_BEGIN && state_ <= StateTypes::CYCLE_END)
       {
-        ROS_INFO_STREAM("External command STOP executing");
-        setState(StateTypes::IDLE);
+        ROS_INFO_STREAM("External command STOP, setting stop request flag");
+        cycle_stop_req_ = true;
         res.accepted = true;
       }
       else
@@ -890,9 +915,9 @@ bool StateMachine::moveArm(const std::string & move_name)
       if (trajectory_filter_.response.error_code.val == trajectory_filter_.response.error_code.SUCCESS)
       {
         ROS_INFO_STREAM("======================== MOVING ROBOT ========================");
-        ROS_INFO("Trajectory successfully filtered...sending goal");
+        //ROS_INFO("Trajectory successfully filtered...sending goal");
         joint_traj_goal_.trajectory = trajectory_filter_.response.trajectory;
-        ROS_INFO_STREAM("Sending a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
+        //ROS_INFO_STREAM("Sending a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
         joint_traj_client_ptr_->sendGoal(joint_traj_goal_);
       }
       else
