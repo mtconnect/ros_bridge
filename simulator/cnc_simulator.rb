@@ -75,6 +75,10 @@ while true
         when "status"
           client.puts context.status
 
+        when /^events([ ]+\d+)?/i
+          count = (($1 && $1.strip) || 10).to_i
+          client.puts context.events(count)
+
         when "help", "?"
           client.puts <<EOT
 shutdown          - Stop the state machine
@@ -89,7 +93,8 @@ EOT
           args = $1.split(/[ ]+/, 5)
           context.event(*args)
 
-        when /^([a-z_]+)$/i
+
+        when /^sm ([a-z_]+)$/i
           # State machine event
           event = $1.to_sym
 
@@ -99,6 +104,7 @@ EOT
           else
             client.puts "CNC does does not recognize #{event} in state #{context.state}"
           end
+
 
         else
           client.puts "Unrecognized command #{line.inspect}"

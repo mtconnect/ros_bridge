@@ -117,9 +117,11 @@ Open Chuck state = #{@open_chuck_interface.statemachine.state}
 Close Chuck state = #{@close_chuck_interface.statemachine.state}
 Open Door state = #{@open_door_interface.statemachine.state}
 Close Door state = #{@close_door_interface.statemachine.state}
-Events:
-\t#{@events.join("\n\t")}
 EOT
+    end
+
+    def events(count)
+      @events.last(count).join("\n")
     end
 
     def load_time_limit(limit)
@@ -141,7 +143,7 @@ EOT
     def event(source, name, value, code = nil, text = nil)
       puts "CNC Received #{name} #{value} from #{source}"
       @events.push "#{source}: #{name} #{value} '#{code}' '#{text}'"
-      @events.shift if @events.length > 25
+      @events.shift if @events.length > 500
 
       action_name = value.downcase
       if action_name == 'fail'
