@@ -114,6 +114,7 @@
 		<param name="force_fault" value="0"/>
 		<param name="home_check" value="$(arg home_check)"/>
 		<param name="task_description" textfile="$(find mtconnect_example_launch)/config/task_description.xml" />
+		<param name="material_state" value="true"/>
 		
 		<!-- trajectory filter service -->
 		<remap from="filter_trajectory_with_constraints" to="/trajectory_filter_server/filter_trajectory_with_constraints"/>

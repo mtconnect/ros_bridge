@@ -367,10 +367,22 @@ private:
    */
   double home_tol_;
   /**
-     * \brief home position tolerance
+   * \brief cycle stop request flat
+   *
+   */
+  bool cycle_stop_req_;
+
+  /**
+   * \brief material state (true if material is present)
+   *
+   */
+  bool material_state_;
+
+  /**
+     * \brief internal flag to track material load state (should be encapsulated in material load)
      *
      */
-  bool cycle_stop_req_;
+  int material_load_state_;
 //////MTConnect specific
 
   std::map<std::string, trajectory_msgs::JointTrajectoryPtr> joint_paths_;

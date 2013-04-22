@@ -26,6 +26,7 @@ static const std::string PARAM_STATE_OVERRIDE = "state_override";
 static const std::string PARAM_LOOP_RATE = "loop_rate";
 static const std::string PARAM_CHECK_ENABLED = "home_check";
 static const std::string PARAM_HOME_TOL = "home_tol";
+static const std::string PARAM_MAT_STATE = "material_state";
 static const std::string KEY_HOME_POSITION = "home";
 
 // Material load moves
@@ -74,6 +75,8 @@ StateMachine::StateMachine() :
   home_check_ = false;
   home_tol_ = 0.0;
   cycle_stop_req_= false;
+  material_state_ = false;
+  material_load_state_ = mtconnect_msgs::SetMTConnectState::Request::NOT_READY;
 }
 
 StateMachine::~StateMachine()
@@ -263,6 +266,22 @@ void StateMachine::runOnce()
         cycle_stop_req_ = false;
         setState(StateTypes::STOPPING);
       }
+      if(material_state_)
+      {
+        if(material_load_state_ != mtconnect_msgs::SetMTConnectState::Request::READY)
+        {
+          ROS_INFO_STREAM("Material present, updating material load to READY");
+          setMatLoad(mtconnect_msgs::SetMTConnectState::Request::READY);
+        }
+      }
+      else
+      {
+        if(material_load_state_ != mtconnect_msgs::SetMTConnectState::Request::NOT_READY)
+        {
+          ROS_INFO_STREAM("Material no present, updating material load to NOT READY");
+          setMatLoad(mtconnect_msgs::SetMTConnectState::Request::NOT_READY);
+        }
+      }
       break;
 
     case StateTypes::MATERIAL_LOADING:
@@ -297,8 +316,16 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::ML_PICK:
-      closeGripper();
-      setState(StateTypes::ML_WAIT_PICK);
+      if(material_state_)
+      {
+        closeGripper();
+        setState(StateTypes::ML_WAIT_PICK);
+      }
+      else
+      {
+        ROS_ERROR_STREAM("Unexpected out of material during pick, aborting");
+        setState(StateTypes::ABORTING);
+      }
       break;
 
     case StateTypes::ML_WAIT_PICK:
@@ -612,6 +639,7 @@ bool StateMachine::setMatLoad(int state)
   {
     if (mat_load_set_state_.response.accepted)
     {
+      material_load_state_ = state;
       ROS_INFO_STREAM("Material load set to: " << state);
       rtn = true;
     }
@@ -700,6 +728,16 @@ void StateMachine::overrideChecks()
     ROS_ERROR_STREAM("Forcing fault from state: "<< StateTypes::STATE_MAP[state_]);
     setState(StateTypes::ABORTING);
     ph.setParam(PARAM_FORCE_FAULT_STATE, StateTypes::INVALID);
+  }
+
+  // Material state override (defaults to not having material, ie false)
+  bool mat_param_state = false;
+  ph.getParamCached(PARAM_MAT_STATE, mat_param_state);
+
+  if (material_state_ != mat_param_state)
+  {
+    ROS_INFO_STREAM("Detected change in material state, from " << material_state_ << " to " << mat_param_state);
+    material_state_ = mat_param_state;
   }
 }
 
