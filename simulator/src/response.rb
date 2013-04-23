@@ -35,6 +35,10 @@ module Cnc
       self.related = rel if rel
     end
 
+    def reset
+      @statemachine.reset
+    end
+
     def activate
       @active = true
       if  @statemachine.state == :not_ready or @statemachine.state == :fail

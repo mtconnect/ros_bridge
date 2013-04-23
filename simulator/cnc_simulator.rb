@@ -31,7 +31,6 @@ context = Cnc::CncContext.new(control, 7879)
 context.statemachine.tracer = STDOUT
 context.start
 
-if false
 url = ARGV[0] || 'http://localhost:5000/Robot'
 robot_streamer = MTConnect::Streamer.new(url)
 robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
@@ -41,7 +40,6 @@ robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
     puts "Error occurred in handling event: #{$!}"
     puts $!.backtrace.join("\n")
   end
-end
 end
 
 url = ARGV[1] || 'http://localhost:5000/cnc'

@@ -241,6 +241,13 @@ EOT
       reset_history
       @control.puts "* reset"
 
+      @close_chuck_interface.reset
+      @open_chuck_interface.reset
+      @open_door_interface.reset
+      @close_door_interface.reset
+      @material_load_interface.reset
+      @material_unload_interface.reset
+
       true
     end
 

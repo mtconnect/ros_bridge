@@ -36,6 +36,10 @@ module Cnc
       self.related = rel if rel
     end
 
+    def reset
+      @statemachine.reset
+    end
+
     def activate
       @statemachine.activate
     end
