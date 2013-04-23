@@ -16,7 +16,7 @@ require 'mtc_context'
 
 module Cnc
   class Request
-    attr_accessor :statemachine, :fail_time_limit, :processing_time_limit
+    attr_accessor :statemachine, :fail_time_limit, :processing_time_limit, :simulate
     attr_reader :interface, :related
     include ThreadSafeStateMachine
 

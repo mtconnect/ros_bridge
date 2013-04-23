@@ -18,32 +18,63 @@ $: << './src'
 require 'cnc'
 require 'streamer'
 require 'readline'
+require 'optparse'
 
-# Connect to adapter on machine tool to control operations
-control = TCPSocket.new('192.168.1.69', 7879)
-Thread.new do
-  while control.read(1024)
+$simulation = false
+no_robot = false
+machine_ip = '192.168.1.69'
+robot_url = 'http://localhost:5000/Robot'
+cnc_url = 'http://localhost:5000/cnc'
 
+OptionParser.new do |opts|
+  opts.banner = 'Usage: ruby cnc_simulator.rb [-sn] [-m machine_tool_ip] [robot_url] [cnc_url]'
+
+  opts.on('-s', '--[no-]simulate', 'Simulation') do  |v|
+    $simulation = v
   end
+
+  opts.on('-n', '--no_robot', 'Skip Robot Event Stream') do  |v|
+    $no_robot = v
+  end
+
+  opts.on('-m', '--cnc_ip <ip>', OptionParser::String, "IP (default: #{machine_ip})") do  |v|
+    machine_ip = v
+  end
+
+  opts.parse!
+  robot_url = ARGV.shift if ARGV.length > 0
+  cnc_url = ARGV.shift if ARGV.length > 0
+end
+
+unless $simulation
+  # Connect to adapter on machine tool to control operations
+  control = TCPSocket.new('192.168.1.69', 7879)
+  Thread.new do
+    while control.read(1024)
+
+    end
+  end
+else
+  control = nil
 end
 
 context = Cnc::CncContext.new(control, 7879)
 context.statemachine.tracer = STDOUT
 context.start
 
-url = ARGV[0] || 'http://localhost:5000/Robot'
-robot_streamer = MTConnect::Streamer.new(url)
-robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
-  begin
-    context.event('robot', name, value, code, text)
-  rescue
-    puts "Error occurred in handling event: #{$!}"
-    puts $!.backtrace.join("\n")
+unless no_robot
+  robot_streamer = MTConnect::Streamer.new(robot_url)
+  robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
+    begin
+      context.event('robot', name, value, code, text)
+    rescue
+      puts "Error occurred in handling event: #{$!}"
+      puts $!.backtrace.join("\n")
+    end
   end
 end
 
-url = ARGV[1] || 'http://localhost:5000/cnc'
-cnc_streamer = MTConnect::Streamer.new(url,
+cnc_streamer = MTConnect::Streamer.new(cnc_url,
                 filter: '//DataItem[@type="CONTROLLER_MODE"or@type="EXECUTION"or@type="CHUCK_STATE"or@type="AVAILABILITY"or@category="CONDITION"]')
 cnc_thread = cnc_streamer.start do |name, value, code = nil, text = nil|
   begin

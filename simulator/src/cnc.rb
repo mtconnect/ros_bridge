@@ -71,6 +71,16 @@ module Cnc
       # Controller does not have a door signal, so we need to simulate it here.
       @adapter.data_items << (@door_state = DataItem.new('door_state'))
 
+      if $simulate
+        @adapter.data_items << (@exec = DataItem.new('exec'))
+        @adapter.data_items << (@exec = DataItem.new('avail'))
+        @adapter.data_items << (@exec = DataItem.new('mode'))
+
+        @avail.value = 'AVAILABLE'
+        @exec.value = 'READY'
+        @mode.value = 'AUTOMATIC'
+      end
+
       # Initialize data items
       @link.value = 'ENABLED'
       @door_state.value = "OPEN"
@@ -81,6 +91,10 @@ module Cnc
 
       @open_chuck_interface = OpenChuck.new(self, @control)
       @close_chuck_interface = CloseChuck.new(self, @control, @open_chuck_interface)
+      if $simulation
+        @open_chuck_interface.simulate = true
+        @close_chuck_interface.simulate = true
+      end
 
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
@@ -267,7 +281,19 @@ EOT
         end
         @statemachine.fault
       else
-        @control.puts "* start"
+        unless $simulate
+          @control.puts "* start"
+        else
+          @adapter.gather do
+            @exec.value = 'ACTIVE'
+          end
+          Thread.new do
+            sleep 10
+            @adapter.gather do
+              @exec.value = 'READY'
+            end
+          end
+        end
       end
       true
     end
