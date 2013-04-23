@@ -33,8 +33,8 @@ OptionParser.new do |opts|
     $simulation = v
   end
 
-  opts.on('-n', '--no_robot', 'Skip Robot Event Stream') do  |v|
-    $no_robot = v
+  opts.on('-n', '--[no-]robot', 'Skip Robot Event Stream') do  |v|
+    no_robot = v
   end
 
   opts.on('-m', '--cnc_ip <ip>', OptionParser::String, "IP (default: #{machine_ip})") do  |v|
@@ -162,6 +162,7 @@ EOT
         end
       rescue
         client.puts "Error: #{$!}"
+        puts $!, $!.backtrace.join("\n")
       end
       client.flush
     end

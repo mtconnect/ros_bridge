@@ -14,7 +14,7 @@
 
 module Cnc
   class Response
-    attr_accessor :statemachine, :fail_reset_delay, :simulated_duration, :fail_next
+    attr_accessor :statemachine, :fail_reset_delay, :simulated_duration, :fail_next, :simulate
     attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 

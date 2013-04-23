@@ -16,16 +16,15 @@ require 'mtc_context'
 
 module Cnc
   class Request
-    attr_accessor :statemachine, :fail_time_limit, :processing_time_limit, :simulate
+    attr_accessor :statemachine, :fail_time_limit, :processing_time_limit
     attr_reader :interface, :related
     include ThreadSafeStateMachine
 
-    def initialize(parent, adapter, interface, rel, simulate: false)
+    def initialize(parent, adapter, interface, rel)
       @parent, @adapter, @interface = parent, adapter, interface
 
       @related = nil
       @active = true
-      @simulate = simulate
       @failing = false
 
       @fail_time_limit = 1.0

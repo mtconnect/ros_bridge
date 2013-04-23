@@ -71,10 +71,10 @@ module Cnc
       # Controller does not have a door signal, so we need to simulate it here.
       @adapter.data_items << (@door_state = DataItem.new('door_state'))
 
-      if $simulate
-        @adapter.data_items << (@exec = DataItem.new('exec'))
-        @adapter.data_items << (@exec = DataItem.new('avail'))
-        @adapter.data_items << (@exec = DataItem.new('mode'))
+      if $simulation
+        @adapter.data_items << (@exec = DataItem.new('execution'))
+        @adapter.data_items << (@avail = DataItem.new('avail'))
+        @adapter.data_items << (@mode = DataItem.new('mode'))
 
         @avail.value = 'AVAILABLE'
         @exec.value = 'READY'
@@ -253,7 +253,7 @@ EOT
         @system.normal
       end
       reset_history
-      @control.puts "* reset"
+      @control.puts "* reset" unless $simulation
 
       @close_chuck_interface.reset
       @open_chuck_interface.reset
@@ -281,7 +281,7 @@ EOT
         end
         @statemachine.fault
       else
-        unless $simulate
+        unless $simulation
           @control.puts "* start"
         else
           @adapter.gather do
@@ -329,7 +329,7 @@ EOT
       @open_door_interface.activate
       @close_door_interface.activate
 
-      @control.puts "* reset"
+      @control.puts "* reset" unless $simulation
 
       if @has_material
         @statemachine.unloading

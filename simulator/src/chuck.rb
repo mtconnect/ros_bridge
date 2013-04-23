@@ -26,7 +26,7 @@ module Cnc
     end
 
     def execute
-      @control.puts "* open"
+      @control.puts "* open" unless @simulate
     end
 
     def response_state
@@ -42,7 +42,7 @@ module Cnc
     end
 
     def execute
-      @control.puts "* close"
+      @control.puts "* close" unless @simulate
     end
 
     def response_state
