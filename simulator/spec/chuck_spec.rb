@@ -101,7 +101,7 @@ describe "Interface" do
     end
 
     context 'operating incorrectly' do
-      it 'should fail if not ready and receives an active from request' do
+      it 'should fail if not ready and receives an fail from request' do
         @chuck.fail_reset_delay = 1.0
         @chuck.statemachine.state.should == :not_ready
         @open_chuck.value.should == 'NOT_READY'

@@ -142,12 +142,16 @@ module Cnc
 
           state :not_ready do
             on_entry :not_ready
+            default :not_ready
+
             event :ready, :ready
             event :not_ready, :not_ready
             event "#{prefix}_open".to_sym, :not_ready
             event "#{prefix}_close".to_sym, :not_ready
             event "#{prefix}_unlatched".to_sym, :not_ready
-            default :fail
+
+            event :failure, :fail
+            event :active, :fail
           end
 
           state :ready do
