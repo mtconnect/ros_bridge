@@ -15,6 +15,7 @@ PROGRAM ros_vise
 
 
 %NOLOCKGROUP
+%NOPAUSE= COMMAND + TPENABLE + ERROR 
 %COMMENT = 'ROS Ind Vise'
 
 
@@ -152,13 +153,15 @@ BEGIN
 		               -- 
 		               CASE (GRP_OPEN):
 		                  log_info(LOG_PFIX + 'Vise open')
-		                  --DOUT[9]=FALSE
+		                  DOUT[9]=FALSE
+		                  DELAY 500
 		                  reply_code = RI_RT_SUCC
 		
 		               -- 
 		               CASE (GRP_CLOSE):
 		                  log_info(LOG_PFIX + 'Vise close')              
-		                  -- DOUT[9]=TRUE   
+		                  DOUT[9]=TRUE   
+		                  DELAY 500
 		                  reply_code = RI_RT_SUCC
 		
 		               -- unknown special sequence nr
