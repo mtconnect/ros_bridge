@@ -20,17 +20,33 @@ require 'response'
 module Cnc
   class OpenDoor < Response
     def initialize(cnc, rel = nil)
-      super(cnc, cnc.adapter, cnc.open_door, cnc.door_state, 'door', 'OPEN', 'UNLATCHED', rel,
+      super(cnc, cnc.adapter, cnc.open_door, 'door', 'OPEN', 'UNLATCHED', rel,
             simulate: true)
       create_statemachine
+    end
+
+    def response_state
+      @parent.door_state.value
+    end
+
+    def response_state=(value)
+      @parent.door_state.value = value
     end
   end
 
   class CloseDoor < Response
     def initialize(cnc, rel = nil)
-      super(cnc, cnc.adapter, cnc.close_door, cnc.door_state, 'door', 'CLOSED', 'UNLATCHED', rel,
+      super(cnc, cnc.adapter, cnc.close_door, 'door', 'CLOSED', 'UNLATCHED', rel,
             simulate: true)
       create_statemachine
+    end
+
+    def response_state
+      @parent.door_state.value
+    end
+
+    def response_state=(value)
+      @parent.door_state.value = value
     end
   end
 end

@@ -34,7 +34,10 @@ describe "Interface" do
       @cnc.stub(:adapter) { @adapter }
       @cnc.stub!(:failed) { }
       @cnc.stub!(:completed) { }
-      @chuck = Cnc::OpenChuck.new(@cnc)
+
+      control = double("socket")
+      control.stub!(:puts) { }
+      @chuck = Cnc::OpenChuck.new(@cnc, control)
     end
 
     context "operating correctly" do

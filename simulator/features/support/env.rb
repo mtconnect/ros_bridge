@@ -15,12 +15,17 @@
 $: << File.dirname(__FILE__) + '/../../src'
 
 require 'cnc'
+require 'rspec/mocks'
 
 begin require 'rspec/expectations'; rescue LoadError; require 'spec/expectations'; end
 
 module CncHelper
   def cnc
-    @cnc = Cnc::CncContext.new unless @cnc
+    control = Object.new
+    class <<control
+      def puts(*args); end
+    end
+    @cnc = Cnc::CncContext.new(control) unless @cnc
     @cnc
   end
 

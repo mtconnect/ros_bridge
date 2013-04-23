@@ -18,10 +18,10 @@ module Cnc
     attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 
-    def initialize(parent, adapter, interface, state, prefix, dest_state, transition_state,
+    def initialize(parent, adapter, interface, prefix, dest_state, transition_state,
         rel, simulate: false)
-      @adapter, @interface, @state, @prefix, @dest_state,
-        @transition_state = adapter, interface, state,
+      @adapter, @interface, @prefix, @dest_state,
+        @transition_state = adapter, interface,
           prefix, dest_state, transition_state
 
       @parent = parent
@@ -70,9 +70,8 @@ module Cnc
     end
 
     def active
-      puts "#{self.class} Active - #{@related.class} #{@related and @related.interface.value}"
-      if (@simulate and @state.value == @dest_state) or
-          (!@simulate and @state == @dest_state)
+      puts "#{self.class} Active - #{@related.class} #{@related and @related.interface.value} #{response_state}"
+      if response_state == @dest_state
         @adapter.gather do
           @interface.value = 'ACTIVE'
         end
@@ -83,22 +82,36 @@ module Cnc
       else
         @adapter.gather do
           @interface.value = 'ACTIVE'
-          @state.value = 'UNLATCHED' if @simulate
+          self.response_state = 'UNLATCHED' if @simulate
         end
         if @simulate
           Thread.new do
             sleep @simulated_duration
             @statemachine.complete
           end
+        else
+          execute
         end
       end
+    end
+
+    def response_state
+      nil
+    end
+
+    def response_state=(value)
+      nil
+    end
+
+    def execute
+
     end
 
     def complete
       puts "Completed"
       @adapter.gather do
         @interface.value = 'COMPLETE'
-        @state.value = @dest_state if @simulate
+        self.response_state = @dest_state if @simulate
       end
       @parent.completed(self)
     end

@@ -17,7 +17,9 @@ require 'cnc'
 
 describe "Cnc" do
   before(:each) do
-    @cnc = Cnc::CncContext.new
+    control = double("socket")
+    control.stub!(:puts) { }
+    @cnc = Cnc::CncContext.new(control)
   end
 
   context "operating" do

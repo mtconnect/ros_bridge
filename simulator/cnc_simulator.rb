@@ -19,7 +19,15 @@ require 'cnc'
 require 'streamer'
 require 'readline'
 
-context = Cnc::CncContext.new
+# Connect to adapter on machine tool to control operations
+control = TCPSocket.new('192.168.1.69', 7879)
+Thread.new do
+  while control.read(1024)
+
+  end
+end
+
+context = Cnc::CncContext.new(control, 7879)
 context.statemachine.tracer = STDOUT
 context.start
 
@@ -83,13 +91,14 @@ while true
           client.puts <<EOT
 shutdown          - Stop the state machine
 status            - Display state of state machines
+events <n>        - Display last n events
 event <source> <item> <value> [<alarm code>] [alarm text]
                   - Send an event to the context
-<event>           - Send an event to the cnc statemachine
+sm <event>           - Send an event to the cnc statemachine
 ^D or quit        - Stop this session
 EOT
 
-        when "event[ ]+(.+)$"
+        when /event[ ]+(.+)$/
           args = $1.split(/[ ]+/, 5)
           context.event(*args)
 

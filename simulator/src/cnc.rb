@@ -41,15 +41,16 @@ module Cnc
     attr_accessor :has_material
 
 
-    def initialize(port = 7879)
+    def initialize(control, port = 7879)
       super(port)
 
       # Initilize robot instance variables
       @robot_controller_mode = @robot_material_load = @robot_material_unload = @robot_open_chuck =
         @robot_close_chuck = @robot_open_door = @robot_close_door =
             @robot_execution = @robot_availability = nil
+      @cnc_chuck_state = @cnc_controller_mode = @cnc_execution = @cnc_availability = nil
 
-      @adapter.data_items << (@availability = DataItem.new('avail'))
+      @control = control
 
       @adapter.data_items << (@material_load = DataItem.new('material_load'))
       @adapter.data_items << (@material_unload = DataItem.new('material_unload'))
@@ -78,8 +79,8 @@ module Cnc
 
       @system.normal
 
-      @open_chuck_interface = OpenChuck.new(self)
-      @close_chuck_interface = CloseChuck.new(self, @open_chuck_interface)
+      @open_chuck_interface = OpenChuck.new(self, @control)
+      @close_chuck_interface = CloseChuck.new(self, @control, @open_chuck_interface)
 
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
@@ -212,6 +213,7 @@ EOT
         puts "  System condition is not normal" unless @system.normal?
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
         puts "  Robot is not available: #{@robot_availability}" unless @robot_availability == 'AVAILABLE'
+        puts "  Robot controller mode is not automatic: #{@robot_controller_mode}" unless @robot_controller_mode == "AUTOMATIC"
         @statemachine.still_not_ready
       end
       true
@@ -248,6 +250,8 @@ EOT
           @system.add('FAULT', 'Door or Chuck in invalid state', 'CYCLE')
         end
         @statemachine.fault
+      else
+        @control.puts "* start"
       end
       true
     end
@@ -363,12 +367,21 @@ EOT
 
           # From the robot
           event :robot_availability_unavailable, :activated
+          event :robot_availability_available, :activated
           event :robot_controller_mode_automatic, :activated
+          event :robot_controller_mode_manual, :activated
+          event :robot_controller_mode_manual_data_input, :activated
           event :robot_execution_active, :activated
+          event :robot_execution_ready, :activated
+          event :robot_execution_stopped, :activated
+          event :robot_execution_interupted, :activated
 
-          # user commands
+          # CNC controller feedback
           event :cnc_controller_mode_automatic, :activated
           event :cnc_controller_mode_manual, :activated
+          event :cnc_controller_mode_manual_data_input, :activated
+
+          # User commands
           event :disable, :activated, :disable
           event :enable, :activated, :enable
           event :reset_cnc, :activated, :reset_cnc

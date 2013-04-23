@@ -47,7 +47,9 @@ module MTConnect
     end
 
     def current(client, path, &block)
-      current = path.dup + 'current'
+      filter = "?path=#{@filter}" if @filter
+      current = path.dup + "current#{filter}"
+      puts current
       resp = client.get(current)
       parse(resp.body, &block)
     end
@@ -74,6 +76,7 @@ module MTConnect
           filter = "&path=#@filter" if @filter
           path = rootPath + "sample?interval=0&count=1000&from=#{nxt}&heartbeat=1000#{filter}"
           puller = LongPull.new(client)
+          puts "Path: #{path}"
           puller.long_pull(path) do |xml|
             nxt = parse(xml, &block)
             break unless @running
