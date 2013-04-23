@@ -26,6 +26,7 @@ static const std::string PARAM_STATE_OVERRIDE = "state_override";
 static const std::string PARAM_LOOP_RATE = "loop_rate";
 static const std::string PARAM_CHECK_ENABLED = "home_check";
 static const std::string PARAM_HOME_TOL = "home_tol";
+static const std::string PARAM_MAT_STATE = "material_state";
 static const std::string KEY_HOME_POSITION = "home";
 
 // Material load moves
@@ -54,6 +55,7 @@ static const std::string DEFAULT_ROBOT_STATES_TOPIC = "robot_states";
 static const std::string DEFAULT_ROBOT_SPINDLE_TOPIC = "robot_spindle";
 static const std::string DEFAULT_ROBOT_STATUS_TOPIC = "robot_status";
 static const std::string DEFAULT_JOINT_STATE_TOPIC = "joint_states";
+static const std::string DEFAULT_SM_STATUS_TOPIC = "state_machine_status";
 static const std::string DEFAULT_EXTERNAL_COMMAND_SERVICE = "external_command";
 static const std::string DEFAULT_MATERIAL_LOAD_SET_STATE_SERVICE = "/MaterialLoad/set_mtconnect_state";
 static const std::string DEFAULT_MATERIAL_UNLOAD_SET_STATE_SERVICE = "/MaterialUnload/set_mtconnect_state";
@@ -67,7 +69,14 @@ typedef mtconnect_msgs::SetMTConnectState::Request MtConnectState;
 StateMachine::StateMachine() :
     nh_()
 {
+  // Setting default class values
   state_ = StateTypes::INVALID;
+  loop_rate_ = 0;
+  home_check_ = false;
+  home_tol_ = 0.0;
+  cycle_stop_req_= false;
+  material_state_ = false;
+  material_load_state_ = mtconnect_msgs::SetMTConnectState::Request::NOT_READY;
 }
 
 StateMachine::~StateMachine()
@@ -141,6 +150,7 @@ bool StateMachine::init()
   // initializing publishers
   robot_states_pub_ = nh_.advertise<mtconnect_msgs::RobotStates>(DEFAULT_ROBOT_STATES_TOPIC, 1);
   robot_spindle_pub_ = nh_.advertise<mtconnect_msgs::RobotSpindle>(DEFAULT_ROBOT_SPINDLE_TOPIC, 1);
+  state_machine_pub_ = nh_.advertise<mtconnect_example_msgs::StateMachineStatus>(DEFAULT_SM_STATUS_TOPIC, 1);
 
   // initializing subscribers
   robot_status_sub_ = nh_.subscribe(DEFAULT_ROBOT_STATUS_TOPIC, 1, &StateMachine::robotStatusCB, this);
@@ -251,6 +261,27 @@ void StateMachine::runOnce()
 
     case StateTypes::WAITING:
       ROS_INFO_STREAM_THROTTLE(20, "Waiting for request");
+      if(cycle_stop_req_)
+      {
+        cycle_stop_req_ = false;
+        setState(StateTypes::STOPPING);
+      }
+      if(material_state_)
+      {
+        if(material_load_state_ != mtconnect_msgs::SetMTConnectState::Request::READY)
+        {
+          ROS_INFO_STREAM("Material present, updating material load to READY");
+          setMatLoad(mtconnect_msgs::SetMTConnectState::Request::READY);
+        }
+      }
+      else
+      {
+        if(material_load_state_ != mtconnect_msgs::SetMTConnectState::Request::NOT_READY)
+        {
+          ROS_INFO_STREAM("Material no present, updating material load to NOT READY");
+          setMatLoad(mtconnect_msgs::SetMTConnectState::Request::NOT_READY);
+        }
+      }
       break;
 
     case StateTypes::MATERIAL_LOADING:
@@ -285,8 +316,16 @@ void StateMachine::runOnce()
       break;
 
     case StateTypes::ML_PICK:
-      closeGripper();
-      setState(StateTypes::ML_WAIT_PICK);
+      if(material_state_)
+      {
+        closeGripper();
+        setState(StateTypes::ML_WAIT_PICK);
+      }
+      else
+      {
+        ROS_ERROR_STREAM("Unexpected out of material during pick, aborting");
+        setState(StateTypes::ABORTING);
+      }
       break;
 
     case StateTypes::ML_WAIT_PICK:
@@ -487,6 +526,21 @@ void StateMachine::runOnce()
       ROS_INFO_STREAM_THROTTLE(30, "Robot in ABORTED state");
       break;
 
+    case StateTypes::STOPPING:
+      ROS_INFO_STREAM("Beginning system stop");
+      setState(StateTypes::S_SET_MAT_ACTIONS_NOT_READY);
+      break;
+
+    case StateTypes::S_SET_MAT_ACTIONS_NOT_READY:
+      setMatActionsNotReady();
+      setState(StateTypes::STOPPED);
+      break;
+
+    case StateTypes::STOPPED:
+      ROS_INFO_STREAM("Completing stop");
+      setState(StateTypes::IDLE);
+      break;
+
     case StateTypes::RESETTING:
       setState(StateTypes::R_WAIT_FOR_HOME);
       break;
@@ -585,6 +639,7 @@ bool StateMachine::setMatLoad(int state)
   {
     if (mat_load_set_state_.response.accepted)
     {
+      material_load_state_ = state;
       ROS_INFO_STREAM("Material load set to: " << state);
       rtn = true;
     }
@@ -637,16 +692,16 @@ void StateMachine::errorChecks()
 
   if (robot_status_msg_.e_stopped.val == TriState::TRUE)
   {
-    ROS_ERROR_STREAM("Robot estopped(" << robot_status_msg_.e_stopped << " aborting");
+    ROS_ERROR_STREAM_THROTTLE(5, "Robot estopped(" << robot_status_msg_.e_stopped << " aborting");
     error = true;
   }
   if (robot_status_msg_.in_error.val == TriState::TRUE)
   {
-    ROS_ERROR_STREAM("General robot error(" << robot_status_msg_.in_error << " aborting");
+    ROS_ERROR_STREAM_THROTTLE(5, "General robot error(" << robot_status_msg_.in_error << " aborting");
     error = true;
   }
 
-  if (error)
+  if (error && !(StateTypes::ABORTING >= state_ && state_ <= StateTypes::ABORTED))
   {
     ROS_INFO_STREAM("One or more general errors detected, aborting");
     setState(StateTypes::ABORTING);
@@ -674,6 +729,16 @@ void StateMachine::overrideChecks()
     setState(StateTypes::ABORTING);
     ph.setParam(PARAM_FORCE_FAULT_STATE, StateTypes::INVALID);
   }
+
+  // Material state override (defaults to not having material, ie false)
+  bool mat_param_state = false;
+  ph.getParamCached(PARAM_MAT_STATE, mat_param_state);
+
+  if (material_state_ != mat_param_state)
+  {
+    ROS_INFO_STREAM("Detected change in material state, from " << material_state_ << " to " << mat_param_state);
+    material_state_ = mat_param_state;
+  }
 }
 
 //Publishers
@@ -681,6 +746,7 @@ void StateMachine::callPublishers()
 {
   robotStatusPublisher();
   robotSpindlePublisher();
+  stateMachineStatusPublisher();
 }
 void StateMachine::robotStatusPublisher()
 {
@@ -723,6 +789,17 @@ void StateMachine::robotSpindlePublisher()
 
   robot_spindle_pub_.publish(robot_spindle_msg_);
 }
+
+
+void StateMachine::stateMachineStatusPublisher()
+{
+  state_machine_stat_msg_.header.stamp = ros::Time::now();
+  state_machine_stat_msg_.state = state_;
+  state_machine_stat_msg_.state_name = StateTypes::STATE_MAP[state_];
+
+  state_machine_pub_.publish(state_machine_stat_msg_);
+}
+
 
 //Callbacks
 void StateMachine::materialLoadGoalCB(/*const MaterialLoadServer::GoalConstPtr &gh*/)
@@ -781,10 +858,10 @@ bool StateMachine::externalCommandCB(mtconnect_example_msgs::StateMachineCmd::Re
   switch (req.command)
   {
     case StateMachineCmd::Request::STOP:
-      if (state_ == StateTypes::WAITING)
+      if (state_ >= StateTypes::CYCLE_BEGIN && state_ <= StateTypes::CYCLE_END)
       {
-        ROS_INFO_STREAM("External command STOP executing");
-        setState(StateTypes::IDLE);
+        ROS_INFO_STREAM("External command STOP, setting stop request flag");
+        cycle_stop_req_ = true;
         res.accepted = true;
       }
       else
@@ -876,9 +953,9 @@ bool StateMachine::moveArm(const std::string & move_name)
       if (trajectory_filter_.response.error_code.val == trajectory_filter_.response.error_code.SUCCESS)
       {
         ROS_INFO_STREAM("======================== MOVING ROBOT ========================");
-        ROS_INFO("Trajectory successfully filtered...sending goal");
+        //ROS_INFO("Trajectory successfully filtered...sending goal");
         joint_traj_goal_.trajectory = trajectory_filter_.response.trajectory;
-        ROS_INFO_STREAM("Sending a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
+        //ROS_INFO_STREAM("Sending a joint trajectory with " << joint_traj_goal_.trajectory.points.size() << "points");
         joint_traj_client_ptr_->sendGoal(joint_traj_goal_);
       }
       else

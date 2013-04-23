@@ -1,0 +1,6 @@
+%NOLOCKGROUP
+%COMMENT = 'RESUME ROS TASKS'
+
+PROGRAM ros_resume
+BEGIN
+end ros_resume

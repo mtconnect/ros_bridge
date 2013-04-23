@@ -1,0 +1,10 @@
+PROGRAM CancelMotion
+
+%COMMENT = 'Cancel Motions'
+
+
+BEGIN
+  WRITE('Die you filthy dog',CR)
+  CANCEL
+  CNCL_STP_MTN
+END CancelMotion

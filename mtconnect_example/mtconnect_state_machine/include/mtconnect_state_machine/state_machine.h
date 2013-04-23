@@ -44,6 +44,7 @@
 #include <mtconnect_msgs/RobotStates.h>
 
 #include <mtconnect_example_msgs/StateMachineCmd.h>
+#include <mtconnect_example_msgs/StateMachineStatus.h>
 
 #include <mtconnect_msgs/SetMTConnectState.h>
 
@@ -65,23 +66,26 @@ enum StateType
 
   INITING = 100,
   CHECK_HOME, WAIT_FOR_ACTIONS, WAIT_FOR_SERVICES, SET_MAT_ACTIONS_READY,
-  WAITING = 199,
 
-  MATERIAL_LOADING = 2000,
+  CYCLE_BEGIN = 2000,
+  WAITING = 2001,
+  MATERIAL_LOADING = 2100,
   ML_MOVE_PICK_APPROACH, ML_WAIT_MOVE_PICK_APPROACH, ML_MOVE_PICK,
   ML_WAIT_MOVE_PICK, ML_PICK, ML_WAIT_PICK, ML_MOVE_CHUCK, ML_WAIT_MOVE_CHUCK,
   ML_CLOSE_CHUCK, ML_WAIT_CLOSE_CHUCK, ML_RELEASE_PART, ML_WAIT_RELEASE_PART,
   ML_MOVE_DOOR, ML_WAIT_MOVE_DOOR, ML_MOVE_HOME, ML_WAIT_MOVE_HOME,
-  MATERIAL_LOADED = 2099,
+  MATERIAL_LOADED = 2199,
 
 
-  MATERIAL_UNLOADING = 2100,
+  MATERIAL_UNLOADING = 2200,
   MU_MOVE_DOOR, MU_WAIT_MOVE_DOOR, MU_MOVE_CHUCK, MU_WAIT_MOVE_CHUCK, MU_PICK_PART, MU_WAIT_PICK_PART,
   MU_OPEN_CHUCK, MU_WAIT_OPEN_CHUCK, MU_MOVE_DROP, MU_WAIT_MOVE_DROP, MU_DROP, MU_WAIT_DROP,
   MU_MOVE_HOME, MU_WAIT_MOVE_HOME,
-  MATERIAL_UNLOADED = 2199,
+  MATERIAL_UNLOADED = 2299,
+  CYCLE_END = 2999,
 
   STOPPING = 300,
+  S_SET_MAT_ACTIONS_NOT_READY,
   STOPPED = 299,
 
   ABORTING = 500,
@@ -142,6 +146,7 @@ static std::map<int, std::string> STATE_MAP =
     (MATERIAL_UNLOADED, "MATERIAL_UNLOADED")
 
     (STOPPING, "STOPPING")
+    (S_SET_MAT_ACTIONS_NOT_READY, "S_SET_MAT_ACTIONS_NOT_READY")
     (STOPPED, "STOPPED")
 
     (ABORTING, "ABORTING")
@@ -303,6 +308,7 @@ protected:
   void callPublishers();
   void robotStatusPublisher();
   void robotSpindlePublisher();
+  void stateMachineStatusPublisher();
 
   // Action wrappers
 
@@ -360,7 +366,23 @@ private:
    *
    */
   double home_tol_;
+  /**
+   * \brief cycle stop request flat
+   *
+   */
+  bool cycle_stop_req_;
 
+  /**
+   * \brief material state (true if material is present)
+   *
+   */
+  bool material_state_;
+
+  /**
+     * \brief internal flag to track material load state (should be encapsulated in material load)
+     *
+     */
+  int material_load_state_;
 //////MTConnect specific
 
   std::map<std::string, trajectory_msgs::JointTrajectoryPtr> joint_paths_;
@@ -382,6 +404,7 @@ private:
 // topic publishers (ros bridge components wait for these topics)
   ros::Publisher robot_states_pub_;
   ros::Publisher robot_spindle_pub_;
+  ros::Publisher state_machine_pub_;
 
 // topic subscribers
   ros::Subscriber robot_status_sub_;
@@ -398,6 +421,7 @@ private:
 // pub messages
   mtconnect_msgs::RobotStates robot_state_msg_;
   mtconnect_msgs::RobotSpindle robot_spindle_msg_;
+  mtconnect_example_msgs::StateMachineStatus state_machine_stat_msg_;
 
 // sub messages
   sensor_msgs::JointState joint_state_msg_;
