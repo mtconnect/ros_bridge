@@ -1,0 +1,166 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<MTConnectDevices xmlns:mt='urn:mtconnect.org:MTConnectDevices:1.2' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns='urn:mtconnect.org:MTConnectDevices:1.2' xsi:schemaLocation='urn:mtconnect.org:MTConnectDevices:1.2 http://www.mtconnect.org/schemas/MTConnectDevices_1.2.xsd'>
+  <Header creationTime='2013-04-22T15:24:26Z' assetBufferSize='1024' sender='localhost' assetCount='0' version='1.2' instanceId='0' bufferSize='131072'/>
+  <Devices>
+    <Device name='cnc' uuid='cnc' id='cnc_1'>
+      <Description model='QTN' manufacturer='Mazak'>Mazak Quickturn - Mazak Quickturn for ROS/MTConnect</Description>
+      <DataItems>
+        <DataItem type='AVAILABILITY' category='EVENT' id='dtop_2' name='avail'/>
+      </DataItems>
+      <Components>
+        <Axes name='base' id='base_3'>
+          <DataItems>
+            <DataItem type='ACTUATOR' category='CONDITION' id='base_4' name='servo_cond'/>
+          </DataItems>
+          <Components>
+            <Linear name='X' id='X_5'>
+              <DataItems>
+                <DataItem type='POSITION' category='SAMPLE' id='X_6' name='Xabs' subType='ACTUAL' units='MILLIMETER' nativeUnits='INCH' coordinateSystem='MACHINE'/>
+                <DataItem type='POSITION' category='CONDITION' id='X_7' name='Xtravel'/>
+                <DataItem type='LOAD' category='SAMPLE' id='X_8' name='Xload' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='AXIS_FEEDRATE' category='SAMPLE' id='X_9' name='Xfrt' units='MILLIMETER/SECOND' nativeUnits='FOOT/MINUTE'/>
+              </DataItems>
+            </Linear>
+            <Linear name='Z' id='Z_10'>
+              <DataItems>
+                <DataItem type='POSITION' category='SAMPLE' id='Z_11' name='Zabs' subType='ACTUAL' units='MILLIMETER' nativeUnits='INCH' coordinateSystem='MACHINE'/>
+                <DataItem type='POSITION' category='CONDITION' id='Z_12' name='Ztravel'/>
+                <DataItem type='LOAD' category='SAMPLE' id='Z_13' name='Zload' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='AXIS_FEEDRATE' category='SAMPLE' id='Z_14' name='Zfrt' units='MILLIMETER/SECOND' nativeUnits='FOOT/MINUTE'/>
+              </DataItems>
+            </Linear>
+            <Rotary name='C' id='C_15'>
+              <DataItems>
+                <!-- Rotary Part -->
+                <DataItem type='LOAD' category='SAMPLE' id='C_16' name='Cload' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='ANGULAR_VELOCITY' category='SAMPLE' id='C_17' name='Cfrt' units='DEGREE/SECOND' nativeUnits='DEGREE/MINUTE'/>
+                <DataItem type='ANGLE' category='SAMPLE' id='C_18' name='Cdeg' subType='ACTUAL' units='DEGREE' nativeUnits='DEGREE'/>
+                <DataItem type='ANGLE' category='CONDITION' id='C_19' name='Ctravel'/>
+                <!-- Spindle part -->
+                <DataItem type='SPINDLE_SPEED' category='SAMPLE' id='C_20' name='Srpm' subType='ACTUAL' units='REVOLUTION/MINUTE' nativeUnits='REVOLUTION/MINUTE'/>
+                <DataItem type='LOAD' category='SAMPLE' id='C_21' name='Sload' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='TEMPERATURE' category='SAMPLE' id='C_22' name='Stemp' units='CELSIUS' nativeUnits='CELSIUS'/>
+                <DataItem type='ROTARY_MODE' category='EVENT' id='C_23'>
+                  <Constraints>
+                    <Value>SPINDLE</Value>
+                    <Value>INDEX</Value>
+                    <Value>CONTOUR</Value>
+                  </Constraints>
+                </DataItem>
+                <DataItem type='LOAD' category='CONDITION' id='C_24' name='Sload_cond'/>
+                <DataItem type='TEMPERATURE' category='CONDITION' id='C_25' name='Stemp_cond'/>
+                <DataItem type='CHUCK_STATE' category='EVENT' id='C_26' name='chuck_status'/>
+              </DataItems>
+            </Rotary>
+            <Rotary name='C2' nativeName='S2' id='C2_27'>
+              <DataItems>
+                <DataItem type='SPINDLE_SPEED' category='SAMPLE' id='C2_28' name='S2rpm' subType='ACTUAL' units='REVOLUTION/MINUTE' nativeUnits='REVOLUTION/MINUTE'/>
+                <DataItem type='LOAD' category='SAMPLE' id='C2_29' name='S2load' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='TEMPERATURE' category='SAMPLE' id='C2_30' name='S2temp' units='CELSIUS' nativeUnits='CELSIUS'/>
+                <DataItem type='ROTARY_MODE' category='EVENT' id='C2_31'>
+                  <Constraints>
+                    <Value>SPINDLE</Value>
+                  </Constraints>
+                </DataItem>
+                <DataItem type='LOAD' category='CONDITION' id='C2_32' name='S2load_cond'/>
+                <DataItem type='TEMPERATURE' category='CONDITION' id='C2_33' name='S2temp_cond'/>
+              </DataItems>
+            </Rotary>
+          </Components>
+        </Axes>
+        <Controller name='controller' id='controller_34'>
+          <DataItems>
+            <DataItem type='COMMUNICATIONS' category='CONDITION' id='controller_35' name='comms_cond'/>
+            <DataItem type='LOGIC_PROGRAM' category='CONDITION' id='controller_36' name='logic_cond'/>
+            <DataItem type='SYSTEM' category='CONDITION' id='controller_37' name='system_cond'/>
+            <DataItem type='EMERGENCY_STOP' category='EVENT' id='controller_38' name='estop'/>
+          </DataItems>
+          <Components>
+            <Path name='path' id='path_39'>
+              <DataItems>
+                <DataItem type='SPINDLE_SPEED' category='SAMPLE' id='path_40' name='Sovr' subType='OVERRIDE' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='PROGRAM' category='EVENT' id='path_41' name='program'/>
+                <DataItem type='PROGRAM' category='EVENT' id='path_42' name='subprogram' subType='x:SUB'/>
+                <DataItem type='LINE' category='EVENT' id='path_43' name='line'/>
+                <DataItem type='x:UNIT' category='EVENT' id='path_44' name='unitNum'/>
+                <DataItem type='x:SEQUENCE_NUMBER' category='EVENT' id='path_45' name='sequenceNum'/>
+                <DataItem type='PART_COUNT' category='EVENT' id='path_46' name='PartCountAct'/>
+                <DataItem type='PATH_FEEDRATE' category='SAMPLE' id='path_47' name='Fact' subType='ACTUAL' units='MILLIMETER/SECOND' nativeUnits='FOOT/MINUTE'/>
+                <DataItem type='PATH_FEEDRATE' category='EVENT' id='path_48' name='Frapidovr' subType='OVERRIDE' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='PATH_FEEDRATE' category='EVENT' id='path_49' name='Fovr' subType='OVERRIDE' units='PERCENT' nativeUnits='PERCENT'/>
+                <DataItem type='TOOL_ID' category='EVENT' id='path_50' name='Tool_number'/>
+                <DataItem type='x:TOOL_GROUP' category='EVENT' id='path_51' name='Tool_group'/>
+                <DataItem type='x:TOOL_SUFFIX' category='EVENT' id='path_52' name='Tool_suffix'/>
+                <DataItem type='EXECUTION' category='EVENT' id='path_53' name='execution'/>
+                <DataItem type='CONTROLLER_MODE' category='EVENT' id='path_54' name='mode'/>
+                <DataItem type='x:COMMENT' category='EVENT' id='path_55' name='program_cmt'/>
+                <DataItem type='x:COMMENT' category='EVENT' id='path_56' name='subprogram_cmt' subType='x:SUB'/>
+                <DataItem type='x:DURATION' category='EVENT' id='path_57' name='auto_time' subType='x:AUTO'/>
+                <DataItem type='x:DURATION' category='EVENT' id='path_58' name='total_time' subType='x:TOTAL'/>
+                <DataItem type='x:DURATION' category='EVENT' id='path_59' name='cut_time' subType='x:CUT'/>
+                <DataItem type='MOTION_PROGRAM' category='CONDITION' id='path_60' name='motion_cond'/>
+                <DataItem type='SYSTEM' category='CONDITION' id='path_61' name='path_system'/>
+                <DataItem type='x:PALLET_NUM' category='EVENT' id='path_62' name='pallet_num'/>
+              </DataItems>
+            </Path>
+          </Components>
+        </Controller>
+        <Systems name='systems' id='systems_63'>
+          <Components>
+            <Electric name='electric' id='electric_64'>
+              <DataItems>
+                <DataItem type='POWER_STATE' category='EVENT' id='electric_65' name='power'/>
+                <DataItem type='TEMPERATURE' category='CONDITION' id='electric_66' name='electric_temp'/>
+              </DataItems>
+            </Electric>
+            <Hydraulic name='hydraulic' id='hydraulic_67'>
+              <DataItems>
+                <DataItem type='PRESSURE' category='CONDITION' id='hydraulic_68' name='hydra_cond'/>
+              </DataItems>
+            </Hydraulic>
+            <Coolant name='coolant' id='coolant_69'>
+              <DataItems>
+                <DataItem type='PRESSURE' category='CONDITION' id='coolant_70' name='coolant_pres'/>
+                <DataItem type='TEMPERATURE' category='CONDITION' id='coolant_71' name='coolant_temp'/>
+                <DataItem type='LEVEL' category='CONDITION' id='coolant_72' name='coolant_level'/>
+              </DataItems>
+            </Coolant>
+            <Pneumatic name='pneumatic' id='pneumatic_73'>
+              <DataItems>
+                <DataItem type='PRESSURE' category='CONDITION' id='pneumatic_74' name='pneu_cond'/>
+              </DataItems>
+            </Pneumatic>
+          </Components>
+        </Systems>
+        <Interfaces name='interfaces' id='interfaces_75'>
+          <Components>
+            <MaterialLoader name='material_loader' id='material_loader_76'>
+              <DataItems>
+                <DataItem type='MATERIAL_LOAD' category='EVENT' id='material_loader_77' name='material_load' subType='REQUEST'/>
+                <DataItem type='MATERIAL_UNLOAD' category='EVENT' id='material_loader_78' name='material_unload' subType='REQUEST'/>
+                <DataItem type='LINK_STATE' category='EVENT' id='material_loader_79' name='robo_link'/>
+              </DataItems>
+            </MaterialLoader>
+            <ChuckInterface name='chuck_interface' id='chuck_interface_80'>
+              <DataItems>
+                <DataItem type='OPEN_CHUCK' category='EVENT' id='chuck_interface_81' name='open_chuck' subType='RESPONSE'/>
+                <DataItem type='CLOSE_CHUCK' category='EVENT' id='chuck_interface_82' name='close_chuck' subType='RESPONSE'/>
+              </DataItems>
+            </ChuckInterface>
+            <DoorInterface name='door_interface' id='door_interface_83'>
+              <DataItems>
+                <DataItem type='OPEN_DOOR' category='EVENT' id='door_interface_84' name='open_door' subType='RESPONSE'/>
+                <DataItem type='CLOSE_DOOR' category='EVENT' id='door_interface_85' name='close_door' subType='RESPONSE'/>
+              </DataItems>
+            </DoorInterface>
+          </Components>
+        </Interfaces>
+        <Door name='door' id='door_86'>
+          <DataItems>
+            <DataItem type='DOOR_STATE' category='EVENT' id='door_87' name='door_state'/>
+          </DataItems>
+        </Door>
+      </Components>
+    </Device>
+  </Devices>
+</MTConnectDevices>
