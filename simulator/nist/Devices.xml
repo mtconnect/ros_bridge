@@ -160,6 +160,11 @@
             <DataItem type='DOOR_STATE' category='EVENT' id='door_87' name='door_state'/>
           </DataItems>
         </Door>
+        <Stock name="stock" id="stock">
+          <DataItems>
+            <DataItem category="EVENT" id="material" name="material" type="MATERIAL" />
+          </DataItems>
+        </Stock>
       </Components>
     </Device>
   </Devices>
