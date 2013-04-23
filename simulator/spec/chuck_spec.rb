@@ -130,6 +130,14 @@ describe "Interface" do
         @open_chuck.value.should == 'NOT_READY'
       end
 
+      it "should fail next if fail_next is true" do
+        @chuck.statemachine.ready
+        @chuck.fail_next = true
+        @chuck.statemachine.active
+        @chuck.statemachine.state.should == :fail
+        @chuck.fail_next.should be_false
+      end
+
       context 'when active' do
         before(:each) do
           @chuck.statemachine.ready

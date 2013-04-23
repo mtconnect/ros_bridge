@@ -340,6 +340,44 @@ describe "Cnc" do
         @cnc.statemachine.state.should == :loading
       end
 
+      it "should fail execution if fail next is true" do
+        @cnc.fail_next('exec', true)
+        @cnc.has_material.should be_false
+        @cnc.statemachine.state.should == :loading
+
+        @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
+        @cnc.event('robot', 'OpenDoor', 'ACTIVE')
+        @cnc.event('robot', 'OpenChuck', 'ACTIVE')
+
+        sleep 1.2
+
+        @cnc.event('cnc','ChuckState', 'OPEN')
+        @cnc.door_state.value.should == 'OPEN'
+        @cnc.cnc_chuck_state.should == 'OPEN'
+        @cnc.event('robot', 'OpenDoor', 'READY')
+        @cnc.event('robot', 'OpenChuck', 'READY')
+
+        @cnc.event('robot', 'CloseDoor', 'ACTIVE')
+        @cnc.event('robot', 'CloseChuck', 'ACTIVE')
+
+        sleep 1.2
+
+        @cnc.event('cnc','ChuckState', 'CLOSED')
+        @cnc.door_state.value.should == 'CLOSED'
+        @cnc.cnc_chuck_state.should == 'CLOSED'
+
+        @cnc.event('robot', 'OpenDoor', 'READY')
+        @cnc.event('robot', 'OpenChuck', 'READY')
+
+        @cnc.statemachine.state.should == :loading
+
+        @cnc.event('robot', 'MaterialLoad', 'COMPLETE')
+        @cnc.event('robot', 'MaterialLoad', 'READY')
+
+        @cnc.has_material.should be_true
+        @cnc.statemachine.state.should == :fault
+      end
+
       it "should not fail an unload if load becomes not ready" do
         unloading
         @cnc.statemachine.state.should == :unloading

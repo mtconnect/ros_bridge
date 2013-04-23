@@ -122,6 +122,15 @@ describe "Response" do
         @open_door.value.should == 'NOT_READY'
       end
 
+      it "should fail next if fail_next is true" do
+        @door.statemachine.ready
+        @door.fail_next = true
+        @door_state.value.should == 'CLOSED'
+        @door.statemachine.active
+        @door.statemachine.state.should == :fail
+        @door.fail_next.should be_false
+      end
+
       context 'when active' do
         before(:each) do
           @door.statemachine.ready
