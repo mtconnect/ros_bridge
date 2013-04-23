@@ -56,3 +56,12 @@ Feature: Machine Tool Chuck Fails
     And cnc is reset
     Then machine state should be loading
     And cnc CloseChuck should be READY
+
+  Scenario: Simulate chuck failure
+    Given robot MaterialLoad becomes Active
+    And simulate fail close_chuck
+    Then material load state should be processing
+
+    When robot CloseChuck becomes Active
+    Then cnc CloseChuck should be Fail
+    And cnc fault should have code "Cnc::CloseChuck"

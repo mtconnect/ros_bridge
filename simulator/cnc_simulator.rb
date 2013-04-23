@@ -31,6 +31,7 @@ context = Cnc::CncContext.new(control, 7879)
 context.statemachine.tracer = STDOUT
 context.start
 
+if false
 url = ARGV[0] || 'http://localhost:5000/Robot'
 robot_streamer = MTConnect::Streamer.new(url)
 robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
@@ -40,6 +41,7 @@ robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
     puts "Error occurred in handling event: #{$!}"
     puts $!.backtrace.join("\n")
   end
+end
 end
 
 url = ARGV[1] || 'http://localhost:5000/cnc'
@@ -111,9 +113,20 @@ EOT
           if context.statemachine.respond_to? event
             context.statemachine.send(event)
           else
-            client.puts "CNC does does not recognize #{event} in state #{context.state}"
+            client.puts "CNC does not recognize #{event} in state #{context.state}"
           end
 
+        when /^ctx[ ]+(.+)$/i
+          args = $1.split(/[ ]+/)
+          meth = args.shift.to_sym
+          if context.respond_to? meth
+            context.send(meth, *args)
+          else
+            client.puts "CNC does not recognize #{meth}"
+          end
+
+        when /^fail[ ]+([a-z_]+)$/i
+          context.fail_next($1, true)
 
         else
           client.puts "Unrecognized command #{line.inspect}"

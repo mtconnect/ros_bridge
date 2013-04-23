@@ -59,3 +59,13 @@ Feature: Load Material
     And cnc MaterialLoad should be Not_Ready
     And robot MaterialLoad becomes Ready
 
+  Scenario: Cnc fails to start cycle
+    Given robot MaterialLoad becomes Active
+    And simulate fail exec
+
+    And Chuck is closed
+    And Door is closed
+    And robot MaterialLoad becomes Complete
+    And robot MaterialLoad becomes Ready
+    And cnc MaterialLoad should be Not_Ready
+    And machine state should be fault

@@ -14,7 +14,7 @@
 
 module Cnc
   class Response
-    attr_accessor :statemachine, :fail_reset_delay, :simulated_duration
+    attr_accessor :statemachine, :fail_reset_delay, :simulated_duration, :fail_next
     attr_reader :interface, :state, :related
     include ThreadSafeStateMachine
 
@@ -30,6 +30,7 @@ module Cnc
       @simulate = simulate
       @fail_reset_delay = 5.0
       @simulated_duration = 1.0
+      @fail_next = false
 
       self.related = rel if rel
     end
@@ -71,7 +72,14 @@ module Cnc
 
     def active
       puts "#{self.class} Active - #{@related.class} #{@related and @related.interface.value} #{response_state}"
-      if response_state == @dest_state
+      if @fail_next
+        puts "**** Failing next action"
+        @adapter.gather do
+          @interface.value = 'ACTIVE'
+        end
+        @fail_next = false
+        @statemachine.fail
+      elsif response_state == @dest_state
         @adapter.gather do
           @interface.value = 'ACTIVE'
         end

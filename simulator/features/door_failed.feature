@@ -57,3 +57,13 @@ Feature: Machine Tool Door Failed
     And cnc is reset
     Then machine state should be loading
     And cnc CloseDoor should be READY
+
+  Scenario: Simulate door failure
+    Given robot MaterialLoad becomes Active
+    And simulate fail close_door
+    Then material load state should be processing
+
+    When robot CloseDoor becomes Active
+    Then cnc CloseDoor should be Fail
+    And cnc fault should have code "Cnc::CloseDoor"
+

@@ -90,3 +90,7 @@ Then(/^cnc fault should have code "(.*?)"$/) do |code|
   cond.active.first.should_not be_nil
   cond.active.first.code.should == code
 end
+
+Given(/^simulate fail ([A-Za-z_]+)$/) do |name|
+  cnc.fail_next(name, true)
+end

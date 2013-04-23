@@ -89,6 +89,7 @@ module Cnc
       @material_unload_interface = MaterialUnload.new(self)
 
       @has_material = false
+      @fail_next = false
 
       @events = []
 
@@ -246,7 +247,13 @@ EOT
     def cycling
       # Check preconditions for a cycle start. Chuck has to be closed and
       # door must be shut.
-      if @door_state.value != 'CLOSED' or @cnc_chuck_state != 'CLOSED'
+      if @fail_next
+        @adapter.gather do
+          @system.add('FAULT', 'Cycle failed to start', 'CYCLE')
+        end
+        @statemachine.fault
+        @fail_next = false
+      elsif @door_state.value != 'CLOSED' or @cnc_chuck_state != 'CLOSED'
         puts "*** Door #{@door_state.value} or Chuck #{@cnc_chuck_state} is not correct, failing"
         @adapter.gather do
           @system.add('FAULT', 'Door or Chuck in invalid state', 'CYCLE')
@@ -355,6 +362,19 @@ EOT
           @system.add('FAULT', "#{child.class.name} Failed", child.class.name)
         end
         @statemachine.fault
+      end
+    end
+
+    def fail_next(name, value)
+      if name == 'exec'
+        @fail_next = true
+      else
+        inst = "@#{name}_interface".to_sym
+        if (var = instance_variable_get(inst)) and var.respond_to?(:'fail_next=')
+          var.fail_next = value
+        else
+          raise "Cannot find variable with name #{var}"
+        end
       end
     end
 
