@@ -10,8 +10,8 @@
 	<node pkg="mtconnect_ros_bridge" type="bridge_client.py" name="mtconnect_bridge_client" 
 		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_client_config.yaml" output="screen"/>
 
-	<node pkg="mtconnect_ros_bridge" type="bridge_publisher.py" name="mtconnect_bridge_publisher" 
-		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_publisher_config.yaml" output="screen"/>
+	<!--node pkg="mtconnect_ros_bridge" type="bridge_publisher.py" name="mtconnect_bridge_publisher" 
+		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_publisher_config.yaml" output="screen"/-->
 
 	<node pkg="mtconnect_ros_bridge" type="bridge_server.py" name="mtconnect_bridge_server" 
 		args="-i $(find mtconnect_ros_bridge)/scripts/bridge_server_config.yaml" output="screen"/>
