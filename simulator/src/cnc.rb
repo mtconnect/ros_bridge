@@ -238,6 +238,8 @@ EOT
         @system.normal
       end
       reset_history
+      @control.puts "* reset"
+
       true
     end
 
@@ -286,6 +288,8 @@ EOT
       @close_chuck_interface.activate
       @open_door_interface.activate
       @close_door_interface.activate
+
+      @control.puts "* reset"
 
       if @has_material
         @statemachine.unloading
