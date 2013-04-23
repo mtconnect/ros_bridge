@@ -7,8 +7,8 @@ echo ${MTCONNECT_AGENT_DIR?Error \$MTCONNECT_AGENT_DIR is not defined, did you e
 ############################### Running agents ######################################
 # Setting up agent 1 terminal arguments
 TERMINAL1_NAME="Agent_CNC"
-WORKING_DIR=$(rosstack find mtconnect)/../simulator
-FILE1_PATH=$(rosstack find mtconnect)/../simulator/agent_cnc.cfg
+WORKING_DIR=$(rosstack find mtconnect)/../simulator/nist
+FILE1_PATH=$(rosstack find mtconnect)/../simulator/nist/agent.cfg
 COMMAND1="$MTCONNECT_AGENT_DIR/agent debug $FILE1_PATH"
 TERMINAL1_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL1_NAME; $COMMAND1; exec bash\""
 
@@ -26,10 +26,10 @@ COMMAND1="ruby cnc_simulator.rb http://localhost:5001/Robot"
 TERMINAL3_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL3_NAME; $COMMAND1; exec bash\""
 
 # Setting up robot simulator terminal arguments
-TERMINAL4_NAME="Robot Simulator"
-WORKING_DIR=$(rosstack find mtconnect)/../simulator
-COMMAND1="ruby robot.rb"
-TERMINAL4_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL4_NAME; $COMMAND1; exec bash\""
+#TERMINAL4_NAME="Robot Simulator"
+#WORKING_DIR=$(rosstack find mtconnect)/../simulator
+#COMMAND1="ruby robot.rb"
+#TERMINAL4_CMD="bash -c \" cd $WORKING_DIR; echo $TERMINAL4_NAME; $COMMAND1; exec bash\""
 
 # Running each agent/simulator in its own terminal
 #gnome-terminal --tab --title="AGENT1" -e "bash -c \" cd $WORKING_DIR; echo Agent 1; $COMMAND1; exec bash\""
