@@ -48,4 +48,4 @@ Feature: Robot Load Material Fails
 
     When robot clears ACTUATOR
     And robot MaterialLoad becomes Ready
-    And machine state should be loading
+    And machine state should be unloading

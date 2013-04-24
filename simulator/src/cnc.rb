@@ -387,6 +387,14 @@ EOT
       case child
       when Request
         @statemachine.complete
+
+      when CloseChuck
+        puts "** CNC has material"
+        @has_material = true
+
+      when OpenChuck
+        puts "** CNC doesn't have material"
+        @has_material = false
       end
     end
 

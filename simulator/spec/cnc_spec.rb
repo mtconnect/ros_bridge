@@ -244,11 +244,11 @@ describe "Cnc" do
         @cnc.statemachine.state.should == :idle
         @cnc.material_load_interface.state.should == :ready
         @cnc.material_load.value.should == 'READY'
-        @cnc.material_unload.value.should == 'NOT_READY'
+        @cnc.material_unload.value.should == 'READY'
 
         @cnc.event('robot', 'MaterialLoad', 'READY')
-        @cnc.statemachine.state.should == :loading
-        @cnc.material_load.value.should == 'ACTIVE'
+        @cnc.statemachine.state.should == :unloading
+        @cnc.material_unload.value.should == 'ACTIVE'
       end
 
       it "should fail and become inactive if a material load fails and then goes to not ready" do
@@ -271,9 +271,9 @@ describe "Cnc" do
         @cnc.statemachine.state.should == :idle
 
         @cnc.event('robot', 'MaterialLoad', 'READY')
-        @cnc.statemachine.state.should == :loading
+        @cnc.statemachine.state.should == :unloading
 
-        @cnc.material_load.value.should == 'ACTIVE'
+        @cnc.material_unload.value.should == 'ACTIVE'
         @cnc.system.should be_normal
       end
 
