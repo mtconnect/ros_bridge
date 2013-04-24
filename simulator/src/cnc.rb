@@ -221,7 +221,7 @@ EOT
         puts "Becomming operational"
         @statemachine.make_operational
       else
-        puts "Still not ready"
+        puts "Disabled"
         puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
         puts "  Mode is not AUTOMATIC: #{@cnc_controller_mode}" unless @cnc_controller_mode == 'AUTOMATIC'
         puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
@@ -229,7 +229,13 @@ EOT
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
         puts "  Robot is not available: #{@robot_availability}" unless @robot_availability == 'AVAILABLE'
         puts "  Robot controller mode is not automatic: #{@robot_controller_mode}" unless @robot_controller_mode == "AUTOMATIC"
-        @statemachine.still_not_ready
+        if @faults.empty? and @system.normal?
+          puts "*** Not Ready"
+          @statemachine.still_not_ready
+        else
+          puts "*** Faulted"
+          @statemachine.faulted
+        end
       end
       true
     end
@@ -470,7 +476,8 @@ EOT
           state :activated do
             on_entry :activate
             event :make_operational, :operational_H
-            event :still_not_ready, :disabled_H
+            event :still_not_ready, :not_ready
+            event :faulted, :fault
           end
 
           superstate :operational do

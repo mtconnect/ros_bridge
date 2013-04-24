@@ -60,7 +60,7 @@ When(/^(robot|cnc) clears ([A-Za-z_]+)$/) do |target, item|
   cnc.event(target, item, 'Normal', item)
 end
 
-Then(/^(machine|(?>open|close) (?>door|chuck)|material (?>load|unload)) state should be ([a-z_]+)$/) do |machine, state|
+Then(/^(machine|(?>open|close) (?>door|chuck)|material (?>load|unload)) state should be ([a-zA-Z_]+)$/) do |machine, state|
   sm = machine_for(machine)
   sm.state.should == state.to_sym
 end

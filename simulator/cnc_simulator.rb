@@ -148,6 +148,7 @@ EOT
         when /^ctx[ ]+(.+)$/i
           args = $1.split(/[ ]+/)
           meth = args.shift.to_sym
+          args.map! { |a| eval(a) }
           if context.respond_to? meth
             context.send(meth, *args)
           else
