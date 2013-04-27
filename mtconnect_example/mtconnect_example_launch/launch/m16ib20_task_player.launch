@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<launch>
+
+    <!-- This launch file executes all ROS side nodes for playing a
+    robot task file (all paths in order)
+
+    Usage:
+      mtconnect_m16ib20_material_handling.launch [task_path:=foo/bar/task.xml]
+        [use_rviz:=false]
+        [real_robot:=false] [robot_ip:=<value>] [use_bswap:=<false]
+        [home_check:=true]
+        
+        task_path - full path and file name of task xml file to execute
+        use_bswap - true if real(simulated) robot (i.e. Roboguide)
+        false for real robot (i.e. physical hardware)
+        
+    -->
+  <arg name="task_path"/>
+	<arg name="use_rviz" default="false"/>
+	<arg name="real_robot" default="false"/>
+	<arg name="robot_ip" />
+	<arg name="use_bswap" default="false"/>
+
+
+	<!-- bringup of arm navigation prerequisites -->
+	<node pkg="robot_state_publisher" name="st_pub" type="state_publisher"/>
+	
+
+    
+  <!-- real robot drivers -->
+  <group if="$(arg real_robot)">
+      <include file="$(find fanuc_common)/launch/robot_interface_streaming_m16iB20.launch">
+          <arg name="robot_ip" value="$(arg robot_ip)"/>
+          <arg name="use_bswap" value="$(arg use_bswap)" />
+      </include>
+  </group>
+
+  <!-- simulated robot drivers -->
+  <group unless="$(arg real_robot)">
+    <include file="$(find industrial_robot_simulator)/launch/robot_interface_simulator.launch"/>
+  </group>
+	
+	
+	<!-- Required arm navigation nodes -->
+	<include file="$(find mtconnect_example_launch)/launch/m16ib20_demonstration_arm_navigation.launch"/>
+
+
+	<node pkg="mtconnect_state_machine" type="robot_task_player_node" name="robot_task_player" output="screen">
+		<param name="task_description" textfile="$(arg task_path)" />
+		
+		<!-- trajectory filter service -->
+		<remap from="filter_trajectory_with_constraints" to="/trajectory_filter_server/filter_trajectory_with_constraints"/>
+		
+	</node>
+
+	<!-- ros visualization -->
+	<node if="$(arg use_rviz)" pkg="rviz" type="rviz" name="mtconnect_visualization"
+		args="-d $(find M16iB20_arm_navigation)/config/planning_components_visualizer.vcg"/>
+	
+</launch>

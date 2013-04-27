@@ -1,0 +1,45 @@
+<task>
+	<motion_group name="group_1" joint_names="joint_1 joint_2 joint_3 joint_4 joint_5 joint_6"/>
+
+	<path name="SQUARE">
+		
+		<joint_move>
+			<joint_point name="pt1" joint_values="0 0 0 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+		<joint_move>
+			<joint_point name="pt2" joint_values="0.79 0 0.79 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+		<joint_move>
+			<joint_point name="pt3" joint_values="0.79 0 -0.79 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+		<joint_move>
+			<joint_point name="pt4" joint_values="-0.79 0 -0.79 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+		<joint_move>
+			<joint_point name="pt5" joint_values="-0.79 0 0.79 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+	</path>
+	
+	<path name="RETURN">
+		
+		<joint_move>
+			<joint_point name="pt5" joint_values="-0.79 0 0.79 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+		<joint_move>
+			<joint_point name="pt6" joint_values="0.79 0 0.79 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+		<joint_move>
+			<joint_point name="pt1" joint_values="0 0 0 0 0 0" group_name="group_1"/>
+		</joint_move>
+		
+	</path>
+	
+	
+</task>
