@@ -20,7 +20,7 @@ require 'streamer'
 require 'readline'
 require 'optparse'
 
-$simulation = false
+simulation = false
 no_robot = false
 machine_ip = '192.168.1.69'
 robot_url = 'http://localhost:5000/Robot'
@@ -30,7 +30,7 @@ OptionParser.new do |opts|
   opts.banner = 'Usage: ruby cnc_simulator.rb [-sn] [-m machine_tool_ip] [robot_url] [cnc_url]'
 
   opts.on('-s', '--[no-]simulate', 'Simulation') do  |v|
-    $simulation = v
+    simulation = v
   end
 
   opts.on('-n', '--[no-]robot', 'Skip Robot Event Stream') do  |v|
@@ -46,7 +46,7 @@ OptionParser.new do |opts|
   cnc_url = ARGV.shift if ARGV.length > 0
 end
 
-unless $simulation
+unless simulation
   # Connect to adapter on machine tool to control operations
   control = TCPSocket.new('192.168.1.69', 7879)
   Thread.new do
@@ -58,7 +58,7 @@ else
   control = nil
 end
 
-context = Cnc::CncContext.new(control, 7879)
+context = Cnc::CncContext.new(control, 7879, simulation: simulation)
 context.statemachine.tracer = STDOUT
 context.start
 

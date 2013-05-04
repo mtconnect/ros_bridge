@@ -41,7 +41,7 @@ module Cnc
     attr_accessor :has_material
 
 
-    def initialize(control, port = 7879)
+    def initialize(control, port = 7879, simulation: false)
       super(port)
 
       # Initilize robot instance variables
@@ -51,6 +51,7 @@ module Cnc
       @cnc_chuck_state = @cnc_controller_mode = @cnc_execution = @cnc_availability = nil
 
       @control = control
+      @simulation = simulation
 
       @adapter.data_items << (@material_load = DataItem.new('material_load'))
       @adapter.data_items << (@material_unload = DataItem.new('material_unload'))
@@ -71,7 +72,7 @@ module Cnc
       # Controller does not have a door signal, so we need to simulate it here.
       @adapter.data_items << (@door_state = DataItem.new('door_state'))
 
-      if $simulation
+      if @simulation
         @adapter.data_items << (@exec = DataItem.new('execution'))
         @adapter.data_items << (@avail = DataItem.new('avail'))
         @adapter.data_items << (@mode = DataItem.new('mode'))
@@ -91,7 +92,7 @@ module Cnc
 
       @open_chuck_interface = OpenChuck.new(self, @control)
       @close_chuck_interface = CloseChuck.new(self, @control, @open_chuck_interface)
-      if $simulation
+      if @simulation
         @open_chuck_interface.simulate = true
         @close_chuck_interface.simulate = true
       end
@@ -259,7 +260,7 @@ EOT
         @system.normal
       end
       reset_history
-      @control.puts "* reset" unless $simulation
+      @control.puts "* reset" unless @simulation
 
       @close_chuck_interface.reset
       @open_chuck_interface.reset
@@ -287,7 +288,7 @@ EOT
         end
         @statemachine.fault
       else
-        unless $simulation
+        unless @simulation
           @control.puts "* start"
         else
           @adapter.gather do
@@ -335,7 +336,7 @@ EOT
       @open_door_interface.activate
       @close_door_interface.activate
 
-      @control.puts "* reset" unless $simulation
+      @control.puts "* reset" unless @simulation
 
       if @has_material
         @statemachine.unloading
@@ -545,6 +546,3 @@ EOT
   end
 end
 
-if $0 == __FILE__
-  load "graph_generator.rb"
-end

@@ -12,9 +12,14 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+$: << '.'
+$: << './src'
+
+require 'cnc'
+
 dir = File.dirname(__FILE__) + '/graph'
 Dir.mkdir dir unless File.exist?(dir)
-context = Cnc::CncContext.new
+context = Cnc::CncContext.new('')
 context.statemachine.to_dot(:output => 'graph')
 Dir.chdir('graph') do
   system('dot -Tpng -o main.png main.dot')
