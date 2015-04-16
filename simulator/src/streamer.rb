@@ -33,15 +33,20 @@ module MTConnect
         nxt = x.attributes['nextSequence'].to_i 
         instance = x.attributes['instanceId'].to_i
       }
-      
-      events = []
-      document.each_element('//Events/*') do |e|
-        events << [e.attributes['sequence'].to_i, [e.name, e.text.to_s]]
+            
+      document.each_element('//ComponentStream') do |c| 
+        events = []
+        comp = c.attributes['component']
+        puts "***** #{comp} *****"
+        c.each_element('Events/*') do |e|
+          events << [e.attributes['sequence'].to_i, [comp, e.name, e.text.to_s]]
+        end
+        c.each_element('Condition/*') do |e|
+          events << [e.attributes['sequence'].to_i, [comp, e.attributes['type'], e.name, e.attributes['nativeCode'], e.text.to_s]]
+        end
+        
+        events.sort.each { |e| block.call(*e[1]) }
       end
-      document.each_element('//Condition/*') do |e|
-        events << [e.attributes['sequence'].to_i, [e.attributes['type'], e.name, e.attributes['nativeCode'], e.text.to_s]]
-      end
-      events.sort.each { |e| block.call(*e[1]) }
       
       [nxt, instance] 
     end

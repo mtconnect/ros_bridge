@@ -70,8 +70,8 @@ module MTConnect
       @adapter.stop
     end
 
-    def event(source, name, value, code = nil, text = nil)
-      puts "Received #{source} #{name} #{value} #{code} #{text}"
+    def event(source, comp, name, value, code = nil, text = nil)
+      puts "Received #{source} #{comp} #{name} #{value} #{code} #{text}"
       case value
       when "Fault"
         key = "#{name}:#{code}"
@@ -112,13 +112,16 @@ module MTConnect
         @connected = true
 
         # Convert camel case to lower _ separated words: FizzBangFlop fizz_bang_flop
-        element = name.split(/([A-Z][a-z]+)/).delete_if(&:empty?).map(&:downcase).join('_')
-        mth = "#{source}_#{element}=".to_sym
+        suffix = comp.sub(/Interface/, '') if name =~ /^(Open|Close)$/
+        full_name = "#{name}#{suffix}"
+        element = full_name.split(/([A-Z][a-z]+)/).delete_if(&:empty?).map(&:downcase).join('_')
+        prefix = "#{source}_" if source != 'cnc'
+        mth = "#{prefix}#{element}=".to_sym
         puts "    Trying method: #{mth} #{value}"
         self.send(mth, value) if self.respond_to? mth
     
         # Only send valid events to the statemachine.
-        action = "#{source}_#{element}_#{value.downcase}".to_sym
+        action = "#{prefix}#{element}_#{value.downcase}".to_sym
         puts "    Trying action: #{action}"
         @statemachine.send(action) if @statemachine.respond_to? action
       end

@@ -13,6 +13,7 @@
 #    limitations under the License.
 
 $: << '.'
+$: << './lib'
 $: << './src'
 
 require 'cnc'
@@ -20,9 +21,9 @@ require 'streamer'
 require 'readline'
 require 'optparse'
 
-simulation = false
+simulation = true
 no_robot = false
-machine_ip = '192.168.1.69'
+machine_ip = '127.0.0.1'
 robot_url = 'http://localhost:5000/Robot'
 cnc_url = 'http://localhost:5000/cnc'
 
@@ -48,7 +49,7 @@ end
 
 unless simulation
   # Connect to adapter on machine tool to control operations
-  control = TCPSocket.new('192.168.1.69', 7879)
+  control = TCPSocket.new('127.0.0.1', 7879)
   Thread.new do
     while control.read(1024)
 
@@ -58,15 +59,15 @@ else
   control = nil
 end
 
-context = Cnc::CncContext.new(control, 7879, simulation: simulation)
-context.statemachine.tracer = STDOUT
-context.start
+$context = Cnc::CncContext.new(control, 7879, simulation: simulation)
+$context.statemachine.tracer = STDOUT
+$context.start
 
 unless no_robot
-  robot_streamer = MTConnect::Streamer.new(robot_url)
-  robot_thread = robot_streamer.start do |name, value, code = nil, text = nil|
+  $robot_streamer = MTConnect::Streamer.new(robot_url)
+  robot_thread = $robot_streamer.start do |comp, name, value, code = nil, text = nil|
     begin
-      context.event('robot', name, value, code, text)
+      $context.event('robot', comp, name, value, code, text)
     rescue
       puts "Error occurred in handling event: #{$!}"
       puts $!.backtrace.join("\n")
@@ -74,126 +75,116 @@ unless no_robot
   end
 end
 
-cnc_streamer = MTConnect::Streamer.new(cnc_url,
+=begin
+$cnc_streamer = MTConnect::Streamer.new(cnc_url,
                 filter: '//DataItem[@type="CONTROLLER_MODE"or@type="EXECUTION"or@type="CHUCK_STATE"or@type="AVAILABILITY"or@category="CONDITION"]')
-cnc_thread = cnc_streamer.start do |name, value, code = nil, text = nil|
+cnc_thread = $cnc_streamer.start do |comp, name, value, code = nil, text = nil|
   begin
-    context.event('cnc', name, value, code, text)
+    $context.event('cnc', comp, name, value, code, text)
   rescue
     puts "Error occurred in handling event: #{$!}"
     puts $!.backtrace.join("\n")
   end
 end
+=end
 
-# Start a socket based command processor
-server = TCPServer.new(3000)
-while true
-  sock = server.accept
-  Thread.new(sock) do |client|
-    while true
-      client.write("> ")
-      client.flush
+def parse_command(line)  
+  res = 'success'
+  
+  case line.strip
+  when "shutdown"
+    $context.stop
+    $robot_streamer.stop
+    $cnc_streamer.stop
+    exit(0)
 
-      line = client.readline
-      if line.nil? or line.empty? or line[0] == "\04"
-        break
-      end
+  when "quit"
+    res = 'quit'
 
-      begin
-        case line.strip
-        when "shutdown"
-          context.stop
-          robot_streamer.stop
-          cnc_streamer.stop
-          server.close
-          exit(0)
+  when "status"
+    res = $context.status
 
-        when "quit"
-          break
+  when /^events([ ]+\d+)?/i
+    count = (($1 && $1.strip) || 10).to_i
+    res = $context.events(count)
 
-        when "status"
-          client.puts context.status
-
-        when /^events([ ]+\d+)?/i
-          count = (($1 && $1.strip) || 10).to_i
-          client.puts context.events(count)
-
-        when "help", "?"
-          client.puts <<EOT
+  when "help", "?"
+    res = <<EOT
 shutdown          - Stop the state machine
 status            - Display state of state machines
 events <n>        - Display last n events
 event <source> <item> <value> [<alarm code>] [alarm text]
-                  - Send an event to the context
+            - Send an event to the context
 sm <event>           - Send an event to the cnc statemachine
 ^D or quit        - Stop this session
 EOT
 
-        when /event[ ]+(.+)$/
-          args = $1.split(/[ ]+/, 5)
-          context.event(*args)
+  when /event[ ]+(.+)$/
+    args = $1.split(/[ ]+/, 5)
+    $context.event(*args)
 
+  when /^sm ([a-z_]+)$/i
+    # State machine event
+    event = $1.to_sym
 
-        when /^sm ([a-z_]+)$/i
-          # State machine event
-          event = $1.to_sym
-
-          # send the line as an event...
-          if context.statemachine.respond_to? event
-            context.statemachine.send(event)
-          else
-            client.puts "CNC does not recognize #{event} in state #{context.state}"
-          end
-
-        when /^ctx[ ]+(.+)$/i
-          args = $1.split(/[ ]+/)
-          meth = args.shift.to_sym
-          args.map! { |a| eval(a) }
-          if context.respond_to? meth
-            context.send(meth, *args)
-          else
-            client.puts "CNC does not recognize #{meth}"
-          end
-
-        when /^fail[ ]+([a-z_]+)$/i
-          context.fail_next($1, true)
-
-        else
-          client.puts "Unrecognized command #{line.inspect}"
-        end
-      rescue
-        client.puts "Error: #{$!}"
-        puts $!, $!.backtrace.join("\n")
-      end
-      client.flush
+    # send the line as an event...
+    if $context.statemachine.respond_to? event
+      $context.statemachine.send(event)
+    else
+      res = "CNC does not recognize #{event} in state #{$context.state}"
     end
-    client.close
+
+  when /^ctx[ ]+(.+)$/i
+    args = $1.split(/[ ]+/)
+    meth = args.shift.to_sym
+    args.map! { |a| eval(a) }
+    if $context.respond_to? meth
+      $context.send(meth, *args)
+    else
+      res = "CNC does not recognize #{meth}"
+    end
+
+  when /^fail[ ]+([a-z_]+)$/i
+    $context.fail_next($1, true)
+
+  else
+    res = "Unrecognized command #{line.inspect}"
+  end
+  
+  res
+rescue
+  puts $!, $!.backtrace.join("\n")
+  "Error: #{$!}"
+end
+
+# Start a socket based command processor
+Thread.new do
+  server = TCPServer.new(3000)
+  while true
+    sock = server.accept
+    Thread.new(sock) do |client|
+      while true
+        client.write("> ")
+        client.flush
+
+        line = client.readline
+        if line.nil? or line.empty? or line[0] == "\04"
+          break
+        end
+
+        res = parse_command(line)
+        break if res == 'quit'
+        client.puts res
+        client.flush
+      end
+      client.close
+    end
   end
 end
 
 while true
-  begin
-    line = Readline.readline('> ', true)
-
-    if line.nil? or line.strip == "quit"
-      context.stop
-      robot_streamer.stop
-      cnc_streamer.stop
-      server.close
-      exit 0
-    end
-    next if line.empty?
-    event = line.strip.to_sym
-
-    # send the line as an event...
-    if context.statemachine.respond_to? event
-      context.statemachine.send(event)
-    else
-      puts "CNC does does not recognize #{event} in state #{Cnc.cnc.state}"
-    end
-  rescue
-    puts "Error: #{$!}"
-  end
+  line = Readline.readline('> ', true)
+  puts parse_command(line)
 end
 
 robot_thread.join

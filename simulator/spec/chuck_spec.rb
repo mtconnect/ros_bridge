@@ -24,13 +24,14 @@ describe "Interface" do
   context "OpenChuck" do
     before(:each) do
       @cnc = double("cnc")
-      @cnc_chuck_state = 'CLOSED'
+      @chuck_state = MTConnect::DataItem.new('chuck_state')
+      @chuck_state.value = 'CLOSED'
       @open_chuck = MTConnect::DataItem.new('open_chuck')
       @open_chuck.value = 'UNAVAILABLE'
       @adapter = double('adapter')
       @adapter.stub(:gather).and_yield
       @cnc.stub(:open_chuck) { @open_chuck }
-      @cnc.stub(:cnc_chuck_state) { @cnc_chuck_state }
+      @cnc.stub(:chuck_state) { @chuck_state }
       @cnc.stub(:adapter) { @adapter }
       @cnc.stub!(:failed) { }
       @cnc.stub!(:completed) { }
@@ -44,7 +45,7 @@ describe "Interface" do
       it "should be NOT_READY when it starts" do
         @chuck.statemachine.state.should == :not_ready
         @open_chuck.value.should == 'NOT_READY'
-        @cnc_chuck_state == 'CLOSED'
+        @chuck_state.value == 'CLOSED'
       end
 
       it "should become ready when request is ready" do
@@ -57,7 +58,7 @@ describe "Interface" do
       it 'should transition to active when request becomes active' do
         @chuck.statemachine.ready
         @chuck.statemachine.active
-        @cnc_chuck_state = 'UNLATCHED'
+        @chuck_state.value = 'UNLATCHED'
         @chuck.statemachine.chuck_unlatched
         @chuck.statemachine.state.should == :active
         @open_chuck.value.should == 'ACTIVE'
@@ -65,32 +66,32 @@ describe "Interface" do
 
       it 'should transition from active to complete after one second' do
         @chuck.statemachine.ready
-        @cnc_chuck_state == 'CLOSED'
+        @chuck_state.value == 'CLOSED'
         @chuck.statemachine.active
         @chuck.statemachine.state.should == :active
         @open_chuck.value.should == 'ACTIVE'
-        @cnc_chuck_state = 'UNLATCHED'
+        @chuck_state.value = 'UNLATCHED'
         @chuck.statemachine.chuck_unlatched
-        @cnc_chuck_state = 'OPEN'
+        @chuck_state.value = 'OPEN'
         @chuck.statemachine.chuck_open
         @chuck.statemachine.state.should == :complete
         @open_chuck.value.should == 'COMPLETE'
-        @cnc_chuck_state.should == 'OPEN'
+        @chuck_state.value.should == 'OPEN'
       end
 
       it 'should transition from complete to ready when request becomes ready' do
         @chuck.statemachine.ready
         @chuck.statemachine.active
-        @cnc_chuck_state = 'UNLATCHED'
+        @chuck_state.value = 'UNLATCHED'
         @chuck.statemachine.chuck_unlatched
-        @cnc_chuck_state = 'OPEN'
+        @chuck_state.value = 'OPEN'
         @chuck.statemachine.chuck_open
         @chuck.statemachine.state.should == :complete
         @open_chuck.value.should == 'COMPLETE'
         @chuck.statemachine.ready
         @chuck.statemachine.state.should == :ready
         @open_chuck.value.should == 'READY'
-        @cnc_chuck_state.should == 'OPEN'
+        @chuck_state.value.should == 'OPEN'
       end
 
       it 'should transition to NOT_READY when request becomes not ready' do
@@ -178,9 +179,9 @@ describe "Interface" do
         @interface.stub(:value).and_return('READY')
         @chuck.statemachine.ready
         @chuck.statemachine.active
-        @cnc_chuck_state = 'UNLATCHED'
+        @chuck_state.value = 'UNLATCHED'
         @chuck.statemachine.chuck_unlatched
-        @cnc_chuck_state = 'OPEN'
+        @chuck_state.value = 'OPEN'
         @chuck.statemachine.chuck_open
         @chuck.statemachine.state.should == :complete
         @open_chuck.value.should == 'COMPLETE'

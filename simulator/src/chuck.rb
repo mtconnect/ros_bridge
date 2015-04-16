@@ -20,33 +20,33 @@ require 'response'
 module Cnc
   class OpenChuck < Response
     def initialize(cnc, control, rel = nil)
-      super(cnc, cnc.adapter, cnc.open_chuck, 'chuck', 'OPEN', 'UNLATCHED', rel)
+      super(cnc, cnc.adapter, cnc.open_chuck, 'chuck', 'OPEN', 'UNLATCHED', rel, simulate: true)
       @control = control
       create_statemachine
     end
 
-    def execute
-      @control.puts "* open" unless @simulate
-    end
-
     def response_state
-      @parent.cnc_chuck_state
+      @parent.chuck_state.value
+    end
+    
+    def response_state=(value)
+      @parent.chuck_state.value = value
     end
   end
 
   class CloseChuck < Response
     def initialize(cnc, control, rel = nil)
-      super(cnc, cnc.adapter, cnc.close_chuck, 'chuck', 'CLOSED', 'UNLATCHED', rel)
+      super(cnc, cnc.adapter, cnc.close_chuck, 'chuck', 'CLOSED', 'UNLATCHED', rel, simulate: true)
       @control = control
       create_statemachine
     end
 
-    def execute
-      @control.puts "* close" unless @simulate
-    end
-
     def response_state
-      @parent.cnc_chuck_state
+      @parent.chuck_state.value
+    end
+    
+    def response_state=(value)
+      @parent.chuck_state.value = value
     end
   end
 end

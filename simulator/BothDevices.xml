@@ -1,45 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MTConnectDevices xmlns:m="urn:mtconnect.org:MTConnectDevices:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:mtconnect.org:MTConnectDevices:1.2">
+<MTConnectDevices xmlns:m="urn:mtconnect.org:MTConnectDevices:1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:mtconnect.org:MTConnectDevices:1.3">
   <Header creationTime="2009-03-22T01:50:29+00:00" sender="localhost" instanceId="1237628993" bufferSize="100000" version="1.1"/>
   <Devices>
     <Device uuid="ROBOT-000" name="Robot" sampleRate="10.0" id="b">
       <Description manufacturer="Mom" serialNumber="0000"/>
       <DataItems>
-	      <DataItem type="AVAILABILITY" category="EVENT" id="avail" name="avail"/>
-        <DataItem type="SYSTEM" category="CONDITION" id="sy" name="system" />
+	      <DataItem type="AVAILABILITY" category="EVENT" id="ravail" name="avail"/>
+        <DataItem type="SYSTEM" category="CONDITION" id="rsy" name="system" />
       </DataItems>
       <Components>
         <Controller name="Controller" id="cont">
           <DataItems>
-        		<DataItem type="CONTROLLER_MODE" category="EVENT" id="mode" name="mode"/>
-        		<DataItem type="EXECUTION" category="EVENT" id="exec" name="exec"/>
+        		<DataItem type="CONTROLLER_MODE" category="EVENT" id="rmode" name="mode"/>
+        		<DataItem type="EXECUTION" category="EVENT" id="rexec" name="exec"/>
           </DataItems>
         </Controller>
-        <Interfaces name="interfaces" id="if">
+        <Interfaces name="interfaces" id="rif">
           <Components>
-            <MaterialLoader name="material" id="ml">
+            <MaterialHandlerInterface name="material" id="rml">
               <DataItems>
                 <!-- Interfaces -->
-                <DataItem type="MATERIAL_LOAD" subType="RESPONSE" category="EVENT" id="lm" name="material_load" />
-                <DataItem type="MATERIAL_UNLOAD" subType="RESPONSE" category="EVENT" id="ulm" name="material_unload" />
+                <DataItem type="MATERIAL_LOAD" subType="RESPONSE" category="EVENT" id="rrlm" name="material_load" />
+                <DataItem type="MATERIAL_UNLOAD" subType="RESPONSE" category="EVENT" id="rrulm" name="material_unload" />
               </DataItems>
-            </MaterialLoader>
-            <ChuckInterface name="chuck" id="chi">
+            </MaterialHandlerInterface>
+            <ChuckInterface name="chuck" id="rchi">
               <DataItems>
                 <!-- Interfaces -->
-                <DataItem type="OPEN_CHUCK" subType="REQUEST" category="EVENT" id="oc" name="open_chuck" />
-                <DataItem type="CLOSE_CHUCK" subType="REQUEST" category="EVENT" id="cc" name="close_chuck" />
+                <DataItem type="OPEN" subType="REQUEST" category="EVENT" id="roc" name="open_chuck" />
+                <DataItem type="CLOSE" subType="REQUEST" category="EVENT" id="rcc" name="close_chuck" />
 
                 <!-- Events - Interlocks -->
-                <DataItem type="SPINDLE_INTERLOCK" category="EVENT" id="si" name="s_inter" />
-                <DataItem type="MANUAL_CHUCK_UNCLAMP_INTERLOCK" category="EVENT" id="mcu" name="c_unclamp" />
+                <DataItem type="SPINDLE_INTERLOCK" category="EVENT" id="rsi" name="s_inter" />
+                <DataItem type="MANUAL_CHUCK_UNCLAMP_INTERLOCK" category="EVENT" id="rmcu" name="c_unclamp" />
               </DataItems>
             </ChuckInterface>
             <DoorInterface name="door_inter" id="rdri">
               <DataItems>
                 <!-- Interfaces -->
-                <DataItem type="OPEN_DOOR" subType="REQUEST" category="EVENT" id="rod" name="open_door" />
-                <DataItem type="CLOSE_DOOR" subType="REQUEST" category="EVENT" id="rcd" name="close_door" />
+                <DataItem type="OPEN" subType="REQUEST" category="EVENT" id="rod" name="open_door" />
+                <DataItem type="CLOSE" subType="REQUEST" category="EVENT" id="rcd" name="close_door" />
               </DataItems>
             </DoorInterface>
           </Components>
@@ -75,25 +75,25 @@
         </Stock>
         <Interfaces name="interfaces" id="if2">
           <Components>
-            <MaterialLoader name="material" id="ml2">
+            <MaterialHandlerInterface name="material" id="ml2">
               <DataItems>
                 <!-- Interfaces -->
                 <DataItem type="MATERIAL_LOAD" subType="REQUEST" category="EVENT" id="rlm" name="material_load" />
                 <DataItem type="MATERIAL_UNLOAD" subType="REQUEST" category="EVENT" id="rulm" name="material_unload" />
                 <DataItem type="LINK_STATE" category="EVENT" id="ls" name="robo_link" />
               </DataItems>
-            </MaterialLoader>
+            </MaterialHandlerInterface>
             <ChuckInterface name="chuck_interface" id="cic">
               <DataItems>
-                <DataItem category="EVENT" type="OPEN_CHUCK" id="coc" subType="RESPONSE" name="open_chuck" />
-                <DataItem category="EVENT" type="CLOSE_CHUCK" id="ccc" subType="RESPONSE" name="close_chuck" />
+                <DataItem category="EVENT" type="OPEN" id="coc" subType="RESPONSE" name="open_chuck" />
+                <DataItem category="EVENT" type="CLOSE" id="ccc" subType="RESPONSE" name="close_chuck" />
               </DataItems>
             </ChuckInterface>
             <DoorInterface name="door_inter" id="cdri">
               <DataItems>
                 <!-- Interfaces -->
-                <DataItem type="OPEN_DOOR" subType="RESPONSE" category="EVENT" id="cod" name="open_door" />
-                <DataItem type="CLOSE_DOOR" subType="RESPONSE" category="EVENT" id="ccd" name="close_door" />
+                <DataItem type="OPEN" subType="RESPONSE" category="EVENT" id="cod" name="open_door" />
+                <DataItem type="CLOSE" subType="RESPONSE" category="EVENT" id="ccd" name="close_door" />
               </DataItems>
             </DoorInterface>
           </Components>

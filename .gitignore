@@ -25,3 +25,5 @@ msg_gen
 srv_gen
 _gtest_from_src
 cmake_install.cmake
+simulator/vendor
+.ruby-version

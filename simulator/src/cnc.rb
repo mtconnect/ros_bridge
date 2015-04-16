@@ -30,9 +30,9 @@ module Cnc
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door,
                   :robot_execution, :robot_availability
 
-    attr_accessor :cnc_controller_mode, :cnc_execution, :cnc_availability, :cnc_chuck_state
+    attr_accessor :controller_mode, :execution, :availability, :cycle_time
 
-    attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :open_door, :close_door,
+    attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :chuck_state, :open_door, :close_door,
                 :material_load, :material_unload, :link, :system, :has_material,
                 :material_load_interface, :material_unload_interface,
                 :open_chuck_interface, :close_chuck_interface,
@@ -41,14 +41,14 @@ module Cnc
     attr_accessor :has_material
 
 
-    def initialize(control, port = 7879, simulation: false)
+    def initialize(control, port = 7879, simulation: true)
       super(port)
 
       # Initilize robot instance variables
       @robot_controller_mode = @robot_material_load = @robot_material_unload = @robot_open_chuck =
         @robot_close_chuck = @robot_open_door = @robot_close_door =
             @robot_execution = @robot_availability = nil
-      @cnc_chuck_state = @cnc_controller_mode = @cnc_execution = @cnc_availability = nil
+      @chuck_state = @execution = @availability = @controller_mode = nil
 
       @control = control
       @simulation = simulation
@@ -67,24 +67,27 @@ module Cnc
       @adapter.data_items << (@material = DataItem.new('material'))
 
       # CNC Data items not supplied by the machine tool adapter
-      @adapter.data_items << (@system = SimpleCondition.new('infc_system'))
+      @adapter.data_items << (@system = SimpleCondition.new('system'))
 
       # Controller does not have a door signal, so we need to simulate it here.
       @adapter.data_items << (@door_state = DataItem.new('door_state'))
+      @adapter.data_items << (@chuck_state = DataItem.new('chuck_state'))
 
       if @simulation
-        @adapter.data_items << (@exec = DataItem.new('execution'))
-        @adapter.data_items << (@avail = DataItem.new('avail'))
-        @adapter.data_items << (@mode = DataItem.new('mode'))
+        @adapter.data_items << (@execution = DataItem.new('exec'))
+        @adapter.data_items << (@availability = DataItem.new('avail'))
+        @adapter.data_items << (@controller_mode = DataItem.new('mode'))
 
-        @avail.value = 'AVAILABLE'
-        @exec.value = 'READY'
-        @mode.value = 'AUTOMATIC'
+        @availability.value = 'AVAILABLE'
+        @execution.value = 'READY'
+        @controller_mode.value = 'AUTOMATIC'
+        @cycle_time = 4
       end
 
       # Initialize data items
       @link.value = 'ENABLED'
       @door_state.value = "OPEN"
+      @chuck_state.value = 'OPEN'
 
       @material.value = "'ROUND 440C THING', 3.27, 11.23"
 
@@ -157,9 +160,9 @@ EOT
       @material_unload_interface.fail_time_limit = limit
     end
 
-    def event(source, name, value, code = nil, text = nil)
-      puts "CNC Received #{name} #{value} from #{source}"
-      @events.push "#{source}: #{name} #{value} '#{code}' '#{text}'"
+    def event(source, comp, name, value, code = nil, text = nil)
+      puts "CNC Received #{comp} #{name} #{value} from #{source}"
+      @events.push "#{source}: #{comp} #{name} #{value} '#{code}' '#{text}'"
       @events.shift if @events.length > 500
 
       action_name = value.downcase
@@ -170,24 +173,23 @@ EOT
       end
 
       case name
-      when "OpenChuck"
-        @open_chuck_interface.statemachine.send(action)
-
-      when "CloseChuck"
-        @close_chuck_interface.statemachine.send(action)
-
-      when "ChuckState"
-        action = "chuck_#{action}".to_sym
-        @cnc_chuck_state = value
-
-        @close_chuck_interface.statemachine.send(action)
-        @open_chuck_interface.statemachine.send(action)
-
-      when "OpenDoor"
-        @open_door_interface.statemachine.send(action)
-
-      when "CloseDoor"
-        @close_door_interface.statemachine.send(action)
+      when "Open"
+        case comp
+        when 'DoorInterface'
+          @open_door_interface.statemachine.send(action)
+          
+        when 'ChuckInterface'
+          @open_chuck_interface.statemachine.send(action)
+        end
+        
+      when 'Close'
+        case comp
+        when 'DoorInterface'
+          @close_door_interface.statemachine.send(action)
+            
+        when 'ChuckInterface'
+          @close_chuck_interface.statemachine.send(action)
+        end
 
       when 'MaterialLoad'
         @material_load_interface.statemachine.send(action)
@@ -196,7 +198,7 @@ EOT
         @material_unload_interface.statemachine.send(action)
       end
 
-      super(source, name, value, code, text)
+      super(source, comp, name, value, code, text)
 
     rescue
       puts $!, $!.backtrace
@@ -216,7 +218,7 @@ EOT
     end
 
     def activate
-      if @faults.empty? and @cnc_controller_mode == 'AUTOMATIC' and
+      if @faults.empty? and @controller_mode == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
           @robot_execution == 'ACTIVE' and @system.normal? and @robot_availability == 'AVAILABLE'
         puts "Becomming operational"
@@ -224,7 +226,7 @@ EOT
       else
         puts "Disabled"
         puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
-        puts "  Mode is not AUTOMATIC: #{@cnc_controller_mode}" unless @cnc_controller_mode == 'AUTOMATIC'
+        puts "  Mode is not AUTOMATIC: #{@cnc_controller_mode}" unless @controller_mode == 'AUTOMATIC'
         puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
         puts "  System condition is not normal" unless @system.normal?
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
@@ -281,8 +283,8 @@ EOT
         end
         @statemachine.fault
         @fail_next = false
-      elsif @door_state.value != 'CLOSED' or @cnc_chuck_state != 'CLOSED'
-        puts "*** Door #{@door_state.value} or Chuck #{@cnc_chuck_state} is not correct, failing"
+      elsif @door_state.value != 'CLOSED' or @chuck_state.value != 'CLOSED'
+        puts "*** Door #{@door_state.value} or Chuck #{@chuck_state.value} is not correct, failing"
         @adapter.gather do
           @system.add('FAULT', 'Door or Chuck in invalid state', 'CYCLE')
         end
@@ -292,13 +294,15 @@ EOT
           @control.puts "* start"
         else
           @adapter.gather do
-            @exec.value = 'ACTIVE'
+            @execution.value = 'ACTIVE'
           end
           Thread.new do
-            sleep 10
+            sleep @cycle_time
             @adapter.gather do
-              @exec.value = 'READY'
+              @execution.value = 'READY'
             end
+            puts "Sending execution ready"
+            @statemachine.execution_ready
           end
         end
       end
@@ -449,9 +453,9 @@ EOT
           event :robot_execution_interupted, :activated
 
           # CNC controller feedback
-          event :cnc_controller_mode_automatic, :activated
-          event :cnc_controller_mode_manual, :activated
-          event :cnc_controller_mode_manual_data_input, :activated
+          event :controller_mode_automatic, :activated
+          event :controller_mode_manual, :activated
+          event :controller_mode_manual_data_input, :activated
 
           # User commands
           event :disable, :activated, :disable
@@ -513,7 +517,7 @@ EOT
               on_entry :cycling
               default :cycle_start
 
-              event :cnc_execution_ready, :unloading
+              event :execution_ready, :unloading
               event :fault, :fault
               event :cnc_fault, :fault
             end

@@ -15,49 +15,49 @@
 Given(/^Devices are in initial state$/) do
   steps %Q{
     Given robot Availability is Available
-    And robot ControllerMode is Automatic
-    And robot Execution is Active
-    And robot MaterialLoad is Ready
-    And robot MaterialUnload is Ready
-    And robot OpenDoor is Ready
-    And robot CloseDoor is Ready
-    And robot OpenChuck is Ready
-    And robot CloseChuck is Ready
-    And cnc ControllerMode is Automatic
-    Then cnc MaterialLoad should be Active
-    And cnc MaterialUnload should be Not_Ready
+    And robot Controller ControllerMode is Automatic
+    And robot Controller Execution is Active
+    And robot MaterialHandlerInterface MaterialLoad is Ready
+    And robot MaterialHandlerInterface MaterialUnload is Ready
+    And robot DoorInterface Open is Ready
+    And robot DoorInterface Close is Ready
+    And robot ChuckInterface Open is Ready
+    And robot ChuckInterface Close is Ready
+    And cnc Controller ControllerMode is Automatic
+    Then cnc MaterialHandlerInterface MaterialLoad should be Active
+    And cnc MaterialHandlerInterface MaterialUnload should be Not_Ready
   }
 end
 
 
 Given(/^Chuck is closed$/) do
   steps %Q{
-    Given robot CloseChuck becomes Active
-    And cnc ChuckState becomes Closed
-    And robot CloseChuck becomes Ready
-    Then cnc ChuckState should be Closed
+    Given robot ChuckInterface Close becomes Active
+    And cnc Rotary ChuckState becomes Closed
+    And robot ChuckInterface Close becomes Ready
+    Then cnc Rotary ChuckState should be Closed
   }
 end
 
 Given(/^Door is closed$/) do
   steps %Q{
-    Given robot CloseDoor becomes Active
-    Then after 1.2 seconds cnc CloseDoor should be Complete
-    And robot CloseDoor becomes Ready
-    Then cnc DoorState should be Closed
+    Given robot DoorInterface Close becomes Active
+    Then after 1.2 seconds cnc DoorInterface Close should be Complete
+    And robot DoorInterface Close becomes Ready
+    Then cnc Door DoorState should be Closed
   }
 end
 
-Given(/^(cnc|robot) ([A-Za-z]+) (?>is|becomes) ([A-Za-z_]+)$/) do |target, item, value|
-  cnc.event(target, item, value.upcase)
+Given(/^(cnc|robot) ([A-Za-z]+) ([A-Za-z]+) (?>is|becomes) ([A-Za-z_]+)$/) do |target, comp, item, value|
+  cnc.event(target, comp, item, value.upcase)
 end
 
-When(/^(robot|cnc) faults ([A-Za-z_]+) with "(.*?)"$/) do |target, item, message|
-  cnc.event(target, item, 'Fault', item, message)
+When(/^(robot|cnc) faults ([A-Za-z]+) ([A-Za-z_]+) with "(.*?)"$/) do |target, comp, item, message|
+  cnc.event(target, comp, item, 'Fault', item, message)
 end
 
-When(/^(robot|cnc) clears ([A-Za-z_]+)$/) do |target, item|
-  cnc.event(target, item, 'Normal', item)
+When(/^(robot|cnc) clears ([A-Za-z]+) ([A-Za-z_]+)$/) do |target, comp, item|
+  cnc.event(target, comp, item, 'Normal', item)
 end
 
 Then(/^(machine|(?>open|close) (?>door|chuck)|material (?>load|unload)) state should be ([a-zA-Z_]+)$/) do |machine, state|

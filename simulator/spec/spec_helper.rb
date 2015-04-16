@@ -16,21 +16,19 @@ $: << File.dirname(__FILE__) + '/../src'
 
 module Helpers
   def unloading
-    @cnc.event('robot', 'MaterialLoad', 'ACTIVE')
-    @cnc.event('robot', 'CloseDoor', 'ACTIVE')
-    @cnc.event('robot', 'CloseChuck', 'ACTIVE')
+    @cnc.event('robot', 'MaterialHandlerInterface', 'MaterialLoad', 'ACTIVE')
+    @cnc.event('robot', 'DoorInterface', 'Close', 'ACTIVE')
+    @cnc.event('robot', 'ChuckInterface', 'Close', 'ACTIVE')
     sleep 1.2
-    @cnc.event('cnc', 'ChuckState', 'CLOSED')
     @cnc.door_state.value.should == 'CLOSED'
-    @cnc.cnc_chuck_state.should == 'CLOSED'
-    @cnc.event('robot', 'CloseDoor', 'READY')
-    @cnc.event('robot', 'CloseChuck', 'READY')
+    @cnc.chuck_state.value.should == 'CLOSED'
+    @cnc.event('robot', 'DoorInterface', 'Close', 'READY')
+    @cnc.event('robot', 'ChuckInterface', 'Close', 'READY')
 
-    @cnc.event('robot', 'MaterialLoad', 'COMPLETE')
-    @cnc.event('robot', 'MaterialLoad', 'READY')
+    @cnc.event('robot', 'MaterialHandlerInterface', 'MaterialLoad', 'COMPLETE')
+    @cnc.event('robot', 'MaterialHandlerInterface', 'MaterialLoad', 'READY')
 
-    @cnc.statemachine.state.should == :cycle_start
-    @cnc.event('cnc', 'Execution', 'READY')
+    sleep 1.2
   end
 end
 
