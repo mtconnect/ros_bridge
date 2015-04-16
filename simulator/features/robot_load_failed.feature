@@ -18,34 +18,34 @@ Feature: Robot Load Material Fails
   Background: Machine Tool and Robot are operational
     Given Devices are in initial state
 
-  Scenario: Robot can't load material
+  Scenario: Robot can not load material
     Given cnc MaterialLoad should be Active
-    And robot MaterialLoad becomes Active
+    And robot MaterialInterface MaterialLoad becomes Active
     And Chuck is closed
     And Door is closed
 
-    When robot MaterialLoad becomes Fail
+    When robot MaterialInterface MaterialLoad becomes Fail
     Then cnc MaterialLoad should be Fail
     And material load state should be fail
 
-    When robot MaterialLoad becomes Not_Ready
-    And robot faults ACTUATOR with "Flame"
+    When robot MaterialInterface MaterialLoad becomes Not_Ready
+    And robot faults Rotary ACTUATOR with "Flame"
     And machine state should be idle
 
-  Scenario: Robot can't load material and recovers
+  Scenario: Robot can not load material and recovers
     Given cnc MaterialLoad should be Active
-    And robot MaterialLoad becomes Active
+    And robot MaterialInterface MaterialLoad becomes Active
     And Chuck is closed
     And Door is closed
 
-    When robot MaterialLoad becomes Fail
+    When robot MaterialInterface MaterialLoad becomes Fail
     Then cnc MaterialLoad should be Fail
     And material load state should be fail
 
-    When robot MaterialLoad becomes Not_Ready
-    And robot faults ACTUATOR with "Flame"
+    When robot MaterialInterface MaterialLoad becomes Not_Ready
+    And robot faults Rotary ACTUATOR with "Flame"
     And machine state should be idle
 
-    When robot clears ACTUATOR
-    And robot MaterialLoad becomes Ready
+    When robot clears Rotary ACTUATOR
+    And robot MaterialInterface MaterialLoad becomes Ready
     And machine state should be unloading

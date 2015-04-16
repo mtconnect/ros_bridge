@@ -21,22 +21,22 @@ Feature: Robot Disconnects
 
   Scenario: Loading Material and Robot Disconnects while Closing Chuck
     Given cnc MaterialLoad should be Active
-    When robot MaterialLoad becomes Active
+    When robot MaterialHandlerInterface MaterialLoad becomes Active
     Then material load state should be processing
 
     And cnc DoorState should be Open
-    And cnc ChuckState becomes Open
+    And cnc Rotary ChuckState becomes Open
     And cnc ChuckState should be Open
     Then machine state should be loading
 
-    When robot CloseChuck becomes Active
-    And robot Availability becomes Unavailable
-    And robot MaterialLoad becomes Unavailable
-    And robot MaterialUnload becomes Unavailable
-    And robot CloseChuck becomes Unavailable
-    And robot OpenChuck becomes Unavailable
-    And robot CloseDoor becomes Unavailable
-    And robot OpenDoor becomes Unavailable
+    When robot ChuckInterface Close becomes Active
+    And robot Device Availability becomes Unavailable
+    And robot MaterialHandlerInterface MaterialLoad becomes Unavailable
+    And robot MaterialHandlerInterface MaterialUnload becomes Unavailable
+    And robot ChuckInterface Close becomes Unavailable
+    And robot ChuckInterface Open becomes Unavailable
+    And robot DoorInterface Close becomes Unavailable
+    And robot DoorInterface Open becomes Unavailable
 
     Then machine state should be fault
     And cnc CloseChuck should be Fail
@@ -48,21 +48,21 @@ Feature: Robot Disconnects
 
   Scenario: Loading Material and Robot Disconnects before loading
     Given cnc MaterialLoad should be Active
-    When robot MaterialLoad becomes Active
+    When robot MaterialHandlerInterface MaterialLoad becomes Active
     Then material load state should be processing
 
     And cnc DoorState should be Open
-    And cnc ChuckState becomes Open
+    And cnc Rotary ChuckState becomes Open
     And cnc ChuckState should be Open
     Then machine state should be loading
 
-    When robot Availability becomes Unavailable
-    And robot MaterialLoad becomes Unavailable
-    And robot MaterialUnload becomes Unavailable
-    And robot CloseChuck becomes Unavailable
-    And robot OpenChuck becomes Unavailable
-    And robot CloseDoor becomes Unavailable
-    And robot OpenDoor becomes Unavailable
+    When robot Device Availability becomes Unavailable
+    And robot MaterialHandlerInterface MaterialLoad becomes Unavailable
+    And robot MaterialHandlerInterface MaterialUnload becomes Unavailable
+    And robot ChuckInterface Close becomes Unavailable
+    And robot ChuckInterface Open becomes Unavailable
+    And robot DoorInterface Close becomes Unavailable
+    And robot DoorInterface Open becomes Unavailable
 
     Then machine state should be not_ready
     And cnc MaterialLoad should be not_ready

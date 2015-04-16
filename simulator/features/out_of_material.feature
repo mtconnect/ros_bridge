@@ -20,21 +20,21 @@ Feature: Robot Out of Material
     Given Devices are in initial state
 
   Scenario: Cnc asks Robot to Load Material
-    Given robot MaterialLoad becomes Active
+    Given robot MaterialInterface MaterialLoad becomes Active
     Then material load state should be processing
 
-    When robot faults FILL_LEVEL with "No Material"
-    And robot MaterialLoad becomes Fail
+    When robot faults Device FILL_LEVEL with "No Material"
+    And robot MaterialInterface MaterialLoad becomes Fail
     Then cnc MaterialLoad should be Fail
     And machine state should be loading
     And material load state should be fail
 
-    When robot MaterialLoad becomes Not_Ready
+    When robot MaterialInterface MaterialLoad becomes Not_Ready
     Then machine state should be idle
     And cnc MaterialLoad should be Ready
 
-    When robot clears FILL_LEVEL
-    And robot MaterialLoad becomes Ready
+    When robot clears Device FILL_LEVEL
+    And robot MaterialInterface MaterialLoad becomes Ready
     Then machine state should be loading
     And cnc MaterialLoad should be Active
 

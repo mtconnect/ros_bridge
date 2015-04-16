@@ -13,21 +13,21 @@
 #    limitations under the License.
 
 Feature: Machine Tool Chuck Fails
-  The robot asks the machine tool to open it's chuck
+  The robot asks the machine tool to open its chuck
   but the chuck fails
 
   Background: Machine Tool and Robot are operational
     Given Devices are in initial state
 
-  Scenario: Cnc Can't Close It's Chuck
-    Given robot MaterialLoad becomes Active
+  Scenario: Cnc Can not Close Its Chuck
+    Given robot MaterialHandlerInterface MaterialLoad becomes Active
     Then material load state should be processing
 
-    When robot CloseChuck becomes Active
+    When robot ChuckInterface Close becomes Active
     Then cnc CloseChuck should be Active
-    And cnc ChuckState becomes Unlatched
+    And cnc Rotary ChuckState becomes Unlatched
 
-    When cnc CloseChuck becomes Failure
+    When cnc ChuckInterface Close becomes Failure
     Then close chuck state should be fail
     And cnc CloseChuck should be Fail
     And cnc ChuckState should be Unlatched
@@ -35,20 +35,20 @@ Feature: Machine Tool Chuck Fails
     And machine state should be fault
     And cnc fault should have code "Cnc::CloseChuck"
 
-  Scenario: Cnc Can't Close Chuck and then Recovers
-    Given robot MaterialLoad becomes Active
+  Scenario: Cnc Can not Close Chuck and then Recovers
+    Given robot MaterialHandlerInterface MaterialLoad becomes Active
     Then material load state should be processing
 
-    When robot CloseChuck becomes Active
+    When robot ChuckInterface Close becomes Active
     Then cnc CloseChuck should be Active
-    And cnc ChuckState becomes Unlatched
+    And cnc Rotary ChuckState becomes Unlatched
 
-    When cnc CloseChuck becomes Failure
+    When cnc ChuckInterface Close becomes Failure
     And close chuck state should be fail
-    And robot CloseChuck becomes Fail
+    And robot ChuckInterface Close becomes Fail
     Then cnc CloseChuck should be Not_Ready
 
-    When robot CloseChuck becomes Ready
+    When robot ChuckInterface Close becomes Ready
     Then cnc CloseChuck should be Not_Ready
     And machine state should be fault
 
@@ -58,10 +58,10 @@ Feature: Machine Tool Chuck Fails
     And cnc CloseChuck should be READY
 
   Scenario: Simulate chuck failure
-    Given robot MaterialLoad becomes Active
+    Given robot MaterialHandlerInterface MaterialLoad becomes Active
     And simulate fail close_chuck
     Then material load state should be processing
 
-    When robot CloseChuck becomes Active
+    When robot ChuckInterface Close becomes Active
     Then cnc CloseChuck should be Fail
     And cnc fault should have code "Cnc::CloseChuck"

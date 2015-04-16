@@ -20,52 +20,48 @@ Feature: Load Material
 
   Scenario: Robot asks Cnc to Open Door
     Given cnc MaterialLoad should be Active
-    When robot OpenDoor becomes Active
+    When robot DoorInterface Open becomes Active
     Then cnc DoorState should be Open
 
   Scenario: Robot asks Cnc to Open Chuck
     Given cnc MaterialLoad should be Active
-    When robot OpenChuck becomes Active
-    Then cnc OpenChuck should be Active
-    When cnc ChuckState becomes Unlatched
-    When cnc ChuckState becomes Open
+    When robot ChuckInterface Open becomes Active
     Then cnc ChuckState should be Open
 
   Scenario: Cnc asks Robot to Load Material
     Given cnc MaterialLoad should be Active
-    When robot MaterialLoad becomes Active
+    When robot MaterialInterface MaterialLoad becomes Active
     Then material load state should be processing
 
     And cnc DoorState should be Open
-    And cnc ChuckState becomes Open
+    And cnc Rotary ChuckState becomes Open
     And cnc ChuckState should be Open
     Then machine state should be loading
 
-    When robot CloseChuck becomes Active
+    When robot ChuckInterface Close becomes Active
     Then cnc CloseChuck should be Active
-    And cnc ChuckState becomes Closed
-    And cnc CloseChuck should be Complete
-    And robot CloseChuck becomes Ready
-    And cnc CloseChuck should be Ready
+    Then after 1.2 seconds cnc CloseChuck should be Complete
+    And cnc ChuckState should be Closed    
 
-    When robot CloseDoor becomes Active
+    When robot DoorInterface Close becomes Ready
+    And robot DoorInterface Close becomes Active
     Then cnc CloseDoor should be Active
     Then after 1.2 seconds cnc CloseDoor should be Complete
     And cnc DoorState should be Closed
 
-    When robot MaterialLoad becomes Complete
-    And robot MaterialLoad becomes Ready
+    When robot MaterialInterface MaterialLoad becomes Complete
+    And robot MaterialInterface MaterialLoad becomes Ready
     Then machine state should be cycle_start
     And cnc MaterialLoad should be Not_Ready
-    And robot MaterialLoad becomes Ready
+    And robot MaterialInterface MaterialLoad becomes Ready
 
   Scenario: Cnc fails to start cycle
-    Given robot MaterialLoad becomes Active
+    Given robot MaterialInterface MaterialLoad becomes Active
     And simulate fail exec
 
     And Chuck is closed
     And Door is closed
-    And robot MaterialLoad becomes Complete
-    And robot MaterialLoad becomes Ready
+    And robot MaterialInterface MaterialLoad becomes Complete
+    And robot MaterialInterface MaterialLoad becomes Ready
     And cnc MaterialLoad should be Not_Ready
     And machine state should be fault

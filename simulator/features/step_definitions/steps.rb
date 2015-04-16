@@ -14,7 +14,7 @@
 
 Given(/^Devices are in initial state$/) do
   steps %Q{
-    Given robot Availability is Available
+    Given robot Device Availability is Available
     And robot Controller ControllerMode is Automatic
     And robot Controller Execution is Active
     And robot MaterialHandlerInterface MaterialLoad is Ready
@@ -24,8 +24,8 @@ Given(/^Devices are in initial state$/) do
     And robot ChuckInterface Open is Ready
     And robot ChuckInterface Close is Ready
     And cnc Controller ControllerMode is Automatic
-    Then cnc MaterialHandlerInterface MaterialLoad should be Active
-    And cnc MaterialHandlerInterface MaterialUnload should be Not_Ready
+    Then cnc MaterialLoad should be Active
+    And cnc MaterialUnload should be Not_Ready
   }
 end
 
@@ -33,18 +33,18 @@ end
 Given(/^Chuck is closed$/) do
   steps %Q{
     Given robot ChuckInterface Close becomes Active
-    And cnc Rotary ChuckState becomes Closed
+    Then after 1.2 seconds cnc CloseChuck should be Complete
     And robot ChuckInterface Close becomes Ready
-    Then cnc Rotary ChuckState should be Closed
+    Then cnc ChuckState should be Closed
   }
 end
 
 Given(/^Door is closed$/) do
   steps %Q{
     Given robot DoorInterface Close becomes Active
-    Then after 1.2 seconds cnc DoorInterface Close should be Complete
+    Then after 1.2 seconds cnc CloseDoor should be Complete
     And robot DoorInterface Close becomes Ready
-    Then cnc Door DoorState should be Closed
+    Then cnc DoorState should be Closed
   }
 end
 

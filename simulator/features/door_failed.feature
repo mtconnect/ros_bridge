@@ -13,22 +13,22 @@
 #    limitations under the License.
 
 Feature: Machine Tool Door Failed
-  The robot has request the machine tool open it's door
+  The robot has request the machine tool open its door
   but the door fails
 
   Background: Machine Tool and Robot are operational
     Given Devices are in initial state
 
-  Scenario: Cnc Can't Close It's Door
-    Given robot MaterialLoad becomes Active
+  Scenario: Cnc Can not Close Its Door
+    Given robot MaterialHandlerInterface MaterialLoad becomes Active
     Then material load state should be processing
     And Chuck is closed
 
-    When robot CloseDoor becomes Active
+    When robot DoorInterface Close becomes Active
     Then cnc CloseDoor should be Active
-    And cnc DoorState becomes Unlatched
+    And cnc Door DoorState becomes Unlatched
 
-    When cnc CloseDoor becomes Failure
+    When cnc DoorInterface Close becomes Failure
     Then close door state should be fail
     And cnc CloseDoor should be Fail
     And cnc DoorState should be Unlatched
@@ -36,20 +36,20 @@ Feature: Machine Tool Door Failed
     And machine state should be fault
     And cnc fault should have code "Cnc::CloseDoor"
 
-  Scenario: Cnc Can't Close Door and then Recovers
-    Given robot MaterialLoad becomes Active
+  Scenario: Cnc Can not Close Door and then Recovers
+    Given robot MaterialHandlerInterface MaterialLoad becomes Active
     Then material load state should be processing
 
-    When robot CloseDoor becomes Active
+    When robot DoorInterface Close becomes Active
     Then cnc CloseDoor should be Active
-    And cnc DoorState becomes Unlatched
+    And cnc Door DoorState becomes Unlatched
 
-    When cnc CloseDoor becomes Failure
+    When cnc DoorInterface Close becomes Failure
     And close door state should be fail
-    And robot CloseDoor becomes Fail
+    And robot DoorInterface Close becomes Fail
     Then cnc CloseDoor should be Not_Ready
 
-    When robot CloseDoor becomes Ready
+    When robot DoorInterface Close becomes Ready
     Then cnc CloseDoor should be Not_Ready
     And machine state should be fault
 
@@ -59,11 +59,11 @@ Feature: Machine Tool Door Failed
     And cnc CloseDoor should be READY
 
   Scenario: Simulate door failure
-    Given robot MaterialLoad becomes Active
+    Given robot MaterialHandlerInterface MaterialLoad becomes Active
     And simulate fail close_door
     Then material load state should be processing
 
-    When robot CloseDoor becomes Active
+    When robot DoorInterface Close becomes Active
     Then cnc CloseDoor should be Fail
     And cnc fault should have code "Cnc::CloseDoor"
 
