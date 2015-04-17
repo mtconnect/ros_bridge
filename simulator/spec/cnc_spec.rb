@@ -17,9 +17,7 @@ require 'cnc'
 
 describe "Cnc" do
   before(:each) do
-    control = double("socket")
-    control.stub!(:puts) { }
-    @cnc = Cnc::CncContext.new(control)
+    @cnc = Cnc::CncContext.new()
     @cnc.cycle_time = 1
   end
 
@@ -35,7 +33,6 @@ describe "Cnc" do
 
     it 'should become ready when the link is enabled, all interfaces are ready, and the robot and machine tool are in automatic' do
       @cnc.has_material = false
-      @cnc.event('cnc', 'Controller', 'ControllerMode', 'AUTOMATIC')
       @cnc.event('robot', 'Device', 'Availability', 'AVAILABLE')
       @cnc.event('robot', 'Controller', 'ControllerMode', 'AUTOMATIC')
       @cnc.event('robot', 'Controller', 'Execution', 'ACTIVE')
@@ -51,7 +48,6 @@ describe "Cnc" do
 
     context "when loading material" do
       before(:each) do
-        @cnc.event('cnc', 'Controller', 'ControllerMode', 'AUTOMATIC')
         @cnc.event('robot', 'Device', 'Availability', 'AVAILABLE')
         @cnc.event('robot', 'Controller', 'ControllerMode', 'AUTOMATIC')
         @cnc.event('robot', 'Controller', 'Execution', 'ACTIVE')
@@ -253,7 +249,6 @@ describe "Cnc" do
         @cnc.event('robot', 'DoorInterface', 'Close', 'ACTIVE')
         @cnc.event('robot', 'ChuckInterface', 'Close', 'ACTIVE')
         sleep 1.2
-        @cnc.event('cnc', 'Rotary', 'ChuckState', 'CLOSED')
         @cnc.door_state.value.should == 'CLOSED'
         @cnc.chuck_state.value.should == 'CLOSED'
         @cnc.event('robot', 'DoorInterface', 'Close', 'READY')

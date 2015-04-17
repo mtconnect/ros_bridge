@@ -40,7 +40,7 @@ Feature: Robot Disconnects
 
     Then machine state should be fault
     And cnc CloseChuck should be Fail
-    And after 5 seconds cnc CloseChuck should be not_ready
+    And after 5.5 seconds cnc CloseChuck should be not_ready
 
     Given machine state should be fault
     And cnc is reset

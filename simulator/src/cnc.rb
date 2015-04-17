@@ -28,9 +28,9 @@ module Cnc
     include MTConnect
     attr_accessor :robot_controller_mode, :robot_material_load, :robot_material_unload,
                   :robot_open_chuck, :robot_close_chuck, :robot_open_door, :robot_close_door,
-                  :robot_execution, :robot_availability
+                  :robot_execution, :robot_availability, :cycle_time
 
-    attr_accessor :controller_mode, :execution, :availability, :cycle_time
+    attr_reader :controller_mode, :execution, :availability
 
     attr_reader :adapter, :open_chuck, :close_chuck, :door_state, :chuck_state, :open_door, :close_door,
                 :material_load, :material_unload, :link, :system, :has_material,
@@ -41,7 +41,7 @@ module Cnc
     attr_accessor :has_material
 
 
-    def initialize(control, port = 7879, simulation: true)
+    def initialize(port = 7879)
       super(port)
 
       # Initilize robot instance variables
@@ -49,9 +49,6 @@ module Cnc
         @robot_close_chuck = @robot_open_door = @robot_close_door =
             @robot_execution = @robot_availability = nil
       @chuck_state = @execution = @availability = @controller_mode = nil
-
-      @control = control
-      @simulation = simulation
 
       @adapter.data_items << (@material_load = DataItem.new('material_load'))
       @adapter.data_items << (@material_unload = DataItem.new('material_unload'))
@@ -73,16 +70,14 @@ module Cnc
       @adapter.data_items << (@door_state = DataItem.new('door_state'))
       @adapter.data_items << (@chuck_state = DataItem.new('chuck_state'))
 
-      if @simulation
-        @adapter.data_items << (@execution = DataItem.new('exec'))
-        @adapter.data_items << (@availability = DataItem.new('avail'))
-        @adapter.data_items << (@controller_mode = DataItem.new('mode'))
+      @adapter.data_items << (@execution = DataItem.new('exec'))
+      @adapter.data_items << (@availability = DataItem.new('avail'))
+      @adapter.data_items << (@controller_mode = DataItem.new('mode'))
 
-        @availability.value = 'AVAILABLE'
-        @execution.value = 'READY'
-        @controller_mode.value = 'AUTOMATIC'
-        @cycle_time = 4
-      end
+      @availability.value = 'AVAILABLE'
+      @execution.value = 'READY'
+      @controller_mode.value = 'AUTOMATIC'
+      @cycle_time = 4
 
       # Initialize data items
       @link.value = 'ENABLED'
@@ -93,12 +88,8 @@ module Cnc
 
       @system.normal
 
-      @open_chuck_interface = OpenChuck.new(self, @control)
-      @close_chuck_interface = CloseChuck.new(self, @control, @open_chuck_interface)
-      if @simulation
-        @open_chuck_interface.simulate = true
-        @close_chuck_interface.simulate = true
-      end
+      @open_chuck_interface = OpenChuck.new(self)
+      @close_chuck_interface = CloseChuck.new(self, @open_chuck_interface)
 
       @open_door_interface = OpenDoor.new(self)
       @close_door_interface = CloseDoor.new(self, @open_door_interface)
@@ -218,7 +209,7 @@ EOT
     end
 
     def activate
-      if @faults.empty? and @controller_mode == 'AUTOMATIC' and
+      if @faults.empty? and @controller_mode.value == 'AUTOMATIC' and
           @link.value == 'ENABLED' and @robot_controller_mode == 'AUTOMATIC' and
           @robot_execution == 'ACTIVE' and @system.normal? and @robot_availability == 'AVAILABLE'
         puts "Becomming operational"
@@ -226,7 +217,7 @@ EOT
       else
         puts "Disabled"
         puts "  There are robot faults: #{@faults.inspect}" unless @faults.empty?
-        puts "  Mode is not AUTOMATIC: #{@cnc_controller_mode}" unless @controller_mode == 'AUTOMATIC'
+        puts "  Mode is not AUTOMATIC: #{@controller_mode.value}" unless @controller_mode.value == 'AUTOMATIC'
         puts "  Link is not ENABLED: #{@link.value}" unless @link.value == 'ENABLED'
         puts "  System condition is not normal" unless @system.normal?
         puts "  Robot is not active" unless @robot_execution == 'ACTIVE'
@@ -262,7 +253,6 @@ EOT
         @system.normal
       end
       reset_history
-      @control.puts "* reset" unless @simulation
 
       @close_chuck_interface.reset
       @open_chuck_interface.reset
@@ -290,20 +280,16 @@ EOT
         end
         @statemachine.fault
       else
-        unless @simulation
-          @control.puts "* start"
-        else
+        @adapter.gather do
+          @execution.value = 'ACTIVE'
+        end
+        Thread.new do
+          sleep @cycle_time
           @adapter.gather do
-            @execution.value = 'ACTIVE'
+            @execution.value = 'READY'
           end
-          Thread.new do
-            sleep @cycle_time
-            @adapter.gather do
-              @execution.value = 'READY'
-            end
-            puts "Sending execution ready"
-            @statemachine.execution_ready
-          end
+          puts "Sending execution ready"
+          @statemachine.execution_ready
         end
       end
       true
@@ -339,8 +325,6 @@ EOT
       @close_chuck_interface.activate
       @open_door_interface.activate
       @close_door_interface.activate
-
-      @control.puts "* reset" unless @simulation
 
       if @has_material
         @statemachine.unloading

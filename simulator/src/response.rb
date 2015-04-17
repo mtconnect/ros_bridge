@@ -19,7 +19,7 @@ module Cnc
     include ThreadSafeStateMachine
 
     def initialize(parent, adapter, interface, prefix, dest_state, transition_state,
-        rel, simulate: false)
+        rel, simulate: true)
       @adapter, @interface, @prefix, @dest_state,
         @transition_state = adapter, interface,
           prefix, dest_state, transition_state

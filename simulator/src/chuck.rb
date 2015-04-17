@@ -19,9 +19,8 @@ require 'response'
 
 module Cnc
   class OpenChuck < Response
-    def initialize(cnc, control, rel = nil)
+    def initialize(cnc, rel = nil)
       super(cnc, cnc.adapter, cnc.open_chuck, 'chuck', 'OPEN', 'UNLATCHED', rel, simulate: true)
-      @control = control
       create_statemachine
     end
 
@@ -35,9 +34,8 @@ module Cnc
   end
 
   class CloseChuck < Response
-    def initialize(cnc, control, rel = nil)
+    def initialize(cnc, rel = nil)
       super(cnc, cnc.adapter, cnc.close_chuck, 'chuck', 'CLOSED', 'UNLATCHED', rel, simulate: true)
-      @control = control
       create_statemachine
     end
 

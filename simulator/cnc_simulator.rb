@@ -21,7 +21,6 @@ require 'streamer'
 require 'readline'
 require 'optparse'
 
-simulation = true
 no_robot = false
 machine_ip = '127.0.0.1'
 robot_url = 'http://localhost:5000/Robot'
@@ -29,10 +28,6 @@ cnc_url = 'http://localhost:5000/cnc'
 
 OptionParser.new do |opts|
   opts.banner = 'Usage: ruby cnc_simulator.rb [-sn] [-m machine_tool_ip] [robot_url] [cnc_url]'
-
-  opts.on('-s', '--[no-]simulate', 'Simulation') do  |v|
-    simulation = v
-  end
 
   opts.on('-n', '--[no-]robot', 'Skip Robot Event Stream') do  |v|
     no_robot = v
@@ -47,19 +42,7 @@ OptionParser.new do |opts|
   cnc_url = ARGV.shift if ARGV.length > 0
 end
 
-unless simulation
-  # Connect to adapter on machine tool to control operations
-  control = TCPSocket.new('127.0.0.1', 7879)
-  Thread.new do
-    while control.read(1024)
-
-    end
-  end
-else
-  control = nil
-end
-
-$context = Cnc::CncContext.new(control, 7879, simulation: simulation)
+$context = Cnc::CncContext.new(7879)
 $context.statemachine.tracer = STDOUT
 $context.start
 
@@ -74,19 +57,6 @@ unless no_robot
     end
   end
 end
-
-=begin
-$cnc_streamer = MTConnect::Streamer.new(cnc_url,
-                filter: '//DataItem[@type="CONTROLLER_MODE"or@type="EXECUTION"or@type="CHUCK_STATE"or@type="AVAILABILITY"or@category="CONDITION"]')
-cnc_thread = $cnc_streamer.start do |comp, name, value, code = nil, text = nil|
-  begin
-    $context.event('cnc', comp, name, value, code, text)
-  rescue
-    puts "Error occurred in handling event: #{$!}"
-    puts $!.backtrace.join("\n")
-  end
-end
-=end
 
 def parse_command(line)  
   res = 'success'
@@ -146,6 +116,9 @@ EOT
 
   when /^fail[ ]+([a-z_]+)$/i
     $context.fail_next($1, true)
+    
+  when /^reset$/i
+    $con
 
   else
     res = "Unrecognized command #{line.inspect}"
