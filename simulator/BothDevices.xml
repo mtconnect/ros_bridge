@@ -32,7 +32,7 @@
 
                 <!-- Events - Interlocks -->
                 <DataItem type="SPINDLE_INTERLOCK" category="EVENT" id="rsi" name="s_inter" />
-                <DataItem type="MANUAL_CHUCK_UNCLAMP_INTERLOCK" category="EVENT" id="rmcu" name="c_unclamp" />
+                <DataItem type="CHUCK_INTERLOCK" subType="MANUAL_UNCLAMP" category="EVENT" id="rmcu" name="c_unclamp" />
               </DataItems>
             </ChuckInterface>
             <DoorInterface name="door_inter" id="rdri">

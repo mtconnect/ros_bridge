@@ -409,7 +409,7 @@ EOT
         if (var = instance_variable_get(inst)) and var.respond_to?(:'fail_next=')
           var.fail_next = value
         else
-          raise "Cannot find variable with name #{var}"
+          raise "Cannot find variable with name #{name}"
         end
       end
     end

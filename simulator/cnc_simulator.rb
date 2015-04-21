@@ -118,7 +118,7 @@ EOT
     $context.fail_next($1, true)
     
   when /^reset$/i
-    $con
+    $context.reset_cnc
 
   else
     res = "Unrecognized command #{line.inspect}"
