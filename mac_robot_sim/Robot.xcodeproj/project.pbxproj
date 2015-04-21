@@ -1,0 +1,442 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BE2852B11AE366CE008012DE /* MTConnectClient.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2852B01AE366CE008012DE /* MTConnectClient.m */; };
+		BE2852B41AE47783008012DE /* MTConnectDataItem.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2852B31AE47783008012DE /* MTConnectDataItem.m */; };
+		BE2852B71AE4C199008012DE /* Robot.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2852B61AE4C199008012DE /* Robot.m */; };
+		BEC12E1F1AE2EB24006483BD /* MTConnectAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC12E1E1AE2EB24006483BD /* MTConnectAdapter.m */; };
+		BEC8DFBC1AE0BC36007A69B8 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC8DFBB1AE0BC36007A69B8 /* AppDelegate.m */; };
+		BEC8DFBE1AE0BC36007A69B8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC8DFBD1AE0BC36007A69B8 /* main.m */; };
+		BEC8DFC01AE0BC36007A69B8 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BEC8DFBF1AE0BC36007A69B8 /* Images.xcassets */; };
+		BEC8DFC31AE0BC36007A69B8 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = BEC8DFC11AE0BC36007A69B8 /* MainMenu.xib */; };
+		BEC8DFCF1AE0BC36007A69B8 /* RobotTests.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC8DFCE1AE0BC36007A69B8 /* RobotTests.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BEC8DFC91AE0BC36007A69B8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BEC8DFAD1AE0BC36007A69B8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BEC8DFB41AE0BC36007A69B8;
+			remoteInfo = Robot;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		BE2852AF1AE366CE008012DE /* MTConnectClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTConnectClient.h; sourceTree = "<group>"; };
+		BE2852B01AE366CE008012DE /* MTConnectClient.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTConnectClient.m; sourceTree = "<group>"; };
+		BE2852B21AE47783008012DE /* MTConnectDataItem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTConnectDataItem.h; sourceTree = "<group>"; };
+		BE2852B31AE47783008012DE /* MTConnectDataItem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTConnectDataItem.m; sourceTree = "<group>"; };
+		BE2852B51AE4C199008012DE /* Robot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Robot.h; sourceTree = "<group>"; };
+		BE2852B61AE4C199008012DE /* Robot.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Robot.m; sourceTree = "<group>"; };
+		BEC12E1D1AE2EB24006483BD /* MTConnectAdapter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTConnectAdapter.h; sourceTree = "<group>"; };
+		BEC12E1E1AE2EB24006483BD /* MTConnectAdapter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTConnectAdapter.m; sourceTree = "<group>"; };
+		BEC8DFB51AE0BC36007A69B8 /* Robot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Robot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEC8DFB91AE0BC36007A69B8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BEC8DFBA1AE0BC36007A69B8 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		BEC8DFBB1AE0BC36007A69B8 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		BEC8DFBD1AE0BC36007A69B8 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		BEC8DFBF1AE0BC36007A69B8 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		BEC8DFC21AE0BC36007A69B8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		BEC8DFC81AE0BC36007A69B8 /* RobotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RobotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEC8DFCD1AE0BC36007A69B8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BEC8DFCE1AE0BC36007A69B8 /* RobotTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RobotTests.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BEC8DFB21AE0BC36007A69B8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BEC8DFC51AE0BC36007A69B8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BEC8DFAC1AE0BC36007A69B8 = {
+			isa = PBXGroup;
+			children = (
+				BEC8DFB71AE0BC36007A69B8 /* Robot */,
+				BEC8DFCB1AE0BC36007A69B8 /* RobotTests */,
+				BEC8DFB61AE0BC36007A69B8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BEC8DFB61AE0BC36007A69B8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BEC8DFB51AE0BC36007A69B8 /* Robot.app */,
+				BEC8DFC81AE0BC36007A69B8 /* RobotTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BEC8DFB71AE0BC36007A69B8 /* Robot */ = {
+			isa = PBXGroup;
+			children = (
+				BEC8DFBA1AE0BC36007A69B8 /* AppDelegate.h */,
+				BEC8DFBB1AE0BC36007A69B8 /* AppDelegate.m */,
+				BE2852B51AE4C199008012DE /* Robot.h */,
+				BE2852B61AE4C199008012DE /* Robot.m */,
+				BEC8DFBF1AE0BC36007A69B8 /* Images.xcassets */,
+				BEC8DFC11AE0BC36007A69B8 /* MainMenu.xib */,
+				BEC8DFB81AE0BC36007A69B8 /* Supporting Files */,
+				BEC12E1D1AE2EB24006483BD /* MTConnectAdapter.h */,
+				BEC12E1E1AE2EB24006483BD /* MTConnectAdapter.m */,
+				BE2852B21AE47783008012DE /* MTConnectDataItem.h */,
+				BE2852B31AE47783008012DE /* MTConnectDataItem.m */,
+				BE2852AF1AE366CE008012DE /* MTConnectClient.h */,
+				BE2852B01AE366CE008012DE /* MTConnectClient.m */,
+			);
+			path = Robot;
+			sourceTree = "<group>";
+		};
+		BEC8DFB81AE0BC36007A69B8 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				BEC8DFB91AE0BC36007A69B8 /* Info.plist */,
+				BEC8DFBD1AE0BC36007A69B8 /* main.m */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		BEC8DFCB1AE0BC36007A69B8 /* RobotTests */ = {
+			isa = PBXGroup;
+			children = (
+				BEC8DFCE1AE0BC36007A69B8 /* RobotTests.m */,
+				BEC8DFCC1AE0BC36007A69B8 /* Supporting Files */,
+			);
+			path = RobotTests;
+			sourceTree = "<group>";
+		};
+		BEC8DFCC1AE0BC36007A69B8 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				BEC8DFCD1AE0BC36007A69B8 /* Info.plist */,
+			);
+			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BEC8DFB41AE0BC36007A69B8 /* Robot */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEC8DFD21AE0BC36007A69B8 /* Build configuration list for PBXNativeTarget "Robot" */;
+			buildPhases = (
+				BEC8DFB11AE0BC36007A69B8 /* Sources */,
+				BEC8DFB21AE0BC36007A69B8 /* Frameworks */,
+				BEC8DFB31AE0BC36007A69B8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Robot;
+			productName = Robot;
+			productReference = BEC8DFB51AE0BC36007A69B8 /* Robot.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BEC8DFC71AE0BC36007A69B8 /* RobotTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEC8DFD51AE0BC36007A69B8 /* Build configuration list for PBXNativeTarget "RobotTests" */;
+			buildPhases = (
+				BEC8DFC41AE0BC36007A69B8 /* Sources */,
+				BEC8DFC51AE0BC36007A69B8 /* Frameworks */,
+				BEC8DFC61AE0BC36007A69B8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BEC8DFCA1AE0BC36007A69B8 /* PBXTargetDependency */,
+			);
+			name = RobotTests;
+			productName = RobotTests;
+			productReference = BEC8DFC81AE0BC36007A69B8 /* RobotTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BEC8DFAD1AE0BC36007A69B8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0630;
+				ORGANIZATIONNAME = "William Sobel";
+				TargetAttributes = {
+					BEC8DFB41AE0BC36007A69B8 = {
+						CreatedOnToolsVersion = 6.3;
+					};
+					BEC8DFC71AE0BC36007A69B8 = {
+						CreatedOnToolsVersion = 6.3;
+						TestTargetID = BEC8DFB41AE0BC36007A69B8;
+					};
+				};
+			};
+			buildConfigurationList = BEC8DFB01AE0BC36007A69B8 /* Build configuration list for PBXProject "Robot" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = BEC8DFAC1AE0BC36007A69B8;
+			productRefGroup = BEC8DFB61AE0BC36007A69B8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BEC8DFB41AE0BC36007A69B8 /* Robot */,
+				BEC8DFC71AE0BC36007A69B8 /* RobotTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BEC8DFB31AE0BC36007A69B8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BEC8DFC01AE0BC36007A69B8 /* Images.xcassets in Resources */,
+				BEC8DFC31AE0BC36007A69B8 /* MainMenu.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BEC8DFC61AE0BC36007A69B8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BEC8DFB11AE0BC36007A69B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BE2852B71AE4C199008012DE /* Robot.m in Sources */,
+				BEC8DFBE1AE0BC36007A69B8 /* main.m in Sources */,
+				BEC12E1F1AE2EB24006483BD /* MTConnectAdapter.m in Sources */,
+				BE2852B41AE47783008012DE /* MTConnectDataItem.m in Sources */,
+				BE2852B11AE366CE008012DE /* MTConnectClient.m in Sources */,
+				BEC8DFBC1AE0BC36007A69B8 /* AppDelegate.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BEC8DFC41AE0BC36007A69B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BEC8DFCF1AE0BC36007A69B8 /* RobotTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BEC8DFCA1AE0BC36007A69B8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BEC8DFB41AE0BC36007A69B8 /* Robot */;
+			targetProxy = BEC8DFC91AE0BC36007A69B8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		BEC8DFC11AE0BC36007A69B8 /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				BEC8DFC21AE0BC36007A69B8 /* Base */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		BEC8DFD01AE0BC36007A69B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		BEC8DFD11AE0BC36007A69B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		BEC8DFD31AE0BC36007A69B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Robot/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		BEC8DFD41AE0BC36007A69B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Robot/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		BEC8DFD61AE0BC36007A69B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = RobotTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Robot.app/Contents/MacOS/Robot";
+			};
+			name = Debug;
+		};
+		BEC8DFD71AE0BC36007A69B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(DEVELOPER_FRAMEWORKS_DIR)",
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = RobotTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Robot.app/Contents/MacOS/Robot";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BEC8DFB01AE0BC36007A69B8 /* Build configuration list for PBXProject "Robot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEC8DFD01AE0BC36007A69B8 /* Debug */,
+				BEC8DFD11AE0BC36007A69B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BEC8DFD21AE0BC36007A69B8 /* Build configuration list for PBXNativeTarget "Robot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEC8DFD31AE0BC36007A69B8 /* Debug */,
+				BEC8DFD41AE0BC36007A69B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BEC8DFD51AE0BC36007A69B8 /* Build configuration list for PBXNativeTarget "RobotTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BEC8DFD61AE0BC36007A69B8 /* Debug */,
+				BEC8DFD71AE0BC36007A69B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BEC8DFAD1AE0BC36007A69B8 /* Project object */;
+}
