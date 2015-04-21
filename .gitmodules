@@ -1,0 +1,3 @@
+[submodule "mac_robot_sim/ocmock"]
+	path = mac_robot_sim/ocmock
+	url = git@github.com:erikdoe/ocmock.git
