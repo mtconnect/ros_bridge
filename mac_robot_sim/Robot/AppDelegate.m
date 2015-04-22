@@ -108,6 +108,7 @@
 }
 
 - (IBAction) failNextChanged: (id) sender {
+  _robot.failNext = [sender state] == NSOnState;
 }
 
 - (IBAction) loadPressed: (id) sender {
@@ -201,7 +202,10 @@
         NSString *selectorName = [[NSString alloc] initWithFormat: @"cnc%@Field", name];
         SEL method = NSSelectorFromString(selectorName);
         if ([self respondsToSelector: method]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
           NSTextField *field = [self performSelector: method];
+#pragma clang diagnostic pop
           if (field != nil) [field setStringValue: value];
           [_robot receivedDataItem: name with: value];
         }
@@ -249,7 +253,7 @@
     // Begin streaming data...
     NSLog(@"Beginning streaming task...");
     NSString *cncUrl = [[_cncUrl stringValue] stringByAppendingString:
-                        [NSString stringWithFormat: @"/sample?interval=5&count=1000&from=%lld", _nextSequence]];
+                        [NSString stringWithFormat: @"/sample?interval=1&count=1000&from=%lld", _nextSequence]];
     NSURL *url = [NSURL URLWithString: cncUrl];
     _streamingTask = [_session dataTaskWithURL: url];
     [_streamingTask resume];

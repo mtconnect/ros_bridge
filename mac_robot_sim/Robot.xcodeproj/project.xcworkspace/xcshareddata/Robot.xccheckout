@@ -12,6 +12,8 @@
 	<dict>
 		<key>B25B0D2499B36EC1403F0593E0889ED70F4111F8</key>
 		<string>github.com:mtconnect/ros_bridge.git</string>
+		<key>E4BCE3AE6B24E41B9BCE312FF3B0B6CD0B8B8025</key>
+		<string>github.com:erikdoe/ocmock.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
 	<string>mac_robot_sim/Robot.xcodeproj</string>
@@ -19,6 +21,8 @@
 	<dict>
 		<key>B25B0D2499B36EC1403F0593E0889ED70F4111F8</key>
 		<string>../../..</string>
+		<key>E4BCE3AE6B24E41B9BCE312FF3B0B6CD0B8B8025</key>
+		<string>../../..mac_robot_sim/ocmock/</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
 	<string>github.com:mtconnect/ros_bridge.git</string>
@@ -35,6 +39,14 @@
 			<string>B25B0D2499B36EC1403F0593E0889ED70F4111F8</string>
 			<key>IDESourceControlWCCName</key>
 			<string>clean</string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>E4BCE3AE6B24E41B9BCE312FF3B0B6CD0B8B8025</string>
+			<key>IDESourceControlWCCName</key>
+			<string>ocmock</string>
 		</dict>
 	</array>
 </dict>

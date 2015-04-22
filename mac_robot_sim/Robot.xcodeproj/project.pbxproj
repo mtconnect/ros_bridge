@@ -10,6 +10,7 @@
 		BE2852B11AE366CE008012DE /* MTConnectClient.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2852B01AE366CE008012DE /* MTConnectClient.m */; };
 		BE2852B41AE47783008012DE /* MTConnectDataItem.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2852B31AE47783008012DE /* MTConnectDataItem.m */; };
 		BE2852B71AE4C199008012DE /* Robot.m in Sources */ = {isa = PBXBuildFile; fileRef = BE2852B61AE4C199008012DE /* Robot.m */; };
+		BE79A7701AE70969006B278E /* OCMock.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BE79A76F1AE70969006B278E /* OCMock.framework */; };
 		BEC12E1F1AE2EB24006483BD /* MTConnectAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC12E1E1AE2EB24006483BD /* MTConnectAdapter.m */; };
 		BEC8DFBC1AE0BC36007A69B8 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC8DFBB1AE0BC36007A69B8 /* AppDelegate.m */; };
 		BEC8DFBE1AE0BC36007A69B8 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = BEC8DFBD1AE0BC36007A69B8 /* main.m */; };
@@ -35,6 +36,7 @@
 		BE2852B31AE47783008012DE /* MTConnectDataItem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTConnectDataItem.m; sourceTree = "<group>"; };
 		BE2852B51AE4C199008012DE /* Robot.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Robot.h; sourceTree = "<group>"; };
 		BE2852B61AE4C199008012DE /* Robot.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Robot.m; sourceTree = "<group>"; };
+		BE79A76F1AE70969006B278E /* OCMock.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OCMock.framework; path = ocmock/Source/Build/Products/Debug/OCMock.framework; sourceTree = SOURCE_ROOT; };
 		BEC12E1D1AE2EB24006483BD /* MTConnectAdapter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTConnectAdapter.h; sourceTree = "<group>"; };
 		BEC12E1E1AE2EB24006483BD /* MTConnectAdapter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTConnectAdapter.m; sourceTree = "<group>"; };
 		BEC8DFB51AE0BC36007A69B8 /* Robot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Robot.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,6 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BE79A7701AE70969006B278E /* OCMock.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,6 +120,7 @@
 		BEC8DFCB1AE0BC36007A69B8 /* RobotTests */ = {
 			isa = PBXGroup;
 			children = (
+				BE79A76F1AE70969006B278E /* OCMock.framework */,
 				BEC8DFCE1AE0BC36007A69B8 /* RobotTests.m */,
 				BEC8DFCC1AE0BC36007A69B8 /* Supporting Files */,
 			);
@@ -378,6 +382,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
+					"$(PROJECT_DIR)/ocmock/Source/Build/Products/Debug",
 				);
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -398,6 +403,7 @@
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 					"$(inherited)",
+					"$(PROJECT_DIR)/ocmock/Source/Build/Products/Debug",
 				);
 				INFOPLIST_FILE = RobotTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";

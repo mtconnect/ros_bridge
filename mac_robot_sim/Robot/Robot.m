@@ -14,6 +14,7 @@
   self = [super init];
   if (self != NULL) {
     _port = port;
+    _failNext = false;
   }
   return self;
 }
@@ -73,8 +74,11 @@
                       stringByAppendingString: [[value capitalizedString]
                                                 stringByReplacingOccurrencesOfString: @"_" withString:@""]];
   SEL selector = NSSelectorFromString(method);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
   if ([self respondsToSelector: selector])
     [self performSelector: selector];
+#pragma clang diagnostic pop
 }
 
 - (void) ready {
@@ -108,8 +112,12 @@
 }
 
 - (void) loadTheMaterial {
-  [_materialLoad setValue:@"ACTIVE"];
+  if (_failNext)
+    [_materialLoad setValue:@"FAIL"];
+  else
+    [_materialLoad setValue:@"ACTIVE"];
   [self update];
+  _failNext = false;
 
   [self openTheDoor];
 }
@@ -127,8 +135,12 @@
 
 
 - (void) unloadTheMaterial {
-  [_materialUnload setValue:@"ACTIVE"];
+  if (_failNext)
+    [_materialUnload setValue:@"FAIL"];
+  else
+    [_materialUnload setValue:@"ACTIVE"];
   [self update];
+  _failNext = false;
   
   [self openTheDoor];
 }
@@ -186,7 +198,6 @@
   [_openChuck setValue: @"READY"];
   [self update];
   
-  
   if ([[_materialLoad value] isEqualTo: @"ACTIVE"]) {
     sleep(1);
     [self closeTheChuck];
@@ -210,5 +221,27 @@
     [self closeTheDoor];
   }
 }
+
+#define MakeFail(variable) \
+- (void) variable ## Fail { \
+  if ([[_ ## variable value] isEqualTo: @"ACTIVE"]) { \
+    [_ ## variable setValue: @"FAIL"]; \
+    [self update]; \
+  } \
+} \
+ \
+- (void) variable ## Ready { \
+  if ([[_ ## variable value] isEqualTo: @"FAIL"]) { \
+    [_ ## variable setValue: @"READY"]; \
+    [self update]; \
+  } \
+} \
+\
+- (void) variable ## NotReady { [self variable ## Ready]; }
+
+MakeFail(openDoor);
+MakeFail(closeDoor);
+MakeFail(closeChuck);
+MakeFail(openChuck);
 
 @end

@@ -28,6 +28,7 @@
 @property (readonly) MTConnectDataItem *closeDoor;
 @property (readonly) MTConnectDataItem *spindleInterlock;
 @property (readonly) MTConnectDataItem *chuckUnclamp;
+@property bool failNext;
 
 @property (weak) id delegate;
 
