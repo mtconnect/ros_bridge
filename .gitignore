@@ -28,3 +28,4 @@ cmake_install.cmake
 simulator/vendor
 .ruby-version
 .bundle
+**/xcuserdata
