@@ -48,29 +48,33 @@
   NSMutableArray *lines = [[NSMutableArray alloc] init];
   NSMutableString *single = [[NSMutableString alloc] init];
   
-  [items enumerateObjectsUsingBlock: ^(id obj, NSUInteger idx, BOOL *stop) {
-    if ([obj separateLine])
-      [lines addObject: [obj stringValue]];
+  for (MTConnectDataItem* item in items) {
+    if (item.separateLine)
+      [lines addObject: [item stringValue]];
     else
-      [single appendString: [obj stringValue]];
-  }];
+      [single appendString: [item stringValue]];
+  }
   
-  if ([single length] > 0)
+  if (single.length > 0)
     [lines addObject: single];
   
   return lines;
 }
 
 - (void) writeLines: (NSArray*) lines toClient: (MTConnectClient*) client at: (NSString*) time {
-  [lines enumerateObjectsUsingBlock: ^(id line, NSUInteger idx, BOOL *stop) {
-    if ([line length] > 0) {
+  for (NSString *line in lines) {
+    if (line.length > 0) {
       [client writeString: [NSString stringWithFormat: @"%@%@\n", time, line]];
     }
-  }];
+  }
 }
 
 - (void) writeInitialData: (MTConnectClient*) client {
   [self writeLines: [self dataItemsToLines: _dataItems] toClient: client at: [self timestamp]];
+}
+
+- (void)clearChanged {
+  for (MTConnectDataItem *item in _dataItems) item.changed = NO;
 }
 
 - (void) writeChangedDataItems {
@@ -78,15 +82,13 @@
   NSPredicate *changed = [NSPredicate predicateWithFormat: @"changed == YES"];
   NSArray *items = [_dataItems filteredArrayUsingPredicate: changed];
   NSArray *lines = [self dataItemsToLines: items];
-  if ([lines count] > 0) {
+  if (lines.count > 0) {
     NSLog(@"Sending: %@", lines);
-    [_clients enumerateObjectsUsingBlock: ^(id client, NSUInteger idx, BOOL *stop) {
+    for (id client in _clients) {
       [self writeLines: lines toClient: client at: time];
-    }];
+    }
   }
-  [items enumerateObjectsUsingBlock: ^(id item, NSUInteger idx, BOOL *stop) {
-    [item setChanged: NO];
-  }];
+  [self clearChanged];
 }
 
 - (id) newConnectionWithSocket: (CFSocketNativeHandle) socket {
@@ -104,7 +106,7 @@ static void AcceptCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
     CFSocketNativeHandle handle = *(CFSocketNativeHandle*) data;
     [adapter newConnectionWithSocket: handle];
   } else {
-    NSLog(@"Cannot create read and write streams");
+    NSLog(@"AcceptCallback called with type other than accept");
   }
 }
 
@@ -129,14 +131,14 @@ static void AcceptCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
       NSData *address = [NSData dataWithBytes:&addr length:sizeof(addr)];
       
       if (CFSocketSetAddress(_socket, (CFDataRef) address) == kCFSocketSuccess) {
+        // Add to the run loop.
         CFRunLoopRef cfrl = CFRunLoopGetCurrent();
         CFRunLoopSourceRef source = CFSocketCreateRunLoopSource(kCFAllocatorDefault, _socket, 0);
         CFRunLoopAddSource(cfrl, source, kCFRunLoopCommonModes);
         CFRelease(source);
         
-        [_dataItems enumerateObjectsUsingBlock: ^(id item, NSUInteger idx, BOOL *stop) {
-          [item setChanged: NO];
-        }];
+        // All set to go...
+        [self clearChanged];
       } else {
         perror("MTConnectAdapter start bind");
         NSLog(@"Cannot bind address");

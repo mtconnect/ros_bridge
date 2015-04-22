@@ -16,12 +16,16 @@
 
 @implementation MTConnectClient
 
+// Cover method
 - (id) writeString: (NSString*) string {
   return [self writeChars: [string cStringUsingEncoding: NSASCIIStringEncoding]];
 }
 
 - (id) writeChars: (const char*) string {
+  // Write characters to the outgoing buffer
   [_outputBuffer appendBytes: string length: strlen(string)];
+  
+  // If the buffer is not blocking, write immediately
   if ([_output hasSpaceAvailable]) {
     [self stream: _output handleEvent: NSStreamEventHasSpaceAvailable];
   }
@@ -30,11 +34,13 @@
 }
 
 - (void) received: (NSString*) line {
+  // Handle heartbeat
   if ([line isEqualToString: @"* PING"]) {
     [self writeChars: "* PONG 10000\n"];
   }
 }
 
+// Handle async IO.
 - (void)stream:(NSStream *) stream handleEvent:(NSStreamEvent) event {
   switch (event) {
     case NSStreamEventHasBytesAvailable:
@@ -72,6 +78,9 @@
         uint8_t buf[len];
         memcpy(buf, readBytes, len);
         unsigned long written = [_output write: buf maxLength: len];
+        
+        // If we have written everything in the buffer, flush it by creating a new one
+        // There is probably a more efficient way of doing this, but it's ok for now
         if (written == len) {
           _outputBuffer = [[NSMutableData alloc] initWithCapacity: 4 * 1024];
           _outputOffset = 0;
@@ -119,8 +128,11 @@
     _outputOffset = 0;
     _open = false;
     
+    // Turn off Negling
     int flag = 1;
     setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+    
+    // Create read and write streams...
     CFReadStreamRef readStream = NULL;
     CFWriteStreamRef writeStream = NULL;
     CFStreamCreatePairWithSocket(kCFAllocatorDefault, handle, &readStream, &writeStream);
@@ -129,10 +141,12 @@
       CFReadStreamSetProperty(readStream, kCFStreamPropertyShouldCloseNativeSocket, kCFBooleanTrue);
       CFWriteStreamSetProperty(writeStream, kCFStreamPropertyShouldCloseNativeSocket, kCFBooleanTrue);
       
+      // Add the streams to the run loop...
       _input = (__bridge NSInputStream*) readStream;
       [_input scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode: NSDefaultRunLoopMode];
       [_input setDelegate: self];
       [_input open];
+      
       _output = (__bridge NSOutputStream*) writeStream;
       [_output scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode: NSDefaultRunLoopMode];
       [_output setDelegate: self];

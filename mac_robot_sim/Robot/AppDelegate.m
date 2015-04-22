@@ -15,6 +15,7 @@
 @property (weak) IBOutlet NSWindow *window;
 @property (weak) IBOutlet NSTextField *cncUrl;
 @property (weak) IBOutlet NSTextField *adapterPort;
+@property (weak) IBOutlet NSTextField *delay;
 
 // Robot
 @property (weak) IBOutlet NSComboBox *controllerModeBox;
@@ -57,7 +58,7 @@
 
 - (IBAction)startAdapter:(id)sender {
   // Create adapter
-  _robot = [[Robot alloc] initWithPort: [_adapterPort intValue]];
+  _robot = [[Robot alloc] initWithPort: [_adapterPort intValue] andDelay: [_delay intValue]];
   [_robot setDelegate: self];
   [_robot start];
   
@@ -68,14 +69,14 @@
 }
 
 - (void) robotChanged: (Robot*) robot {
-  [_controllerModeBox setStringValue: [[_robot mode] value]];
-  [_executionBox setStringValue: [[_robot exec] value]];
-  [_materialLoadField setStringValue: [[_robot materialLoad] value]];
-  [_materialUnloadField setStringValue: [[_robot materialUnload] value]];
-  [_openChuckField setStringValue: [[_robot openChuck] value]];
-  [_closeChuckField setStringValue: [[_robot closeChuck] value]];
-  [_openDoorField setStringValue: [[_robot openDoor] value]];
-  [_closeDoorField setStringValue: [[_robot closeDoor] value]];
+  [_controllerModeBox setStringValue: _robot.mode.value];
+  [_executionBox setStringValue: _robot.exec.value];
+  [_materialLoadField setStringValue: _robot.materialLoad.value];
+  [_materialUnloadField setStringValue: _robot.materialUnload.value];
+  [_openChuckField setStringValue: _robot.openChuck.value];
+  [_closeChuckField setStringValue: _robot.closeChuck.value];
+  [_openDoorField setStringValue: _robot.openDoor.value];
+  [_closeDoorField setStringValue: _robot.closeDoor.value];
 }
 
 - (IBAction) stopAdapter:(id)sender {
@@ -84,12 +85,12 @@
 }
 
 - (IBAction) controllerModeChanged: (id) sender {
-  [[_robot mode] setValue: [sender stringValue]];
+  _robot.mode.value = [sender stringValue];
   [_robot update];
 }
 
 - (IBAction) executionChanged: (id) sender {
-  [[_robot exec] setValue: [sender stringValue]];
+  _robot.exec.value = [sender stringValue];
   [_robot update];
 }
 
@@ -117,7 +118,6 @@
 
 - (IBAction) unloadPressed: (id) sender {
   [_robot unloadTheMaterial];
-  
 }
 
 - (IBAction) openDoorPressed: (id) sender {
@@ -136,6 +136,9 @@
   [_robot closeTheChuck];
 }
 
+- (IBAction) delayChanged:(id)sender {
+  _robot.delay = [_delay intValue];
+}
 
 - (void) startAgentStream {
   // Create NSSession
@@ -145,97 +148,115 @@
   [task resume];
 }
 
-- (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
-    didReceiveData:(NSData *)data {
+- (void) parseMTConnectHeader: (NSXMLDocument*) doc {
+  NSError *err = nil;
+  NSArray *nodes = [doc nodesForXPath: @"//Header" error: &err];
+  if ([nodes count] > 0) {
+    NSXMLElement *header = [nodes firstObject];
+    NSXMLNode *next = [header attributeForName: @"nextSequence"];
+    if (next != nil) _nextSequence = [[next stringValue] intValue];
+  } else {
+    NSLog(@"Could not find header: %@", err);
+  }
+}
+
+- (void) nameAndValueForNode: (NSXMLElement*) node returning: (void (^)(NSString* name, NSString* value)) result {
+  NSXMLElement *grandparent = (NSXMLElement*)[[node parent] parent];
+  NSString *component = [[grandparent attributeForName: @"component"] stringValue];
+  NSString *name = [node name], *value = [node stringValue];
+  
+  NSRange range = [name rangeOfString: @"^(Unavailable|Normal|Warning|Fault)$" options: NSRegularExpressionSearch];
+  if (range.location != NSNotFound) {
+    value = [[NSString alloc] initWithFormat: @"%@: %@", name, value];
+    name = [[[node attributeForName: @"type"] stringValue] capitalizedString];
+  } else {
+    NSRange range = [name rangeOfString: @"^(Open|Close)$" options: NSRegularExpressionSearch];
+    if (range.location != NSNotFound) {
+      NSString *suffix = [component stringByReplacingOccurrencesOfString: @"Interface" withString: @""];
+      name = [name stringByAppendingString: suffix];
+    }
+  }
+  
+  result(name, value);
+}
+
+- (void)setLevelFor:(NSString *)name withValue:(NSString *)value
+{
+  if ([name hasSuffix: @"State"]) {
+    int level = 0;
+    if ([value isEqual: @"OPEN"])
+      level = 1;
+    else if ([value isEqual: @"UNLATCHED"])
+      level = 2;
+    else if ([value isEqual: @"CLOSED"])
+      level = 3;
+    
+    if ([name isEqual: @"ChuckState"]) {
+      [_cncChuckState setIntValue: level];
+    } else if ([name isEqual: @"DoorState"]) {
+      [_cncDoorState setIntValue: level];
+    }
+  }
+}
+
+- (void)setFieldFor:(NSString *)name withValue:(NSString *)value
+{
+  NSString *selectorName = [[NSString alloc] initWithFormat: @"cnc%@Field", name];
+  SEL method = NSSelectorFromString(selectorName);
+  if ([self respondsToSelector: method]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    NSTextField *field = [self performSelector: method];
+#pragma clang diagnostic pop
+    if (field != nil) [field setStringValue: value];
+    [_robot receivedDataItem: name withValue: value];
+  }
+}
+
+- (void) URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask
+                                           didReceiveData:(NSData *)data {
   char buffer[data.length + 1];
   memcpy(buffer, [data bytes], [data length]);
   buffer[data.length] = '\0';
   NSString *text =[NSString stringWithUTF8String: buffer];
   
   // Sometmes it combines blocks into single docs if they are arrive close together.
+  // Split the buffer using the initial process statement
   NSArray *blocks = [text componentsSeparatedByString: @"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"];
-  [blocks enumerateObjectsUsingBlock:^(id xml, NSUInteger idx, BOOL *stop) {
-    if ([xml length] == 0) return;
-    
-    NSMutableString *xmlBuffer = [[NSMutableString alloc] initWithString: xml];
-    [xmlBuffer insertString:@"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" atIndex:0];
-    
-    NSError *err = nil;
-    NSXMLDocument *doc = [[NSXMLDocument alloc]
-                          initWithXMLString: xmlBuffer
-                          options: NSXMLDocumentTidyXML error: &err];
-    if (doc != nil && err == nil) {
-      // Get the header
-      err = nil;
-      NSArray *nodes = [doc nodesForXPath: @"//Header" error: &err];
-      if ([nodes count] > 0) {
-        NSXMLElement *header = [nodes firstObject];
-        NSXMLNode *next = [header attributeForName: @"nextSequence"];
-        if (next != nil) {
-          _nextSequence = [[next stringValue] intValue];
+  for (NSString *xml in blocks) {
+    if (xml.length > 0) {
+      // Need to add the process statement to the beginning again.
+      NSMutableString *xmlBuffer = [[NSMutableString alloc] initWithString: xml];
+      [xmlBuffer insertString:@"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" atIndex:0];
+      
+      // Parse the document
+      NSError *err = nil;
+      NSXMLDocument *doc = [[NSXMLDocument alloc] initWithXMLString: xmlBuffer
+                            options: NSXMLDocumentTidyXML error: &err];
+      if (doc != nil && err == nil) {
+        // Get the header
+        [self parseMTConnectHeader: doc];
+        
+        // Get all the events and conditions...
+        err = nil;
+        NSArray *nodes = [doc nodesForXPath: @"//Events/*|//Condition/*" error: &err];
+        for (id node in nodes) {
+          NSString __block *name, *value;
+          [self nameAndValueForNode: node returning: ^(NSString *n, NSString *v) { name = n; value = v; }];
+          [self setFieldFor: name withValue: value];
+          [self setLevelFor: name withValue: value];
         }
       } else {
-        NSLog(@"Could not find header: %@", err);
+        NSLog(@"Could not parse document: %@", err);
+        NSLog(@"---------------------------------------------");
+        NSLog(@"Received %@", xmlBuffer);
+        NSLog(@"---------------------------------------------");
+        NSLog(@"---------------------------------------------");
+        NSLog(@"Complete %@", text);
+        NSLog(@"---------------------------------------------");
       }
-      
-      // Get all the data items...
-      err = nil;
-      nodes = [doc nodesForXPath: @"//Events/*|//Condition/*" error: &err];
-      [nodes enumerateObjectsUsingBlock: ^(id node, NSUInteger idx, BOOL *stop) {
-        NSXMLElement *grandparent = (NSXMLElement*)[[node parent] parent];
-        NSString *component = [[grandparent attributeForName: @"component"] stringValue];
-        NSString *name = [node name];
-        NSString *value = [node stringValue];
-        NSRange range = [name rangeOfString: @"^(Unavailable|Normal|Warning|Fault)$" options: NSRegularExpressionSearch];
-        if (range.location != NSNotFound) {
-          value = [[NSString alloc] initWithFormat: @"%@: %@", name, value];
-          name = [[[node attributeForName: @"type"] stringValue] capitalizedString];
-        } else {
-          NSRange range = [name rangeOfString: @"^(Open|Close)$" options: NSRegularExpressionSearch];
-          if (range.location != NSNotFound) {
-            NSString *suffix = [component stringByReplacingOccurrencesOfString: @"Interface" withString: @""];
-            name = [name stringByAppendingString: suffix];
-          }
-        }
-        
-        NSLog(@"Data Item: %@, %@, %@ ", component, name, [node stringValue]);
-        NSString *selectorName = [[NSString alloc] initWithFormat: @"cnc%@Field", name];
-        SEL method = NSSelectorFromString(selectorName);
-        if ([self respondsToSelector: method]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-          NSTextField *field = [self performSelector: method];
-#pragma clang diagnostic pop
-          if (field != nil) [field setStringValue: value];
-          [_robot receivedDataItem: name with: value];
-        }
-
-        if ([name hasSuffix: @"State"]) {
-          int level = 0;
-          if ([value isEqual: @"OPEN"])
-            level = 1;
-          else if ([value isEqual: @"UNLATCHED"])
-            level = 2;
-          else if ([value isEqual: @"CLOSED"])
-            level = 3;
-          
-          if ([name isEqual: @"ChuckState"]) {
-            [_cncChuckState setIntValue: level];
-          } else if ([name isEqual: @"DoorState"]) {
-            [_cncDoorState setIntValue: level];
-          }
-        }
-      }];
-    } else {
-      NSLog(@"Could not parse document: %@", err);
-      NSLog(@"---------------------------------------------");
-      NSLog(@"Received %@", xmlBuffer);
-      NSLog(@"---------------------------------------------");
-      NSLog(@"---------------------------------------------");
-      NSLog(@"Complete %@", text);
-      NSLog(@"---------------------------------------------");
     }
-  }];
+  }
 }
 
 - (void) URLSession:(NSURLSession *)session task: (NSURLSessionTask*) task didCompleteWithError:(NSError *)error {

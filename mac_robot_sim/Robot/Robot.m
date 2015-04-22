@@ -7,14 +7,16 @@
 //
 
 #import "Robot.h"
+@import Foundation;
 
 @implementation Robot
 
-- initWithPort: (int) port {
+- initWithPort: (int) port andDelay: (int) delay {
   self = [super init];
   if (self != NULL) {
     _port = port;
     _failNext = false;
+    _delay = delay;
   }
   return self;
 }
@@ -41,19 +43,15 @@
   [_adapter addDataItem: _spindleInterlock = [[MTConnectDataItem alloc] initWithName: @"s_inter"]];
   [_adapter addDataItem: _chuckUnclamp = [[MTConnectDataItem alloc] initWithName: @"c_unclamp"]];
   
-  [_avail setValue: @"AVAILABLE"];
-  [_system setValue: @"normal||||"];
-  [_system setSeparateLine: YES];
-  [_mode setValue: @"MANUAL"];
-  [_exec setValue: @"READY"];
-  [_materialLoad setValue: @"NOT_READY"];
-  [_materialUnload setValue: @"NOT_READY"];
-  [_openChuck setValue: @"NOT_READY"];
-  [_closeChuck setValue: @"NOT_READY"];
-  [_openDoor setValue: @"NOT_READY"];
-  [_closeDoor setValue: @"NOT_READY"];
-  [_spindleInterlock setValue: @"INACTIVE"];
-  [_chuckUnclamp setValue: @"INACTIVE"];
+  _avail.value = @"AVAILABLE";
+  _system.value = @"normal||||";
+  _system.separateLine = YES;
+  _mode.value = @"MANUAL";
+  _exec.value = @"READY";
+  _spindleInterlock.value = @"INACTIVE";
+  _chuckUnclamp.value = @"INACTIVE";
+  
+  [self notReady];
   
   [_adapter start];
   [self notifyDelegate];
@@ -68,54 +66,58 @@
   [self notifyDelegate];
 }
 
-- (void) receivedDataItem: (NSString*) name with: (NSString*) value {
-  NSString *method = [[name stringByReplacingCharactersInRange: NSMakeRange(0,1)
-                                 withString: [[name substringToIndex: 1] lowercaseString]]
-                      stringByAppendingString: [[value capitalizedString]
-                                                stringByReplacingOccurrencesOfString: @"_" withString:@""]];
+- (void) receivedDataItem: (NSString*) name withValue: (NSString*) value {
+  // Snake case the names and remove underscors _ OpenDoor NOT_READY -> openDoorNotReady
+  NSString *prefix = [name stringByReplacingCharactersInRange: NSMakeRange(0,1) withString: [[name substringToIndex: 1] lowercaseString]];
+  NSString *suffix = [[value capitalizedString] stringByReplacingOccurrencesOfString: @"_" withString: @""];
+  NSString *method = [prefix stringByAppendingString: suffix];
+  
+  // Get the selector and call method dynamically
   SEL selector = NSSelectorFromString(method);
+  
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-  if ([self respondsToSelector: selector])
+  if ([self respondsToSelector: selector]) {
     [self performSelector: selector];
+  }
 #pragma clang diagnostic pop
 }
 
 - (void) ready {
-  [_materialLoad setValue: @"READY"];
-  [_materialUnload setValue: @"READY"];
-  [_openChuck setValue: @"READY"];
-  [_closeChuck setValue: @"READY"];
-  [_openDoor setValue: @"READY"];
-  [_closeDoor setValue: @"READY"];
+  _materialLoad.value = @"READY";
+  _materialUnload.value = @"READY";
+  _openChuck.value = @"READY";
+  _closeChuck.value = @"READY";
+  _openDoor.value = @"READY";
+  _closeDoor.value = @"READY";
   [self update];
 }
 
 - (void) notReady {
-  [_materialLoad setValue: @"NOT_READY"];
-  [_materialUnload setValue: @"NOT_READY"];
-  [_openChuck setValue: @"NOT_READY"];
-  [_closeChuck setValue: @"NOT_READY"];
-  [_openDoor setValue: @"NOT_READY"];
-  [_closeDoor setValue: @"NOT_READY"];
+  _materialLoad.value = @"NOT_READY";
+  _materialUnload.value = @"NOT_READY";
+  _openChuck.value = @"NOT_READY";
+  _closeChuck.value = @"NOT_READY";
+  _openDoor.value = @"NOT_READY";
+  _closeDoor.value = @"NOT_READY";
   [self update];
 }
 
 - (void) fault {
-  [_system setValue: @"fault|FAIL|||A fault occurred"];
+  _system.value = @"fault|FAIL|||A fault occurred";
   [self update];
 }
 
 - (void) clearFault {
-  [_system setValue: @"normal|||||"];
+  _system.value = @"normal|||||";
   [self update];
 }
 
 - (void) loadTheMaterial {
   if (_failNext)
-    [_materialLoad setValue:@"FAIL"];
+    _materialLoad.value = @"FAIL";
   else
-    [_materialLoad setValue:@"ACTIVE"];
+    _materialLoad.value = @"ACTIVE";
   [self update];
   _failNext = false;
 
@@ -123,8 +125,8 @@
 }
 
 - (void) materialLoadReady {
-  if ([[_materialLoad value] isEqualTo: @"COMPLETE"]) {
-    [_materialLoad setValue:@"READY"];
+  if ([_materialLoad.value isEqualTo: @"COMPLETE"]) {
+    _materialLoad.value = @"READY";
     [self update];
   }
 }
@@ -133,12 +135,11 @@
   [self materialLoadReady];
 }
 
-
 - (void) unloadTheMaterial {
   if (_failNext)
-    [_materialUnload setValue:@"FAIL"];
+    _materialUnload.value = @"FAIL";
   else
-    [_materialUnload setValue:@"ACTIVE"];
+    _materialUnload.value = @"ACTIVE";
   [self update];
   _failNext = false;
   
@@ -146,9 +147,9 @@
 }
 
 - (void) materialUnloadReady {
-  if ([[_materialUnload value] isEqualTo: @"COMPLETE"])
+  if ([_materialUnload.value isEqualTo: @"COMPLETE"])
   {
-    [_materialUnload setValue:@"READY"];
+    _materialUnload.value = @"READY";
     [self update];
   }
 }
@@ -159,85 +160,83 @@
 
 
 - (void) openTheDoor {
-  [_openDoor setValue: @"ACTIVE"];
+  _openDoor.value = @"ACTIVE";
   [self update];
 }
 
 - (void) openDoorComplete {
-  [_openDoor setValue: @"READY"];
+  _openDoor.value = @"READY";
   [self update];
   
-  if ([[_materialLoad value] isEqualTo: @"ACTIVE"] ||
-      [[_materialUnload value] isEqualTo: @"ACTIVE"]) {
+  if ([_materialLoad.value isEqualTo: @"ACTIVE"] ||
+      [_materialUnload.value isEqualTo: @"ACTIVE"]) {
     sleep(1);
     [self openTheChuck];
   }
 }
 
 - (void) closeTheDoor {
-  [_closeDoor setValue: @"ACTIVE"];
+  _closeDoor.value = @"ACTIVE";
   [self update];
 }
 
 - (void) closeDoorComplete {
-  [_closeDoor setValue: @"READY"];
+  _closeDoor.value = @"READY";
   [self update];
   
-  if ([[_materialLoad value] isEqualTo: @"ACTIVE"]) {
-    [_materialLoad setValue: @"COMPLETE"];
+  if ([_materialLoad.value isEqualTo: @"ACTIVE"]) {
+    _materialLoad.value = @"COMPLETE";
     [self update];
   }
 }
 
 - (void) openTheChuck {
-  [_openChuck setValue: @"ACTIVE"];
+  _openChuck.value = @"ACTIVE";
   [self update];
 }
 
 - (void) openChuckComplete {
-  [_openChuck setValue: @"READY"];
+  _openChuck.value = @"READY";
   [self update];
   
-  if ([[_materialLoad value] isEqualTo: @"ACTIVE"]) {
+  if ([_materialLoad.value isEqualTo: @"ACTIVE"]) {
     sleep(1);
     [self closeTheChuck];
-  } else if ([[_materialUnload value] isEqualTo: @"ACTIVE"]) {
-    [_materialUnload setValue: @"COMPLETE"];
+  } else if ([_materialUnload.value isEqualTo: @"ACTIVE"]) {
+    _materialUnload.value = @"COMPLETE";
     [self update];
   }
 }
 
 - (void) closeTheChuck {
-  [_closeChuck setValue: @"ACTIVE"];
+  _closeChuck.value = @"ACTIVE";
   [self update];
 }
 
 - (void) closeChuckComplete {
-  [_closeChuck setValue: @"READY"];
+  _closeChuck.value = @"READY";
   [self update];
   
-  if ([[_materialLoad value] isEqualTo: @"ACTIVE"]) {
+  if ([_materialLoad.value isEqualTo: @"ACTIVE"]) {
     sleep(1);
     [self closeTheDoor];
   }
 }
 
-#define MakeFail(variable) \
-- (void) variable ## Fail { \
-  if ([[_ ## variable value] isEqualTo: @"ACTIVE"]) { \
-    [_ ## variable setValue: @"FAIL"]; \
+#define MakeFail(interface) \
+- (void) interface ## Fail { \
+  if ([_ ## interface.value isEqualTo: @"ACTIVE"]) { \
+    _ ## interface.value = @"FAIL"; \
     [self update]; \
   } \
 } \
- \
-- (void) variable ## Ready { \
-  if ([[_ ## variable value] isEqualTo: @"FAIL"]) { \
-    [_ ## variable setValue: @"READY"]; \
+- (void) interface ## Ready { \
+  if ([_ ## interface.value isEqualTo: @"FAIL"]) { \
+    _ ## interface.value = @"READY"; \
     [self update]; \
   } \
 } \
-\
-- (void) variable ## NotReady { [self variable ## Ready]; }
+- (void) interface ## NotReady { [self interface ## Ready]; }
 
 MakeFail(openDoor);
 MakeFail(closeDoor);

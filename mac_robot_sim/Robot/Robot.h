@@ -29,15 +29,16 @@
 @property (readonly) MTConnectDataItem *spindleInterlock;
 @property (readonly) MTConnectDataItem *chuckUnclamp;
 @property bool failNext;
+@property int delay;
 
 @property (weak) id delegate;
 
-- initWithPort: (int) port;
+- initWithPort: (int) port andDelay: (int) delay;
 - (void) start;
 - (void) stop;
 - (void) update;
 
-- (void) receivedDataItem: (NSString*) name with: (NSString*) value;
+- (void) receivedDataItem: (NSString*) name withValue: (NSString*) value;
 
 - (void) ready;
 - (void) notReady;
