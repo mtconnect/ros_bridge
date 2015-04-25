@@ -61,14 +61,26 @@
   [_adapter stop];
 }
 
-- (void) update {
+- (void) _update {
   [_adapter writeChangedDataItems];
   [self notifyDelegate];
 }
 
+- (void) update {
+  if (_delay > 0.0) {
+    NSTimer* _update = [NSTimer timerWithTimeInterval: _delay target: self
+                                           selector: @selector(_update)
+                                           userInfo: nil repeats: NO];
+    [[NSRunLoop mainRunLoop] addTimer: _update forMode: NSDefaultRunLoopMode];
+  } else {
+    [self _update];
+  }
+}
+
 - (void) receivedDataItem: (NSString*) name withValue: (NSString*) value {
   // Snake case the names and remove underscors _ OpenDoor NOT_READY -> openDoorNotReady
-  NSString *prefix = [name stringByReplacingCharactersInRange: NSMakeRange(0,1) withString: [[name substringToIndex: 1] lowercaseString]];
+  NSString *prefix = [name stringByReplacingCharactersInRange: NSMakeRange(0,1)
+                           withString: [[name substringToIndex: 1] lowercaseString]];
   NSString *suffix = [[value capitalizedString] stringByReplacingOccurrencesOfString: @"_" withString: @""];
   NSString *method = [prefix stringByAppendingString: suffix];
   
@@ -78,7 +90,14 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
   if ([self respondsToSelector: selector]) {
-    [self performSelector: selector];
+    if (_delay > 0.0) {
+      NSTimer* disp = [NSTimer timerWithTimeInterval: _delay target: self
+                                               selector: selector
+                                               userInfo: nil repeats: NO];
+      [[NSRunLoop mainRunLoop] addTimer: disp forMode: NSDefaultRunLoopMode];
+    } else {
+      [self performSelector: selector];
+    }
   }
 #pragma clang diagnostic pop
 }

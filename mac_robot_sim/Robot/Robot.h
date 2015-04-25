@@ -29,7 +29,7 @@
 @property (readonly) MTConnectDataItem *spindleInterlock;
 @property (readonly) MTConnectDataItem *chuckUnclamp;
 @property bool failNext;
-@property int delay;
+@property double delay;
 
 @property (weak) id delegate;
 

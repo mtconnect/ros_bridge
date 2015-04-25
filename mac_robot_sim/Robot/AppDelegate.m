@@ -137,7 +137,7 @@
 }
 
 - (IBAction) delayChanged:(id)sender {
-  _robot.delay = [_delay intValue];
+  _robot.delay = [_delay doubleValue];
 }
 
 - (void) startAgentStream {
@@ -267,7 +267,8 @@
       [_streamingTask cancel];
       _streamingTask = nil;
     }
-    NSTimer* retry = [NSTimer timerWithTimeInterval: 2.0 target: self selector: @selector(startAgentStream)
+    NSTimer* retry = [NSTimer timerWithTimeInterval: 2.0 target: self
+                              selector: @selector(startAgentStream)
                               userInfo: nil repeats: NO];
     [[NSRunLoop mainRunLoop] addTimer: retry forMode: NSDefaultRunLoopMode];
   } else {

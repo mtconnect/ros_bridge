@@ -61,9 +61,9 @@
           [lines removeLastObject];
         }
         
-        [lines enumerateObjectsUsingBlock: ^(id obj, NSUInteger idx, BOOL *stop) {
-          if ([obj length] > 0) [self received: obj];
-        }];
+        for (NSString *line in lines) {
+          if (line.length > 0) [self received: line];
+        }
         
       }
       break;
@@ -112,7 +112,6 @@
         _inputBuffer = [[NSMutableString alloc] init];
       }
       break;
-
       
     case NSStreamEventNone:
       break;
